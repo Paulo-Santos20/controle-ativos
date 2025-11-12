@@ -327,3 +327,36 @@
   color: var(--color-text-primary);
   margin-top: var(--spacing-sm);
 }
+
+/* Adicione este estilo ao final do seu CadastroPages.module.css */
+
+.actionCell {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px; 
+  border-radius: 50%;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary); /* Cor sutil */
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+.iconButton:hover {
+  background-color: var(--color-bg-page);
+  color: var(--color-primary); /* Destaca ao passar o mouse */
+}
+
+/* No mobile, alinha as ações */
+@media (max-width: 767px) {
+  .actionCell {
+    justify-content: flex-start;
+  }
+}

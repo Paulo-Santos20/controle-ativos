@@ -2,16 +2,14 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-// --- CORREÇÃO APLICADA AQUI ---
-import { collection, doc, setDoc, serverTimestamp, query, orderBy } from 'firebase/firestore'; 
-// ---------------------------------
+import { collection, doc, setDoc, serverTimestamp, query, orderBy, writeBatch } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { db } from '/src/lib/firebase.js'; // Caminho absoluto
+import { db, auth } from '/src/lib/firebase.js'; // Caminho absoluto
 import { toast } from 'sonner';
-// Importa o CSS dedicado que já criamos
+// Reutiliza o CSS dedicado para formulários de ativos
 import styles from './AssetForms.module.css'; 
 
-// --- Constantes para os Dropdowns (Código de Alta Qualidade) ---
+// --- Constantes para os Dropdowns (UI/UX de Excelência) ---
 const tiposAtivo = ["Desktop", "All in One", "Notebook", "Tablet"];
 const opcoesPosse = ["Própria", "Alugado", "Doação", "Empréstimo"];
 const opcoesStatus = [
@@ -25,9 +23,9 @@ const opcoesSO = [
 const opcoesPavimento = ["Subsolo", "Térreo", "1º Andar", "2º Andar", "3º Andar", "4º Andar", "Outro"];
 const opcoesSetor = [
   "Recepção", "Triagem", "Emergência", "UTI Adulto", "UTI Neonatal", "UTI Pediátrica",
-  "Bloco Cirúrgico", "Centro Obstétrico", "Enfermaria", "Apartamentos", 
-  "Centro de Diagnóstico (CDI)", "Laboratório", "Farmácia", "Almoxarifado", 
-  "TI", "Administração", "Faturamento", "Manutenção", "Nutrição (SND)", "Higienização (SHL)", "Outro"
+  "Bloco Cirúrgico", "Centro Obstétrico", "Enfermaria", "Apartamentos", "Centro de Diagnóstico (CDI)",
+  "Laboratório", "Farmácia", "Almoxarifado", "TI", "Administração", "Faturamento", 
+  "Manutenção", "Nutrição (SND)", "Higienização (SHL)", "Outro"
 ];
 const opcoesSala = [
   "Bloco", "Central", "Laudos", "Emergência",
@@ -39,9 +37,10 @@ const opcoesSala = [
 
 /**
  * Schema de validação Zod para um novo ativo (Computador).
+ * (Princípio 5: Código de Alta Qualidade)
  */
 const assetSchema = z.object({
-  // --- Seção "Dados" ---
+  // Seção "Dados"
   tipoAtivo: z.string().min(1, "O Tipo de Ativo é obrigatório"),
   marca: z.string().min(1, "A Marca é obrigatória"),
   modelo: z.string().min(1, "O Modelo é obrigatório"),
@@ -49,10 +48,13 @@ const assetSchema = z.object({
   serial: z.string().min(3, "O Serial é obrigatório"), 
   tombamento: z.string().min(3, "O Tombamento (ID do Doc) é obrigatório"), 
   serviceTag: z.string().optional().or(z.literal('')), 
+  macAddress: z.string()
+    .regex(/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/, "Formato de MAC inválido (ex: 00:1A:2B:3C:4D:5E)")
+    .optional().or(z.literal('')),
   posse: z.string().min(1, "A posse é obrigatória"), 
   status: z.string().min(1, "O status é obrigatório"), 
   
-  // --- Seção "Configuração" ---
+  // Seção "Configuração"
   memoria: z.string().optional().or(z.literal('')), 
   hdSsd: z.string().optional().or(z.literal('')), 
   processador: z.string().optional().or(z.literal('')), 
@@ -60,7 +62,7 @@ const assetSchema = z.object({
   so: z.string().min(1, "O S.O. é obrigatório"),
   soVersao: z.string().optional().or(z.literal('')), 
   
-  // --- Seção "Localização" ---
+  // Seção "Localização"
   unitId: z.string().min(1, "A Unidade é obrigatória"), 
   pavimento: z.string().min(1, "O Pavimento é obrigatório"),
   setor: z.string().min(1, "O Setor é obrigatório"), 
@@ -71,14 +73,15 @@ const assetSchema = z.object({
 
 /**
  * Formulário para registrar um novo ativo (Computador).
+ * É chamado pelo Modal principal.
  * @param {object} props
  * @param {() => void} props.onClose - Função para fechar o modal.
+ * @param {() => void} props.onBack - Função para voltar ao seletor de tipo.
  */
-const AddAssetForm = ({ onClose }) => {
+const AddAssetForm = ({ onClose, onBack }) => {
   // Busca 'units' (Hospitais) para o dropdown de Localização
-  // (AQUI ESTÁ O USO DO 'orderBy' QUE CAUSOU O ERRO)
   const [units, loadingUnits] = useCollection(
-    query(collection(db, 'units'), orderBy('name', 'asc')) 
+    query(collection(db, 'units'), orderBy('name', 'asc'))
   );
 
   const { 
@@ -90,26 +93,49 @@ const AddAssetForm = ({ onClose }) => {
     resolver: zodResolver(assetSchema)
   });
 
-  // Salva no backend do Firebase
+  /**
+   * Salva o novo ativo e o registro de histórico inicial
+   * usando uma transação em lote (writeBatch).
+   */
   const onSubmit = async (data) => {
     const toastId = toast.loading("Registrando computador...");
     try {
+      // 1. Inicia o Lote (Princípio 5: Código de Alta Qualidade)
+      const batch = writeBatch(db);
+
+      // 2. Define o documento principal do ativo
       const assetRef = doc(db, 'assets', data.tombamento);
       const newAsset = {
         ...data,
         createdAt: serverTimestamp(),
         lastSeen: serverTimestamp(),
-        type: 'computador' 
+        type: 'computador' // Define o tipo "pai" para filtros
       };
-      await setDoc(assetRef, newAsset);
+      batch.set(assetRef, newAsset); 
+
+      // 3. Define o PRIMEIRO log de histórico (Princípio 1: Arquitetura Escalável)
+      const historyRef = doc(collection(assetRef, 'history'));
+      batch.set(historyRef, {
+        type: "Registro",
+        details: `Ativo registrado no sistema com status "${data.status}".`,
+        timestamp: serverTimestamp(),
+        user: auth.currentUser.displayName || auth.currentUser.email,
+      });
+      
+      // 4. Executa ambas as operações
+      await batch.commit();
+      
       toast.success(`Computador ${data.tombamento} registrado!`, { id: toastId });
-      onClose();
+      onClose(); // Fecha o modal
     } catch (error) {
       console.error("Erro ao registrar ativo:", error);
       toast.error("Erro ao registrar ativo: " + error.message, { id: toastId });
     }
   };
 
+  /**
+   * Limpa todos os campos do formulário.
+   */
   const handleClear = () => {
     reset(); 
     toast.info("Formulário limpo.");
@@ -143,8 +169,8 @@ const AddAssetForm = ({ onClose }) => {
           </div>
         </div>
 
-        <div className={styles.grid3}>
-           <div className={styles.formGroup}>
+        <div className={styles.grid2}>
+          <div className={styles.formGroup}>
             <label htmlFor="tombamento">Tombamento (ID)</label>
             <input id="tombamento" {...register("tombamento")} placeholder="Digite o tombamento..." className={errors.tombamento ? styles.inputError : ''} />
             {errors.tombamento && <p className={styles.errorMessage}>{errors.tombamento.message}</p>}
@@ -154,9 +180,17 @@ const AddAssetForm = ({ onClose }) => {
             <input id="serial" {...register("serial")} placeholder="Digite o serial..." className={errors.serial ? styles.inputError : ''} />
             {errors.serial && <p className={styles.errorMessage}>{errors.serial.message}</p>}
           </div>
+        </div>
+        
+        <div className={styles.grid2}>
           <div className={styles.formGroup}>
             <label htmlFor="serviceTag">Service Tag</label>
             <input id="serviceTag" {...register("serviceTag")} placeholder="Digite o Service Tag..." />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor="macAddress">Endereço MAC</label>
+            <input id="macAddress" {...register("macAddress")} placeholder="Ex: 00:1A:2B:3C:4D:5E" className={errors.macAddress ? styles.inputError : ''} />
+            {errors.macAddress && <p className={styles.errorMessage}>{errors.macAddress.message}</p>}
           </div>
         </div>
         
@@ -278,10 +312,10 @@ const AddAssetForm = ({ onClose }) => {
         </div>
       </fieldset>
 
-      {/* --- Botões de Ação --- */}
+      {/* === Botões de Ação === */}
       <div className={styles.buttonContainer}>
-        <button type="button" onClick={onClose} className={styles.secondaryButton}>
-          Cancelar
+        <button type="button" onClick={onBack} className={styles.secondaryButton}>
+          Voltar
         </button>
         <button type="button" onClick={handleClear} className={styles.tertiaryButton}>
           Limpar Formulário

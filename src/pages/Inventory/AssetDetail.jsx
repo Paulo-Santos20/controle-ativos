@@ -13,7 +13,6 @@ import Modal from '../../components/Modal/Modal';
 import EditAssetForm from '../../components/Inventory/EditAssetForm'; 
 import MoveAssetForm from '../../components/Inventory/MoveAssetForm'; 
 import MaintenanceAssetForm from '../../components/Inventory/MaintenanceAssetForm'; 
-// NOVO: Importa o formulário de impressora para edição
 import EditPrinterForm from '../../components/Inventory/EditPrinterForm'; 
 
 // Helper de Ícone
@@ -32,14 +31,15 @@ const getStatusClass = (status) => {
   return '';
 };
 
-
 const AssetDetail = () => {
   const { assetId } = useParams(); // Pega o Tombamento (ID) da URL
-  const [modalView, setModalView] = useState(null); 
+  const [modalView, setModalView] = useState(null); // 'edit', 'move', 'maintenance'
 
+  // Hook para buscar os dados do Ativo (Performance Total)
   const assetRef = doc(db, 'assets', assetId);
   const [asset, loadingAsset, errorAsset] = useDocumentData(assetRef);
 
+  // Hook para buscar o Histórico do Ativo (Arquitetura Escalável)
   const historyQuery = query(
     collection(db, 'assets', assetId, 'history'),
     orderBy('timestamp', 'desc')
@@ -59,6 +59,7 @@ const AssetDetail = () => {
     return <p className={styles.errorText}>Erro: Ativo não encontrado.</p>;
   }
 
+  // Funções para controlar os modais (UI/UX)
   const handleOpenModal = (view) => setModalView(view);
   const handleCloseModal = () => setModalView(null);
 
@@ -120,7 +121,7 @@ const AssetDetail = () => {
       {/* Grid de Conteúdo Responsivo */}
       <div className={styles.contentGrid}>
         
-        {/* === CARD DE INFORMAÇÕES (O "PRIMEIRO CARD DA ESQUERDA") === */}
+        {/* === CARD DE INFORMAÇÕES (ATUALIZADO COM MAC) === */}
         <div className={styles.infoCard}>
           {/* --- Seção 1: Título e ID --- */}
           <div className={styles.infoTitle}>
@@ -132,7 +133,7 @@ const AssetDetail = () => {
             </div>
           </div>
 
-          {/* --- Seção 2: Dados Principais --- */}
+          {/* --- Seção 2: Dados Principais (ATUALIZADO) --- */}
           <h3 className={styles.detailSubtitle}>Dados Principais</h3>
           <div className={styles.infoGrid}>
             <div><span>Status</span><strong className={`${styles.statusBadge} ${getStatusClass(asset.status)}`}>{asset.status}</strong></div>
@@ -140,6 +141,8 @@ const AssetDetail = () => {
             <div><span>Serial</span><strong>{asset.serial}</strong></div>
             <div><span>Propriedade</span><strong>{asset.propriedade || asset.posse}</strong></div>
             {asset.serviceTag && <div><span>Service Tag</span><strong>{asset.serviceTag}</strong></div>}
+            {/* --- CAMPO MAC ADICIONADO AQUI --- */}
+            {asset.macAddress && <div><span>Endereço MAC</span><strong>{asset.macAddress}</strong></div>}
           </div>
 
           {/* --- Seção 3: Localização --- */}
@@ -152,9 +155,7 @@ const AssetDetail = () => {
             <div><span>Funcionário</span><strong>{asset.funcionario || "---"}</strong></div>
           </div>
           
-          {/* --- SEÇÃO 4: RENDERIZAÇÃO CONDICIONAL (A SUA SOLICITAÇÃO) --- */}
-          
-          {/* SE FOR COMPUTADOR */}
+          {/* --- SEÇÃO 4: RENDERIZAÇÃO CONDICIONAL (COMPUTADOR) --- */}
           {asset.type === 'computador' && (
             <>
               <h3 className={styles.detailSubtitle}>Configuração do Computador</h3>
@@ -169,7 +170,7 @@ const AssetDetail = () => {
             </>
           )}
 
-          {/* SE FOR IMPRESSORA */}
+          {/* --- SEÇÃO 4: RENDERIZAÇÃO CONDICIONAL (IMPRESSORA) --- */}
           {asset.type === 'impressora' && (
             <>
               <h3 className={styles.detailSubtitle}>Configuração da Impressora</h3>
@@ -182,26 +183,51 @@ const AssetDetail = () => {
                 <div><span>Tipo de Insumo</span><strong>{asset.cartucho || "---"}</strong></div>
                 <div><span>Colorido</span><strong>{asset.colorido || "---"}</strong></div>
                 <div><span>Cartucho Preto</span><strong>{asset.cartuchoPreto || "---"}</strong></div>
-                {/* UI/UX: Só mostra o campo de colorido se for 'Sim' */}
                 {asset.colorido === 'Sim' && <div><span>Cartucho Colorido</span><strong>{asset.cartuchoColorido || "---"}</strong></div>}
                 <div><span>Cilindro/DR</span><strong>{asset.drCilindro || "---"}</strong></div>
               </div>
             </>
           )}
           
+          {/* --- Seção 5: Observação --- */}
           {asset.observacao && (
             <>
               <h3 className={styles.detailSubtitle}>Observação</h3>
               <p className={styles.obsText}>{asset.observacao}</p>
             </>
           )}
-
         </div>
 
         {/* --- Card de Histórico (Sem alteração) --- */}
         <div className={styles.historyCard}>
           <h2 className={styles.sectionTitle}><History size={18} /> Histórico do Ativo</h2>
-          {/* ... (o restante do seu código de histórico) ... */}
+          
+          {loadingHistory && <p>Carregando histórico...</p>}
+          {errorHistory && <p className={styles.errorText}>Erro ao carregar histórico.</p>}
+          
+          {history && history.docs.length === 0 && (
+            <p className={styles.emptyHistory}>Nenhum histórico registrado para este ativo.</p>
+          )}
+            
+          <ul className={styles.historyList}>
+            {history && history.docs.map(doc => {
+              const log = doc.data();
+              const date = log.timestamp?.toDate();
+              return (
+                <li key={doc.id} className={styles.historyItem}>
+                  <div className={styles.historyIcon}>
+                    {log.type === 'Movimentação' ? <Truck size={16} /> : <Wrench size={16} />}
+                  </div>
+                  <div className={styles.historyContent}>
+                    <strong>{log.type}</strong>
+                    <small>{date ? format(date, "dd 'de' MMM, yyyy 'às' HH:mm", { locale: ptBR }) : '...'} (por {log.user})</small>
+                    <p>{log.details}</p>
+                    {log.newStatus && <small>Novo Status: <strong>{log.newStatus}</strong></small>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </div>
     </div>

@@ -1,20 +1,34 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom'; // Importa o <Link>
+import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom'; // Importa o <Link> para navegação
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, orderBy, query, where } from 'firebase/firestore'; 
-import { db } from '/src/lib/firebase.js';
-import { Plus, Loader2, Search, Laptop, ChevronRight, Package, Printer, HardDrive } from 'lucide-react';
+import { db } from '/src/lib/firebase.js'; // Caminho absoluto
+import { 
+  Plus, 
+  Loader2, 
+  Search, 
+  Laptop, 
+  ChevronRight, 
+  Package, 
+  Printer, 
+  HardDrive, 
+  Pencil // Ícone para "Editar"
+} from 'lucide-react';
 
-import styles from './CadastroPages.module.css'; // Reutiliza o mesmo CSS
+// CSS compartilhado para páginas de cadastro
+import styles from './CadastroPages.module.css'; 
+// Componente de Modal reutilizável
 import Modal from '../../components/Modal/Modal';
 
-// --- ESTA É A CORREÇÃO PRINCIPAL ---
-// Importa AMBOS os formulários detalhados
+// Importa TODOS os formulários que esta página pode precisar abrir
 import AddAssetForm from '../../components/Inventory/AddAssetForm'; 
 import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
-// ------------------------------------
+import EditAssetForm from '../../components/Inventory/EditAssetForm'; 
+import EditPrinterForm from '../../components/Inventory/EditPrinterForm';
 
-// Helper de Ícone
+/**
+ * Helper de UI para mostrar o ícone correto baseado no tipo.
+ */
 const TypeIcon = ({ type }) => {
   if (type === 'computador') return <Laptop size={20} />;
   if (type === 'impressora') return <Printer size={20} />;
@@ -22,40 +36,67 @@ const TypeIcon = ({ type }) => {
 };
 
 /**
- * Componente de página reutilizável.
- * Recebe 'type' e 'title' do router.jsx.
+ * Página reutilizável para listar e gerenciar ativos de um tipo específico
+ * (ex: Computadores ou Impressoras).
+ * @param {object} props
+ * @param {'computador' | 'impressora'} props.type - O tipo de ativo a ser gerenciado.
+ * @param {string} props.title - O título da página (ex: "Computadores").
  */
 const AssetModelPage = ({ type, title }) => {
+  // Estado para controlar o modal
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // Estado para o item em edição (null = modo de registro)
+  const [editingAssetDoc, setEditingAssetDoc] = useState(null); 
+  // Estado para o filtro de busca
   const [searchTerm, setSearchTerm] = useState("");
 
-  // A consulta busca na coleção 'assets' (ativos físicos)
-  // e filtra pelo tipo que vem da prop (ex: 'computador' ou 'impressora')
+  // Consulta ao Firestore (Princípio 2: Performance Total)
+  // Busca apenas os 'assets' do 'type' correto
   const q = query(
     collection(db, 'assets'), 
-    where('type', '==', type), // Filtra pelo tipo correto
+    where('type', '==', type), 
     orderBy('createdAt', 'desc')
   );
   
   const [assets, loading, error] = useCollection(q);
 
-  // Lógica do filtro de busca (local)
-  const filteredAssets = assets?.docs.filter(doc => {
-    const data = doc.data();
+  // Filtro de Busca (UI/UX)
+  // 'useMemo' otimiza a performance, só re-filtra se a busca ou os dados mudarem
+  const filteredAssets = useMemo(() => {
+    if (!assets) return [];
+    if (!searchTerm) return assets.docs; 
+
     const search = searchTerm.toLowerCase();
-    return (
-      doc.id.toLowerCase().includes(search) || // Busca por Tombamento (ID)
-      (data.serial && data.serial.toLowerCase().includes(search)) ||
-      (data.setor && data.setor.toLowerCase().includes(search)) ||
-      (data.hostname && data.hostname.toLowerCase().includes(search))
-    );
-  });
+    return assets.docs.filter(doc => {
+      const data = doc.data();
+      return (
+        doc.id.toLowerCase().includes(search) || // Busca por Tombamento (ID)
+        (data.serial && data.serial.toLowerCase().includes(search)) ||
+        (data.setor && data.setor.toLowerCase().includes(search)) ||
+        (data.hostname && data.hostname.toLowerCase().includes(search))
+      );
+    });
+  }, [assets, searchTerm]);
   
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
+  // --- Funções de Controle do Modal (UI/UX) ---
+
+  const handleOpenAddNew = () => {
+    setEditingAssetDoc(null); // Garante que está em modo "novo"
+    setIsModalOpen(true);
   };
 
-  // Funções de estilo da lista (para os status)
+  const handleOpenEdit = (assetDoc) => {
+    setEditingAssetDoc(assetDoc); // Define o ativo a ser editado
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    // Limpa o estado de edição após a animação de fechar
+    setTimeout(() => setEditingAssetDoc(null), 300);
+  };
+
+  // Helper de Estilo
   const getStatusClass = (status) => {
     if (status === 'Em uso') return styles.statusUsage;
     if (status === 'Em manutenção') return styles.statusMaintenance;
@@ -64,41 +105,72 @@ const AssetModelPage = ({ type, title }) => {
     return '';
   };
   
-  // --- NOVA FUNÇÃO DE RENDERIZAÇÃO DO MODAL (UI/UX) ---
-  // Decide qual formulário mostrar baseado na 'prop'
+  // Lógica de Renderização do Modal (Princípio 1: Arquitetura Escalável)
   const renderModalContent = () => {
+    const isEditing = !!editingAssetDoc;
+
     if (type === 'computador') {
-      return <AddAssetForm onClose={handleCloseModal} />;
+      return isEditing ? (
+        // Modo Edição de Computador
+        <EditAssetForm 
+          onClose={handleCloseModal} 
+          assetId={editingAssetDoc.id}
+          existingData={editingAssetDoc.data()}
+        />
+      ) : (
+        // Modo Registro de Computador
+        <AddAssetForm 
+          onClose={handleCloseModal} 
+          // 'onBack' não é necessário aqui
+        />
+      );
     }
+    
     if (type === 'impressora') {
-      return <AddPrinterForm onClose={handleCloseModal} />;
+      return isEditing ? (
+        // Modo Edição de Impressora
+        <EditPrinterForm 
+          onClose={handleCloseModal}
+          assetId={editingAssetDoc.id}
+          existingData={editingAssetDoc.data()}
+        />
+      ) : (
+        // Modo Registro de Impressora
+        <AddPrinterForm 
+          onClose={handleCloseModal}
+          // 'onBack' não é necessário aqui
+        />
+      );
     }
-    // O 'onBack' foi removido, pois esta página não usa o seletor de tipo
-    return <p>Erro: Tipo de formulário não reconhecido.</p>;
+    return <p className={styles.errorText}>Erro: Tipo de formulário não reconhecido.</p>;
   };
 
   return (
     <div className={styles.page}>
       
-      {/* --- MODAL CORRIGIDO --- */}
+      {/* --- O Modal --- */}
       <Modal 
         isOpen={isModalOpen} 
         onClose={handleCloseModal} 
-        title={`Registrar Novo ${title.slice(0, -1)}`} 
+        // Título dinâmico (Editar vs. Registrar)
+        title={
+          editingAssetDoc ? 
+          `Editar ${title.slice(0, -1)}` : 
+          `Registrar Novo ${title.slice(0, -1)}`
+        }
       >
-        {/* Agora renderiza o formulário correto baseado no 'type' */}
         {renderModalContent()}
       </Modal>
 
+      {/* --- Cabeçalho da Página --- */}
       <header className={styles.header}>
         <h1 className={styles.title}>Cadastro de {title}</h1>
-        {/* O botão agora abre o modal correto para esta página */}
-        <button className={styles.primaryButton} onClick={() => setIsModalOpen(true)}>
+        <button className={styles.primaryButton} onClick={handleOpenAddNew}>
           <Plus size={18} /> Registrar Novo {title.slice(0, -1)}
         </button>
       </header>
 
-      {/* Barra de Filtro */}
+      {/* --- Barra de Filtro --- */}
       <div className={styles.toolbar}>
         <div className={styles.searchBox}>
           <Search size={18} />
@@ -111,7 +183,7 @@ const AssetModelPage = ({ type, title }) => {
         </div>
       </div>
 
-      {/* --- CONTEÚDO DA LISTA CORRIGIDO --- */}
+      {/* --- Conteúdo da Lista (Tabela Responsiva) --- */}
       <div className={styles.content}>
         {loading && (
           <div className={styles.loadingState}>
@@ -120,9 +192,15 @@ const AssetModelPage = ({ type, title }) => {
           </div>
         )}
         
-        {error && <p className={styles.errorText}>Erro: {error.message}</p>}
+        {error && (
+          <div className={styles.errorState}>
+             <h3>⚠️ Erro ao Carregar Dados</h3>
+             <p>{error.message}</p>
+             <p className={styles.errorTextSmall}>Verifique se o Firestore precisa de um índice (veja o console F12).</p>
+           </div>
+        )}
 
-        {/* Usamos o layout de Tabela do InventoryList */}
+        {/* Tabela de Ativos Físicos */}
         <div className={styles.tableWrapper}>
           <table className={styles.table}>
             <thead>
@@ -147,13 +225,23 @@ const AssetModelPage = ({ type, title }) => {
                       </span>
                     </td>
                     <td data-label="Setor">{asset.setor}</td>
-                    {/* Corrigido para 'modelo' e 'serial' que vêm do form */}
                     <td data-label="Modelo" className={styles.hideMobile}>{asset.modelo}</td>
                     <td data-label="Serial" className={styles.hideMobile}>{asset.serial}</td>
+                    
                     <td className={styles.actionCell}>
+                      {/* Link para a página de Detalhes */}
                       <Link to={`/inventory/${doc.id}`} className={styles.detailsButton}>
                         Ver <ChevronRight size={16} />
                       </Link>
+                      
+                      {/* Botão de Edição Rápida */}
+                      <button 
+                        className={styles.iconButton} 
+                        title="Editar"
+                        onClick={() => handleOpenEdit(doc)} // Abre o modal em modo de edição
+                      >
+                        <Pencil size={16} />
+                      </button>
                     </td>
                   </tr>
                 );
@@ -163,8 +251,8 @@ const AssetModelPage = ({ type, title }) => {
         </div>
 
         {/* Feedback para lista vazia */}
-        {!loading && filteredAssets?.length === 0 && (
-          <div className={styles.emptyState}>
+        {!loading && !error && filteredAssets?.length === 0 && (
+           <div className={styles.emptyState}>
             <Package size={40} />
             <h3>Nenhum {title.toLowerCase()} encontrado.</h3>
             <p>Clique no botão acima para registrar o primeiro.</p>
