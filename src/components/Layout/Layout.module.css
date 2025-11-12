@@ -1,0 +1,76 @@
+/* Layout.module.css */
+
+/* Define o layout principal usando CSS Grid */
+.layoutContainer {
+  display: grid;
+  grid-template-columns: 1fr; /* Mobile-First: uma coluna */
+  grid-template-rows: auto 1fr; /* Header, depois conteúdo */
+  grid-template-areas:
+    "header"
+    "main";
+  min-height: 100vh;
+}
+
+/* Em telas maiores (ex: 768px), mudamos para o layout com sidebar */
+@media (min-width: 768px) {
+  .layoutContainer {
+    grid-template-columns: 240px 1fr; /* Sidebar de 240px, resto é conteúdo */
+    grid-template-rows: 1fr; /* Linha única */
+    grid-template-areas: "sidebar content";
+  }
+}
+
+/* --- Sidebar --- */
+.sidebar {
+  display: none; /* Escondida no mobile */
+  background-color: var(--color-bg-component);
+  border-right: 1px solid var(--color-border);
+}
+
+@media (min-width: 768px) {
+  .sidebar {
+    display: block; /* Visível no desktop */
+    grid-area: sidebar;
+    box-shadow: var(--box-shadow);
+  }
+}
+
+/* --- Wrapper de Conteúdo (Header + Main) --- */
+.contentWrapper {
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+@media (min-width: 768px) {
+  .contentWrapper {
+    grid-area: content;
+  }
+}
+
+/* --- Header --- */
+.header {
+  grid-area: header;
+  background-color: var(--color-bg-component);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--spacing-md);
+  box-shadow: var(--box-shadow);
+  
+  /* No desktop, o header fica dentro do contentWrapper */
+  /* No mobile, ele é a primeira área do grid principal */
+}
+
+/* --- Conteúdo Principal --- */
+.mainContent {
+  grid-area: main;
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+  background-color: var(--color-bg-page);
+}
+
+/* Ajuste de padding para mobile */
+@media (max-width: 767px) {
+  .mainContent {
+    padding: var(--spacing-md);
+  }
+}
