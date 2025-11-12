@@ -1,27 +1,28 @@
 import React, { useState } from 'react';
-import { db, auth } from '../../lib/firebase.js'; // Caminho absoluto
+import { db, auth } from '../../lib/firebase.js'; 
 import { 
   collection, 
   query, 
   orderBy, 
   limit, 
   where, 
-  collectionGroup // Importante para o Feed
+  collectionGroup 
 } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
+import { Link } from 'react-router-dom'; // Importa o Link
 import { 
   Laptop, 
   Printer, 
   Wrench, 
-  History, 
+  History, // Ícone que vamos usar no título
   Plus, 
   PackageSearch,
-  Loader2
+  Loader2,
+  ArrowRight // Ícone para o link "Ver Tudo"
 } from 'lucide-react';
 
 import styles from './Dashboard.module.css';
@@ -63,22 +64,19 @@ const Dashboard = () => {
     query(collection(db, 'units'), orderBy('name', 'asc'))
   );
 
-  // 5. Feed de Atividade: Busca na subcoleção 'history' de TODOS os ativos
-  // --- ESTA É A CORREÇÃO ---
-  // O nome do grupo de coleção deve ser 'history', 
-  // e não 'assetHistory', para bater com o que os formulários salvam.
+  // 5. Feed de Atividade: Busca na subcoleção 'history'
   const [history, loadingHistory, errorHistory] = useCollection(
     query(collectionGroup(db, 'history'), orderBy('timestamp', 'desc'), limit(5))
   );
 
   // --- Processamento dos dados para o Gráfico ---
   const pieChartData = units?.docs.map((doc, index) => ({
-    name: doc.data().sigla || doc.data().name, // Usa Sigla ou Nome
-    value: doc.data().assetCount || 0, // Lê o contador
-    fill: COLORS[index % COLORS.length] // Aplica cor
+    name: doc.data().sigla || doc.data().name, 
+    value: doc.data().assetCount || 0, 
+    fill: COLORS[index % COLORS.length] 
   })) || [];
   
-  // --- Lógica do Modal (sem alteração) ---
+  // --- Lógica do Modal ---
   const handleOpenModal = () => { setModalView('select'); setIsModalOpen(true); };
   const handleCloseModal = () => { setIsModalOpen(false); setTimeout(() => setModalView('select'), 300); };
   const renderModalContent = () => {
@@ -169,7 +167,6 @@ const Dashboard = () => {
                   dataKey="value"
                   label={({ name, value }) => `${name}: ${value}`}
                 >
-                  {/* Células de cor são gerenciadas pelo 'fill' no objeto de dados */}
                   {pieChartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
                   ))}
@@ -183,7 +180,19 @@ const Dashboard = () => {
 
         {/* FEED DE ATIVIDADE (com dados reais) */}
         <div className={styles.feedContainer}>
-          <h2 className={styles.sectionTitle}>Últimas Atividades</h2>
+          
+          {/* --- CABEÇALHO DO FEED ATUALIZADO --- */}
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>
+              <History size={18} /> {/* 3. ÍCONE ADICIONADO AQUI */}
+              Últimas Atividades
+            </h2>
+            <Link to="/atividades" className={styles.viewAllLink}>
+              Ver Tudo
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+          
           {loadingHistory && <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>}
           
           {errorHistory && (

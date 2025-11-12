@@ -360,3 +360,15 @@
     justify-content: flex-start;
   }
 }
+.userRole {
+  font-size: 0.8rem;
+  color: var(--color-primary);
+  background-color: #f0f6ff; /* Fundo azul claro */
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: var(--spacing-xs);
+  align-self: flex-start; /* Impede de ocupar a largura toda */
+}
+.userRole strong {
+  text-transform: capitalize;
+}

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import styles from './Sidebar.module.css';
 
+// --- A CORREÇÃO ESTÁ AQUI ---
+// 'Pencil' foi adicionado à lista de importação.
 import { 
     LayoutDashboard, 
     HardDrive, 
@@ -9,25 +11,37 @@ import {
     Users, 
     LogOut,
     Hospital,
-    Database, // Ícone para "Cadastros"
-    Building, // Ícone para "Unidades"
+    Database, 
+    Building, 
     ChevronDown,
-    Laptop,   // <-- NOVO Ícone
-    Printer   // <-- NOVO Ícone
+    Laptop,   
+    Printer,
+    History,
+    UserCog,
+    Pencil // <-- CORRIGIDO
 } from 'lucide-react'; 
 
-import { auth } from '/src/lib/firebase.js';
+import { auth } from '/src/lib/firebase.js'; // Caminho absoluto
 import { signOut } from 'firebase/auth';
 import { toast } from 'sonner';
 
+/**
+ * Componente da barra lateral de navegação principal.
+ * (Princípios: UI/UX de Excelência, Design Responsivo)
+ */
 const Sidebar = () => {
+    // Estado para os submenus colapsíveis
     const [isCadastrosOpen, setIsCadastrosOpen] = useState(false);
+    const [isUsuariosOpen, setIsUsuariosOpen] = useState(false);
 
+    /**
+     * Lida com o logout do usuário.
+     */
     const handleLogout = () => {
         signOut(auth).then(() => {
             toast.success("Você saiu com segurança.");
         }).catch((error) => {
-            toast.error("Erro ao sair: " + error.message);
+            toast.error("Erro ao sair: ".concat(error.message));
         });
     };
 
@@ -42,7 +56,7 @@ const Sidebar = () => {
 
             <nav className={styles.nav}>
                 <ul className={styles.navList}>
-                    {/* Links Normais... */}
+                    {/* Link do Dashboard */}
                     <li>
                         <NavLink to="/" className={({ isActive }) =>
                             isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
@@ -51,7 +65,38 @@ const Sidebar = () => {
                             <span>Dashboard</span>
                         </NavLink>
                     </li>
-                     {/* Menu "Cadastros" Colapsível ATUALIZADO */}
+                    
+                    {/* Link do Inventário */}
+                    <li>
+                        <NavLink to="/inventory" className={({ isActive }) =>
+                            isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
+                        }>
+                            <HardDrive size={20} />
+                            <span>Inventário</span>
+                        </NavLink>
+                    </li>
+                    
+                    {/* Link de Atividades */}
+                    <li>
+                        <NavLink to="/atividades" className={({ isActive }) =>
+                            isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
+                        }>
+                            <History size={20} />
+                            <span>Atividades</span>
+                        </NavLink>
+                    </li>
+                    
+                    {/* Link de Relatórios */}
+                    <li>
+                        <NavLink to="/reports" className={({ isActive }) =>
+                            isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
+                        }>
+                            <PieChart size={20} />
+                            <span>Relatórios</span>
+                        </NavLink>
+                    </li>
+
+                    {/* Menu "Cadastros" Colapsível */}
                     <li className={styles.submenuItem}>
                         <button 
                             type="button" 
@@ -68,7 +113,6 @@ const Sidebar = () => {
                         
                         {isCadastrosOpen && (
                             <ul className={styles.submenu}>
-                                {/* Link de Unidades (sem mudança) */}
                                 <li>
                                     <NavLink to="/cadastros/unidades" className={({ isActive }) =>
                                         isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
@@ -77,8 +121,6 @@ const Sidebar = () => {
                                         <span>Unidades</span>
                                     </NavLink>
                                 </li>
-
-                                {/* NOVO: Link de Computadores */}
                                 <li>
                                     <NavLink to="/cadastros/computadores" className={({ isActive }) =>
                                         isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
@@ -87,8 +129,6 @@ const Sidebar = () => {
                                         <span>Computadores</span>
                                     </NavLink>
                                 </li>
-                                
-                                {/* NOVO: Link de Impressoras */}
                                 <li>
                                     <NavLink to="/cadastros/impressoras" className={({ isActive }) =>
                                         isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
@@ -100,33 +140,42 @@ const Sidebar = () => {
                             </ul>
                         )}
                     </li>
-                    <li>
-                        <NavLink to="/inventory" className={({ isActive }) =>
-                            isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
-                        }>
-                            <HardDrive size={20} />
-                            <span>Inventário</span>
-                        </NavLink>
-                    </li>
-                    <li>
-                        <NavLink to="/reports" className={({ isActive }) =>
-                            isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
-                        }>
-                            <PieChart size={20} />
-                            <span>Relatórios</span>
-                        </NavLink>
-                    </li>
 
-                   
-
-                    {/* Link de Usuários */}
-                    <li>
-                        <NavLink to="/users" className={({ isActive }) =>
-                            isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
-                        }>
-                            <Users size={20} />
+                    {/* Menu "Usuários" Colapsível */}
+                    <li className={styles.submenuItem}>
+                        <button 
+                            type="button" 
+                            className={`${styles.navLink} ${styles.submenuToggle}`} 
+                            onClick={() => setIsUsuariosOpen(!isUsuariosOpen)}
+                        >
+                            <UserCog size={20} />
                             <span>Usuários</span>
-                        </NavLink>
+                            <ChevronDown 
+                                size={16} 
+                                className={`${styles.submenuIcon} ${isUsuariosOpen ? styles.open : ''}`} 
+                            />
+                        </button>
+                        
+                        {isUsuariosOpen && (
+                            <ul className={styles.submenu}>
+                                <li>
+                                    <NavLink to="/usuarios/lista" className={({ isActive }) =>
+                                        isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
+                                    }>
+                                        <Users size={18} />
+                                        <span>Lista de Usuários</span>
+                                    </NavLink>
+                                </li>
+                                <li>
+                                    <NavLink to="/usuarios/perfis" className={({ isActive }) =>
+                                        isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
+                                    }>
+                                        <Pencil size={18} />
+                                        <span>Gerenciar Perfis</span>
+                                    </NavLink>
+                                </li>
+                            </ul>
+                        )}
                     </li>
                 </ul>
             </nav>

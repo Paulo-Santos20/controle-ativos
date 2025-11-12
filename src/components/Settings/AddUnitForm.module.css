@@ -258,3 +258,81 @@
   color: var(--color-text-secondary);
   cursor: not-allowed;
 }
+/* Adicione estes estilos ao final do seu AddUnitForm.module.css */
+
+/* --- Estilo para Input Desabilitado --- */
+.inputDisabled {
+  background-color: var(--color-bg-page);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+  border: 1px dashed var(--color-border);
+}
+
+/* --- Grid de Checkboxes (para Unidades) --- */
+.checkboxGrid {
+  display: grid;
+  grid-template-columns: 1fr; /* Mobile-First */
+  gap: var(--spacing-sm);
+}
+@media (min-width: 640px) {
+  .checkboxGrid {
+    grid-template-columns: 1fr 1fr; /* Desktop */
+  }
+}
+
+.checkboxGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.checkboxGroup:hover {
+  background-color: var(--color-bg-page);
+}
+.checkboxGroup input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+.checkboxGroup label {
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 0; /* Sobrescreve o .formGroup label */
+}
+/* Adicione estes estilos ao final do seu AddUnitForm.module.css */
+
+/* --- Tabela de Permissões (para AddRoleForm) --- */
+.permissionsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+.permissionsTable th,
+.permissionsTable td {
+  border: 1px solid var(--color-border);
+  padding: var(--spacing-sm);
+  text-align: left;
+}
+.permissionsTable th {
+  background-color: var(--color-bg-page);
+}
+.permissionsTable td:first-child {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+.permissionsTable td:not(:first-child) {
+  text-align: center;
+}
+.permissionsTable input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+/* Adicione este estilo ao final do seu AddUnitForm.module.css */
+
+.permissionsTable td.disabledCell {
+  background-color: var(--color-bg-page);
+  opacity: 0.6;
+}

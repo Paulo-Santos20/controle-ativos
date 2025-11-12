@@ -1,9 +1,8 @@
-// src/lib/firebase.js (CORRIGIDO E COMPLETO)
-
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage"; // <-- 1. IMPORTAR O GETSTORAGE
+import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions"; // <-- 1. IMPORTAR FUNÇÕES
 
 // O Vite lê as variáveis do .env através do objeto 'import.meta.env'
 const firebaseConfig = {
@@ -21,6 +20,7 @@ const app = initializeApp(firebaseConfig);
 // Exporta os serviços que seu app precisa
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app); 
+export const storage = getStorage(app);
+export const functions = getFunctions(app); 
 
 export default app;

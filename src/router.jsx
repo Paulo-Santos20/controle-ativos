@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom"; // <-- CORREÇÃO AQUI
 
 // Layouts e Protetores
 import App from "./App";
@@ -14,11 +14,15 @@ import UserList from "./pages/Users/UserList";
 import UserProfile from "./pages/Users/UserProfile";
 import NotFound from "./pages/NotFound/NotFound";
 
-// --- NOSSAS PÁGINAS DE CADASTRO ---
-// Importa a página de Unidades
+// Páginas de Cadastro
 import UnidadesPage from "./pages/Cadastros/UnidadesPage";
-// Importa o componente reutilizável para Computadores/Impressoras
 import AssetModelPage from "./pages/Cadastros/AssetModelPage"; 
+
+// Página de Atividades
+import ActivityLogPage from "./pages/ActivityLog/ActivityLogPage";
+
+// Página de Gerenciamento de Perfis
+import ProfileListPage from "./pages/Users/ProfileListPage";
 
 export const router = createBrowserRouter([
   {
@@ -37,39 +41,35 @@ export const router = createBrowserRouter([
       { index: true, element: <Dashboard /> },
       { path: "inventory", element: <InventoryList /> },
       { path: "inventory/:assetId", element: <AssetDetail /> },
+      { path: "atividades", element: <ActivityLogPage /> },
       { path: "reports", element: <Reports /> },
-      { path: "users", element: <UserList /> },
       { path: "profile", element: <UserProfile /> },
       
-      // --- ROTAS DE CADASTROS (AQUI ESTÁ A CORREÇÃO) ---
-      
-      // A rota para a página de Unidades
-      { 
-        path: "cadastros/unidades", 
-        element: <UnidadesPage /> 
-      },
-      
-      // A rota para a página de Computadores
-      // (Usa o AssetModelPage com a prop type="computador")
+      // Rotas de Cadastros
+      { path: "cadastros/unidades", element: <UnidadesPage /> },
       { 
         path: "cadastros/computadores", 
-        element: <AssetModelPage 
-                    type="computador" 
-                    title="Computadores" 
-                 /> 
+        element: <AssetModelPage type="computador" title="Computadores" /> 
       },
-      
-      // A rota para a página de Impressoras
-      // (Usa o *mesmo* AssetModelPage com a prop type="impressora")
       { 
         path: "cadastros/impressoras", 
-        element: <AssetModelPage 
-                    type="impressora" 
-                    title="Impressoras" 
-                 /> 
+        element: <AssetModelPage type="impressora" title="Impressoras" /> 
       },
+      
+      // --- ROTAS DE USUÁRIOS ATUALIZADAS ---
+      { 
+        path: "usuarios/lista", // Rota principal
+        element: <UserList /> 
+      },
+      { 
+        path: "usuarios/perfis", // Nova rota para Gerenciar Perfis
+        element: <ProfileListPage /> 
+      },
+      
+      // Redirecionamento (opcional): Se alguém for para /users, manda para a lista
+      // Esta era a linha 70 que estava causando o erro
+      { path: "users", element: <Navigate to="/usuarios/lista" replace /> },
     ],
   },
-  // A rota 404 (pega-tudo)
   { path: "*", element: <NotFound /> },
 ]);
