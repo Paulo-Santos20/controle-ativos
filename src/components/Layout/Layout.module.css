@@ -1,71 +1,37 @@
 /* Layout.module.css */
 
-/* Define o layout principal usando CSS Grid */
 .layoutContainer {
   display: grid;
-  grid-template-columns: 1fr; /* Mobile-First: uma coluna */
-  grid-template-rows: auto 1fr; /* Header, depois conteúdo */
+  /* Mobile-First: header no topo, main embaixo */
+  grid-template-columns: 1fr;
   grid-template-areas:
-    "header"
-    "main";
+    "content";
   min-height: 100vh;
 }
 
-/* Em telas maiores (ex: 768px), mudamos para o layout com sidebar */
+/* Em telas de desktop (768px)... */
 @media (min-width: 768px) {
   .layoutContainer {
-    grid-template-columns: 240px 1fr; /* Sidebar de 240px, resto é conteúdo */
-    grid-template-rows: 1fr; /* Linha única */
+    /* ...criamos o grid com a sidebar de 260px */
+    grid-template-columns: 260px 1fr;
     grid-template-areas: "sidebar content";
-  }
-}
-
-/* --- Sidebar --- */
-.sidebar {
-  display: none; /* Escondida no mobile */
-  background-color: var(--color-bg-component);
-  border-right: 1px solid var(--color-border);
-}
-
-@media (min-width: 768px) {
-  .sidebar {
-    display: block; /* Visível no desktop */
-    grid-area: sidebar;
-    box-shadow: var(--box-shadow);
   }
 }
 
 /* --- Wrapper de Conteúdo (Header + Main) --- */
 .contentWrapper {
+  grid-area: content;
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
+  background-color: var(--color-bg-page); /* Fundo da área de conteúdo */
 }
 
-@media (min-width: 768px) {
-  .contentWrapper {
-    grid-area: content;
-  }
-}
-
-/* --- Header --- */
-.header {
-  grid-area: header;
-  background-color: var(--color-bg-component);
-  border-bottom: 1px solid var(--color-border);
-  padding: var(--spacing-md);
-  box-shadow: var(--box-shadow);
-  
-  /* No desktop, o header fica dentro do contentWrapper */
-  /* No mobile, ele é a primeira área do grid principal */
-}
-
-/* --- Conteúdo Principal --- */
+/* --- Conteúdo Principal (onde o <Outlet> renderiza) --- */
 .mainContent {
-  grid-area: main;
   padding: var(--spacing-lg);
   overflow-y: auto;
-  background-color: var(--color-bg-page);
+  flex: 1; /* Faz o conteúdo principal crescer */
 }
 
 /* Ajuste de padding para mobile */

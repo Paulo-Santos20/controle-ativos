@@ -1,0 +1,317 @@
+/* InventoryList.module.css */
+.page { display: flex; flex-direction: column; gap: var(--spacing-lg); }
+.header {
+  display: flex; flex-wrap: wrap; gap: var(--spacing-md);
+  justify-content: space-between; align-items: center;
+}
+.title { font-size: 2rem; font-weight: 700; }
+
+.primaryButton {
+  background-color: var(--color-primary); color: white; border: none;
+  padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--border-radius);
+  font-weight: 600; cursor: pointer; transition: background-color 0.2s;
+  display: flex; align-items: center; gap: var(--spacing-sm);
+}
+.primaryButton:hover { background-color: var(--color-primary-dark); }
+
+.toolbar {
+  background-color: var(--color-bg-component); padding: var(--spacing-md);
+  border-radius: var(--border-radius); box-shadow: var(--box-shadow);
+}
+.searchInput {
+  width: 100%; max-width: 400px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border); border-radius: var(--border-radius);
+}
+
+.content {
+  background-color: var(--color-bg-component);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  /* O padding é removido para a tabela se ajustar */
+  overflow: hidden; /* Para o border-radius funcionar com a tabela */
+}
+
+/* --- Tabela Responsiva --- */
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto; /* Permite rolar a tabela horizontalmente no mobile */
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th, .table td {
+  padding: var(--spacing-md);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.table th {
+  background-color: var(--color-bg-page);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover { background-color: var(--color-bg-page); }
+
+.actionCell { text-align: right; }
+.detailsButton {
+  display: flex; align-items: center; gap: var(--spacing-xs);
+  color: var(--color-primary); text-decoration: none; font-weight: 500;
+}
+
+/* --- Status Badges --- */
+.statusBadge {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+.statusUsage { background-color: rgba(52, 199, 89, 0.15); color: #28a745; }
+.statusMaintenance { background-color: rgba(255, 149, 0, 0.15); color: #ff9500; }
+.statusStock { background-color: rgba(110, 110, 115, 0.15); color: #6e6e73; }
+
+/* --- Mobile-First Ocultar Colunas --- */
+@media (max-width: 767px) {
+  .hideMobile { display: none; }
+  
+  /* Padrão de "cards" para tabela em mobile (Opcional, mas boa UX) */
+  .table thead { display: none; }
+  .table tr {
+    display: block;
+    border-bottom: 2px solid var(--color-bg-page);
+    margin-bottom: var(--spacing-md);
+  }
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+  .table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+  .actionCell { justify-content: flex-start; }
+}
+
+/* --- Empty State --- */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  min-height: 300px;
+  color: var(--color-text-secondary);
+}
+.emptyState h2 {
+  font-size: 1.25rem;
+  color: var(--color-text-primary);
+  margin-top: var(--spacing-sm);
+}
+
+.errorText {
+  color: var(--color-danger);
+  padding: var(--spacing-lg);
+}
+
+.loadingState,
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  min-height: 300px;
+  color: var(--color-text-secondary);
+}
+.emptyState h2 {
+  font-size: 1.25rem;
+  color: var(--color-text-primary);
+  margin-top: var(--spacing-sm);
+}
+
+.errorText {
+  color: var(--color-danger);
+  padding: var(--spacing-lg);
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  color: var(--color-primary);
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* --- Tabela Responsiva (do código anterior) --- */
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th, .table td {
+  padding: var(--spacing-md);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.table th {
+  background-color: var(--color-bg-page);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover { background-color: var(--color-bg-page); }
+
+.actionCell { text-align: right; }
+.detailsButton {
+  display: flex; align-items: center; gap: var(--spacing-xs);
+  color: var(--color-primary); text-decoration: none; font-weight: 500;
+}
+
+/* --- Status Badges --- */
+.statusBadge {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+.statusUsage { background-color: rgba(52, 199, 89, 0.15); color: #28a745; }
+.statusMaintenance { background-color: rgba(255, 149, 0, 0.15); color: #ff9500; }
+.statusStock { background-color: rgba(110, 110, 115, 0.15); color: #6e6e73; }
+
+/* --- Mobile-First Ocultar Colunas --- */
+.hideMobile {
+  display: none;
+}
+@media (min-width: 768px) {
+  .hideMobile {
+    display: table-cell;
+  }
+}
+
+/* Padrão de "cards" para tabela em mobile */
+@media (max-width: 767px) {
+  .table thead { display: none; }
+  .table tr {
+    display: block;
+    border-bottom: 2px solid var(--color-bg-page);
+    margin-bottom: var(--spacing-md);
+    background: #fff;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+  }
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px dashed var(--color-border);
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+  .table td:last-child {
+    border-bottom: none;
+  }
+  .table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    padding-right: var(--spacing-md);
+  }
+  .actionCell { justify-content: flex-start; }
+}
+/* Adicione estes estilos ao final do seu 
+   src/pages/Inventory/InventoryList.module.css 
+*/
+
+/* --- Estilos do Toolbar (Melhoria) --- */
+.toolbar {
+  display: flex;
+  flex-direction: column; /* Mobile-First: Pilha */
+  gap: var(--spacing-md);
+  background-color: var(--color-bg-component);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+}
+.searchInput {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: var(--font-size-md);
+}
+
+/* Grupo de Filtros Dropdown */
+.filterGroup {
+  display: flex;
+  flex-wrap: wrap; /* Quebra linha se não couber */
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+.filterGroup svg {
+  color: var(--color-text-secondary);
+  margin-right: var(--spacing-xs);
+}
+.filterSelect {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  background-color: var(--color-bg-page);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  flex-grow: 1; /* Fazem os selects crescerem no mobile */
+}
+
+/* --- Desktop (Sobrescrita) --- */
+@media (min-width: 768px) {
+  .toolbar {
+    flex-direction: row; /* Desktop: Lado a lado */
+    justify-content: space-between;
+  }
+  .filterGroup {
+    flex-wrap: nowrap; /* Não quebra linha */
+  }
+  .filterSelect {
+    flex-grow: 0; /* Tamanho automático */
+  }
+  .searchInput {
+    width: 300px;
+  }
+}
+
+/* --- Status (Adicionado Inativo) --- */
+.statusInactive {
+  background-color: rgba(110, 110, 115, 0.15); 
+  color: #6e6e73;
+}/* Adicione este estilo ao final do seu InventoryList.module.css */
+
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
+  text-align: center;
+  background-color: #fffbe6; /* Fundo amarelo de alerta */
+  border: 1px solid #ffe58f;
+  border-radius: var(--border-radius);
+}
+.errorState h3 {
+  font-size: 1.25rem;
+  color: #d46b08; /* Laranja escuro */
+  margin-top: var(--spacing-sm);
+}
+.errorState p {
+  font-size: var(--font-size-md);
+}

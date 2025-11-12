@@ -1,33 +1,47 @@
-import React from 'react'
-import styles from './Layout.module.css'
-// Você vai criar e importar seus componentes Sidebar e Header
-// import Sidebar from '../Sidebar/Sidebar'
-// import Header from '../Header/Header'
+import React, { useState } from 'react';
+import styles from './Layout.module.css';
+
+// Importando os novos componentes
+import Sidebar from '../Sidebar/Sidebar';
+import Header from '../Header/Header';
+import MobileNav from '../MobileNav/MobileNav';
 
 const Layout = ({ children }) => {
+  // Estado para controlar o menu mobile (Mobile-First)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(prevState => !prevState);
+  };
+
   return (
-    <div className={styles.layoutContainer}>
-      {/* <Sidebar /> */}
-      
-      {/* Marcador temporário para a Sidebar */}
-      <aside className={styles.sidebar}>
-        Sidebar Aqui
-      </aside>
+    <>
+      {/* 1. Menu Mobile (controlado por estado) */}
+      <MobileNav 
+        isOpen={isMobileMenuOpen} 
+        onClose={() => setIsMobileMenuOpen(false)} 
+      />
 
-      <div className={styles.contentWrapper}>
-        {/* <Header /> */}
+      {/* 2. Layout Principal (Grid) */}
+      <div className={styles.layoutContainer}>
         
-        {/* Marcador temporário para o Header */}
-        <header className={styles.header}>
-          Header Aqui
-        </header>
+        {/* Sidebar (só aparece em desktop) */}
+        <Sidebar />
 
-        <main className={styles.mainContent}>
-          {children}
-        </main>
+        {/* Wrapper de Conteúdo (ocupa o espaço certo no grid) */}
+        <div className={styles.contentWrapper}>
+          
+          {/* Header (sempre visível) */}
+          <Header onToggleMobileMenu={toggleMobileMenu} />
+
+          {/* Conteúdo da Página */}
+          <main className={styles.mainContent}>
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
-  )
-}
+    </>
+  );
+};
 
 export default Layout;

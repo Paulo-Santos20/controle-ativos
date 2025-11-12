@@ -1,0 +1,45 @@
+/* Settings.module.css */
+.page { display: flex; flex-direction: column; gap: var(--spacing-lg); }
+.header { display: flex; justify-content: space-between; align-items: center; }
+.title { font-size: 2rem; font-weight: 700; }
+
+.content {
+  background-color: var(--color-bg-component);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  /* Remove padding para as abas encostarem */
+}
+
+/* Navegação por Abas (UI/UX) */
+.tabNav {
+  display: flex;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 var(--spacing-md);
+}
+.tabButton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  border-bottom: 3px solid transparent; /* Indicador */
+  margin-bottom: -1px; /* Puxa para cima do border-bottom */
+  transition: all 0.2s;
+}
+.tabButton:hover {
+  background-color: var(--color-bg-page);
+}
+.tabButton.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.tabContent {
+  padding: var(--spacing-lg);
+  min-height: 400px;
+}

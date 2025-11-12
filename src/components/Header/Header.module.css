@@ -1,0 +1,66 @@
+/* Header.module.css */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Padrão mobile: botão | logo | (espaço) */
+  background-color: var(--color-bg-component);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--spacing-md);
+  height: 65px; /* Altura fixa para o header */
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius);
+  transition: background-color 0.2s;
+}
+.iconButton:hover {
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
+}
+
+.logoMobile {
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 1.1rem;
+  /* Espaçador para centralizar o logo no mobile */
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Esconde ações de desktop no mobile */
+.desktopActions {
+  display: none;
+}
+
+/* --- Media Query para Desktop (768px) --- */
+@media (min-width: 768px) {
+  .header {
+    justify-content: flex-end; /* Alinha tudo à direita no desktop */
+    padding-left: var(--spacing-lg);
+    padding-right: var(--spacing-lg);
+  }
+
+  /* Esconde os controles mobile */
+  .mobileOnly {
+    display: none;
+  }
+
+  /* Mostra os controles desktop */
+  .desktopActions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+}

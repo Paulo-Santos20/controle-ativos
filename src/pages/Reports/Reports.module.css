@@ -1,0 +1,38 @@
+/* Reports.module.css (Reutilizaremos estilos genéricos) */
+.page { display: flex; flex-direction: column; gap: var(--spacing-lg); }
+.header { display: flex; justify-content: space-between; align-items: center; }
+.title { font-size: 2rem; font-weight: 700; }
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  background-color: var(--color-bg-component);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+}
+.filterGroup { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.filterGroup label { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.selectInput {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  min-width: 200px;
+}
+.primaryButton {
+  background-color: var(--color-primary); color: white; border: none;
+  padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--border-radius);
+  font-weight: 600; cursor: pointer; transition: background-color 0.2s;
+  display: flex; align-items: center; gap: var(--spacing-sm);
+  margin-left: auto; /* Alinha o botão à direita */
+}
+.primaryButton:hover { background-color: var(--color-primary-dark); }
+
+.content {
+  background-color: var(--color-bg-component);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  min-height: 400px;
+}

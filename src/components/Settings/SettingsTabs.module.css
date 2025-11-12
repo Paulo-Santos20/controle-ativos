@@ -1,0 +1,102 @@
+/* SettingsTabs.module.css */
+/* Este CSS pode ser reutilizado por todas as abas (Units, Models, etc.) */
+
+.tabContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.tabHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--spacing-md);
+}
+
+.tabHeader h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.primaryButton, .secondaryButton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.primaryButton {
+  background-color: var(--color-primary);
+  color: white;
+}
+.primaryButton:hover { background-color: var(--color-primary-dark); }
+
+.secondaryButton {
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+.secondaryButton:hover { background-color: var(--color-border); }
+
+/* --- Lista de Itens --- */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+.listItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  background-color: var(--color-bg-page);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+}
+.listItemIcon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+.listItemContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.listItemContent strong {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.listItemContent small {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* --- Estados --- */
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
+}
+.spinner {
+  animation: spin 1s linear infinite;
+  color: var(--color-primary);
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.errorText {
+  color: var(--color-danger);
+}

@@ -1,0 +1,329 @@
+/* CadastroPages.module.css */
+/* Princípios: Mobile-First, UI/UX de Excelência, Código de Alta Qualidade */
+
+/* --- Layout da Página --- */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap; /* Quebra linha em telas pequenas */
+  gap: var(--spacing-md);
+  justify-content: space-between;
+  align-items: center;
+}
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+/* --- Botões Principais --- */
+.primaryButton, .secondaryButton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.primaryButton {
+  background-color: var(--color-primary);
+  color: white;
+}
+.primaryButton:hover { background-color: var(--color-primary-dark); }
+
+.secondaryButton {
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+.secondaryButton:hover { background-color: var(--color-border); }
+
+/* --- Barra de Ferramentas / Filtro --- */
+.toolbar {
+  background-color: var(--color-bg-component);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+}
+
+/* UI/UX: Destaca o campo de busca quando focado */
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background-color: var(--color-bg-page);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: 0 var(--spacing-sm);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.searchBox:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+}
+
+.searchBox input {
+  width: 100%;
+  max-width: 400px;
+  padding: var(--spacing-sm) 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: var(--font-size-md);
+}
+.searchBox svg {
+  color: var(--color-text-secondary);
+}
+
+/* --- Conteúdo / Lista --- */
+.content {
+  background-color: var(--color-bg-component);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  min-height: 400px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* --- MELHORIA RESPONSIVA: O Item da Lista (Mobile-First) --- */
+.listItem {
+  display: flex;
+  flex-direction: column; /* Padrão Mobile: Empilhado */
+  gap: var(--spacing-sm);
+  background-color: var(--color-bg-page);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+}
+
+.listItemIcon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+  /* Esconde o ícone grande no mobile para economizar espaço */
+  display: none; 
+}
+
+.listItemContent {
+  flex: 1; /* Cresce para preencher o espaço */
+  display: flex;
+  flex-direction: column;
+}
+.listItemContent strong {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  font-size: 1.1rem;
+}
+.listItemContent small {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* UI/UX: Agrupa os botões para melhor layout */
+.listItemActions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  
+  /* Mobile: Alinha à esquerda */
+  justify-content: flex-start;
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border);
+}
+/* No mobile, o botão "Editar" ocupa o espaço */
+.listItemActions .secondaryButton {
+  flex-grow: 1;
+  justify-content: center;
+}
+/* No mobile, o ícone do mapa fica à direita */
+.listItemActions .iconButton {
+  margin-left: auto;
+  flex-shrink: 0;
+  order: 2; /* Joga para o final */
+}
+
+
+/* --- Botão de Ícone (Mapa) --- */
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px; /* Tamanho de clique bom */
+  border-radius: 50%; /* Botão redondo */
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.iconButton:hover {
+  background-color: var(--color-border); /* Um cinza claro */
+}
+
+
+/* --- MELHORIA RESPONSIVA: Desktop (Sobrescrita) --- */
+@media (min-width: 768px) {
+  .listItem {
+    flex-direction: row; /* Desktop: Linha horizontal */
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+  .listItemIcon {
+    display: block; /* Mostra o ícone no desktop */
+  }
+  .listItemActions {
+    justify-content: flex-end; /* Alinha botões à direita */
+    border-top: none;
+    padding-top: 0;
+  }
+  .listItemActions .secondaryButton {
+    flex-grow: 0; /* Botão com tamanho normal */
+  }
+  /* Esconde o texto "Editar" e deixa só o ícone */
+  .listItemActions .secondaryButton span {
+    display: none;
+  }
+  .listItemActions .secondaryButton {
+    padding: 7px;
+  }
+}
+
+/* --- Estados de Loading/Vazio (UI/UX) --- */
+.loadingState,
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+.emptyState h3 {
+  font-size: 1.25rem;
+  color: var(--color-text-primary);
+  margin-top: var(--spacing-sm);
+}
+.spinner {
+  animation: spin 1s linear infinite;
+  color: var(--color-primary);
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.errorText {
+  color: var(--color-danger);
+}
+/* Adicione estes estilos ao final do seu 
+  src/pages/Cadastros/CadastroPages.module.css 
+*/
+
+/* --- Estilos da Tabela (Copiados do InventoryList.module.css) --- */
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th, .table td {
+  padding: var(--spacing-md);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.table th {
+  background-color: var(--color-bg-page);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover { background-color: var(--color-bg-page); }
+
+.actionCell { text-align: right; }
+.detailsButton {
+  display: flex; align-items: center; gap: var(--spacing-xs);
+  color: var(--color-primary); text-decoration: none; font-weight: 500;
+}
+
+/* --- Status Badges --- */
+.statusBadge {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+.statusUsage { background-color: rgba(52, 199, 89, 0.15); color: #28a745; }
+.statusMaintenance { background-color: rgba(255, 149, 0, 0.15); color: #ff9500; }
+.statusStock { background-color: rgba(110, 110, 115, 0.15); color: #6e6e73; }
+
+/* --- Mobile-First Ocultar Colunas --- */
+.hideMobile {
+  display: none;
+}
+@media (min-width: 768px) {
+  .hideMobile {
+    display: table-cell;
+  }
+}
+
+/* Padrão de "cards" para tabela em mobile */
+@media (max-width: 767px) {
+  .table thead { display: none; }
+  .table tr {
+    display: block;
+    border-bottom: 2px solid var(--color-bg-page);
+    margin-bottom: var(--spacing-md);
+    background: #fff;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+  }
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px dashed var(--color-border);
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+  .table td:last-child {
+    border-bottom: none;
+  }
+  .table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    padding-right: var(--spacing-md);
+  }
+  .actionCell { justify-content: flex-start; }
+}
+
+/* --- Estados (Melhoria do Empty State) --- */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
+  text-align: center;
+  min-height: 200px;
+}
+.emptyState h3 {
+  font-size: 1.25rem;
+  color: var(--color-text-primary);
+  margin-top: var(--spacing-sm);
+}
