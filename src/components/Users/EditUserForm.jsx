@@ -9,11 +9,14 @@ import { toast } from 'sonner';
 import styles from '../Settings/AddUnitForm.module.css'; 
 import { Loader2 } from 'lucide-react';
 
+// --- 1. IMPORTA O LOGGER ---
+import { logAudit } from '/src/utils/auditLogger';
+
 const userSchema = z.object({
   displayName: z.string().min(1, "O nome é obrigatório"),
   email: z.string().email("E-mail inválido").min(1, "O e-mail é obrigatório"),
   role: z.string().min(1, "A 'Role' é obrigatória"),
-  isActive: z.boolean(), // <-- NOVO CAMPO
+  isActive: z.boolean(),
   assignedUnits: z.array(z.string()).optional(), 
 });
 
@@ -33,7 +36,7 @@ const EditUserForm = ({ onClose, userDoc }) => {
         displayName: data.displayName || "",
         email: data.email || "",
         role: data.role || "",
-        isActive: data.isActive !== false, // Padrão true se undefined
+        isActive: data.isActive !== false,
         assignedUnits: data.assignedUnits || []
       }); 
     }
@@ -43,17 +46,39 @@ const EditUserForm = ({ onClose, userDoc }) => {
     const toastId = toast.loading("Salvando alterações...");
     try {
       const userRef = doc(db, 'users', userDoc.id);
+
       await updateDoc(userRef, {
         displayName: data.displayName,
-        email: data.email,
+        email: data.email, 
         role: data.role,
-        isActive: data.isActive, // Salva o status
+        isActive: data.isActive,
         assignedUnits: data.assignedUnits
       });
+      
+      // --- 2. REGISTRA O LOG DE AUDITORIA (CORREÇÃO) ---
+      // Detecta mudanças importantes para logar
+      const oldData = userDoc.data();
+      let details = "Dados do usuário atualizados.";
+      
+      if (oldData.role !== data.role) details = `Perfil alterado de "${oldData.role}" para "${data.role}".`;
+      if (oldData.isActive !== data.isActive) details = `Status alterado para ${data.isActive ? 'Ativo' : 'Inativo'}.`;
+
+      await logAudit(
+        "Gestão de Usuários",
+        details,
+        `Usuário: ${data.email}`
+      );
+      // ------------------------------------------------
+
       toast.success("Dados do usuário atualizados!", { id: toastId });
+      if (data.email !== userDoc.data().email) {
+        toast.info("Nota: O e-mail de login deve ser alterado pelo próprio usuário.", { duration: 5000 });
+      }
+      
       onClose(); 
     } catch (error) {
       toast.error("Erro ao salvar: " + error.message, { id: toastId });
+      console.error(error);
     }
   };
 
@@ -61,7 +86,12 @@ const EditUserForm = ({ onClose, userDoc }) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-      {isLoading ? <div style={{display:'flex', justifyContent:'center'}}><Loader2 className={styles.spinner} /></div> : (
+      
+      {isLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+          <Loader2 className={styles.spinner} />
+        </div>
+      ) : (
         <>
           <fieldset className={styles.fieldset}>
             <legend className={styles.subtitle}>Status da Conta</legend>
@@ -122,6 +152,7 @@ const EditUserForm = ({ onClose, userDoc }) => {
           </fieldset>
         </>
       )}
+
       <div className={styles.buttonContainer}>
         <button type="button" onClick={onClose} className={styles.secondaryButton}>Cancelar</button>
         <button type="submit" className={styles.primaryButton} disabled={isSubmitting || isLoading}>Salvar</button>

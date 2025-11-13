@@ -5,66 +5,77 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 import { db, auth } from '/src/lib/firebase.js';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, PackageSearch, Filter, History, Truck, Wrench, FilePlus, Edit } from 'lucide-react';
+import { 
+  Loader2, PackageSearch, Filter, History, Truck, Wrench, FilePlus, Edit, 
+  Trash2, ShieldAlert, Settings, UserX 
+} from 'lucide-react';
 
-import { useAuth } from '/src/hooks/useAuth.js'; // Importa o hook atualizado
+import { useAuth } from '/src/hooks/useAuth.js';
 import styles from './ActivityLogPage.module.css';
 
+// Filtros Atualizados
 const filterOptions = [
-  { value: "all", label: "Todos os Tipos" },
-  { value: "Registro", label: "Registro" },
-  { value: "Atualização de Status", label: "Atualização de Status" },
+  { value: "all", label: "Todas as Ações" },
+  { value: "Registro", label: "Registro de Ativo" },
   { value: "Movimentação", label: "Movimentação" },
-  { value: "Manutenção/Preventiva", label: "Manutenção/Preventiva" },
+  { value: "Atualização de Status", label: "Status de Ativo" },
+  { value: "Manutenção/Preventiva", label: "Manutenção" },
+  // Novos Filtros de Auditoria
+  { value: "Gestão de Usuários", label: "Gestão de Usuários" },
+  { value: "Exclusão de Perfil", label: "Exclusão de Perfil" },
+  { value: "Configuração do Sistema", label: "Configurações" },
 ];
 
+// Helper de Ícone Expandido
 const LogIcon = ({ type }) => {
-  if (type === 'Movimentação') return <Truck size={18} />;
-  if (type === 'Atualização de Status') return <Edit size={18} />;
-  if (type === 'Manutenção/Preventiva') return <Wrench size={18} />;
-  if (type === 'Registro') return <FilePlus size={18} />;
-  return <History size={18} />;
+  switch (type) {
+    case 'Movimentação': return <Truck size={18} />;
+    case 'Atualização de Status': return <Edit size={18} />;
+    case 'Manutenção/Preventiva': return <Wrench size={18} />;
+    case 'Registro': return <FilePlus size={18} />;
+    
+    // Novos Ícones de Auditoria
+    case 'Exclusão de Usuário': return <UserX size={18} color="#ef4444" />;
+    case 'Alteração de Permissões': return <ShieldAlert size={18} color="#f59e0b" />;
+    case 'Exclusão de Perfil': return <Trash2 size={18} color="#ef4444" />;
+    case 'Configuração do Sistema': return <Settings size={18} />;
+    
+    default: return <History size={18} />;
+  }
 };
 
 const ActivityLogPage = () => {
-  // Pega o isAdmin do hook atualizado
-  const { isAdmin, loading: authLoading } = useAuth();
-
+  const { isAdmin } = useAuth();
   const [filterType, setFilterType] = useState("all");
   const [filterUser, setFilterUser] = useState(""); 
 
-  // --- CONSULTA AO BANCO ---
   const historyQuery = useMemo(() => {
     let constraints = [orderBy('timestamp', 'desc')];
     if (filterType !== "all") {
       constraints.push(where("type", "==", filterType));
     }
+    // Busca em TODAS as coleções chamadas 'history' (Ativos + Sistema)
     return query(collectionGroup(db, 'history'), ...constraints);
   }, [filterType]); 
 
   const [history, loading, error] = useCollection(historyQuery);
 
-  // --- FILTRAGEM NO CLIENTE (CORRIGIDA) ---
   const filteredHistory = useMemo(() => {
     if (!history) return [];
     
     let docs = history.docs;
 
-    // 1. REGRA DE SEGURANÇA: 
-    // Se NÃO for admin, vê apenas logs onde o usuário é ele mesmo.
-    // (Isso é uma medida de segurança paliativa até termos unitId no log)
-    if (!isAdmin && !authLoading) {
+    // Filtro de Segurança: Não-Admins veem apenas suas próprias ações
+    if (!isAdmin) {
        const currentUserEmail = auth.currentUser?.email;
        const currentUserName = auth.currentUser?.displayName;
        
        docs = docs.filter(doc => {
          const logUser = doc.data().user;
-         // Verifica se o log foi feito por este usuário
          return logUser === currentUserEmail || logUser === currentUserName;
        });
     }
 
-    // 2. Filtro de Texto da UI (Busca por nome de quem fez)
     if (filterUser) {
       const search = filterUser.toLowerCase();
       docs = docs.filter(doc => 
@@ -73,18 +84,21 @@ const ActivityLogPage = () => {
     }
     
     return docs;
-  }, [history, filterUser, isAdmin, authLoading]);
+  }, [history, filterUser, isAdmin]);
 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Log de Atividades</h1>
+        <div>
+          <h1 className={styles.title}>Log de Auditoria Global</h1>
+          <p className={styles.subtitle}>Rastreamento de todas as ações operacionais e administrativas.</p>
+        </div>
       </header>
 
       <div className={styles.toolbar}>
         <div className={styles.filterGroup}>
           <Filter size={16} />
-          <span>Filtrar por:</span>
+          <span>Filtrar:</span>
         </div>
         
         <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={styles.filterSelect}>
@@ -96,7 +110,7 @@ const ActivityLogPage = () => {
         <div className={styles.searchBox}>
           <input 
             type="text" 
-            placeholder="Filtrar por usuário (ex: tecnico@...)" 
+            placeholder="Buscar por usuário..." 
             value={filterUser}
             onChange={(e) => setFilterUser(e.target.value)}
           />
@@ -104,10 +118,10 @@ const ActivityLogPage = () => {
       </div>
 
       <div className={styles.content}>
-        {(loading || authLoading) && (
+        {loading && (
           <div className={styles.loadingState}>
             <Loader2 className={styles.spinner} />
-            <p>Carregando histórico...</p>
+            <p>Carregando auditoria...</p>
           </div>
         )}
         
@@ -115,7 +129,6 @@ const ActivityLogPage = () => {
           <div className={styles.errorState}>
              <h3>⚠️ Erro ao Carregar Histórico</h3>
              <p>{error.message}</p>
-             <p className={styles.errorTextSmall}>Se for erro de índice, clique no link no Console (F12).</p>
            </div>
         )}
 
@@ -123,7 +136,6 @@ const ActivityLogPage = () => {
           <div className={styles.emptyState}>
             <PackageSearch size={50} />
             <h3>Nenhum registro encontrado</h3>
-            <p>{isAdmin ? "Nenhuma atividade registrada no sistema." : "Nenhuma atividade realizada por você."}</p>
           </div>
         )}
 
@@ -131,7 +143,12 @@ const ActivityLogPage = () => {
           {filteredHistory.map(doc => {
             const log = doc.data();
             const date = log.timestamp?.toDate();
-            const assetId = doc.ref.parent?.parent?.id || "Desconhecido";
+            
+            // Verifica se é um log de Ativo ou de Sistema
+            const isSystemLog = log.category === 'admin';
+            
+            // Se for ativo, pega o ID do pai. Se for sistema, usa o campo 'target' ou 'Sistema'
+            const assetId = isSystemLog ? null : (doc.ref.parent?.parent?.id || "---");
             
             return (
               <li key={doc.id} className={styles.historyItem}>
@@ -139,15 +156,29 @@ const ActivityLogPage = () => {
                   <LogIcon type={log.type} />
                 </div>
                 <div className={styles.historyContent}>
-                  <strong>{log.type}</strong>
-                  <small className={styles.historyTime}>
-                    {date ? format(date, "dd 'de' MMM, yyyy 'às' HH:mm", { locale: ptBR }) : '...'}
-                  </small>
-                  <Link to={`/inventory/${assetId}`} className={styles.assetLink}>
-                    Ativo: {assetId}
-                  </Link>
-                  <p>{log.details}</p>
-                  <small>Usuário: {log.user}</small>
+                  <div className={styles.historyHeader}>
+                    <strong>{log.type}</strong>
+                    <span className={styles.historyTime}>
+                      {date ? format(date, "dd MMM yyyy, HH:mm", { locale: ptBR }) : '...'}
+                    </span>
+                  </div>
+                  
+                  {/* Renderização Condicional do Alvo */}
+                  {isSystemLog ? (
+                    <span className={styles.systemTarget}>
+                      Alvo: <strong>{log.target || "Sistema"}</strong>
+                    </span>
+                  ) : (
+                    <Link to={`/inventory/${assetId}`} className={styles.assetLink}>
+                      Ativo: {assetId}
+                    </Link>
+                  )}
+
+                  <p className={styles.detailsText}>{log.details}</p>
+                  
+                  <div className={styles.userBadge}>
+                    Feito por: <strong>{log.user}</strong>
+                  </div>
                 </div>
               </li>
             );

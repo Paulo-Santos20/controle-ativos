@@ -4,7 +4,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, query, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-// Importamos initializeApp para criar a instancia secundária
 import { initializeApp } from 'firebase/app'; 
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db } from '/src/lib/firebase.js'; 
@@ -12,7 +11,9 @@ import { toast } from 'sonner';
 import styles from '../Settings/AddUnitForm.module.css'; 
 import { Loader2 } from 'lucide-react';
 
-// Precisamos da config pura para criar a app secundária
+// --- 1. IMPORTA O LOGGER ---
+import { logAudit } from '/src/utils/auditLogger';
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -25,7 +26,7 @@ const firebaseConfig = {
 const createUserSchema = z.object({
   displayName: z.string().min(3, "O nome é obrigatório"),
   email: z.string().email("O e-mail é inválido"),
-  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres"), // Campo Obrigatório no plano Free
+  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres"),
   role: z.string().min(1, "A 'Role' é obrigatória"),
 });
 
@@ -48,12 +49,11 @@ const CreateUserForm = ({ onClose }) => {
     let secondaryApp = null;
 
     try {
-      // 1. TRUQUE: Criar uma instância secundária do Firebase
-      // Isso evita que o Admin (você) seja deslogado ao criar um novo usuário
+      // 1. Cria instância secundária para não deslogar o admin
       secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
       const secondaryAuth = getAuth(secondaryApp);
 
-      // 2. Criar o usuário na autenticação (Auth)
+      // 2. Cria no Auth
       const userCredential = await createUserWithEmailAndPassword(
         secondaryAuth, 
         data.email, 
@@ -61,18 +61,26 @@ const CreateUserForm = ({ onClose }) => {
       );
       const newUser = userCredential.user;
 
-      // 3. Criar o perfil no Firestore (Database)
-      // Usamos o 'db' principal aqui, pois já estamos autenticados nele como Admin
+      // 3. Cria no Firestore
       await setDoc(doc(db, "users", newUser.uid), {
         displayName: data.displayName,
         email: data.email,
         role: data.role,
         assignedUnits: [],
+        isActive: true, // Importante: Já nasce ativo
         createdAt: serverTimestamp(),
       });
 
-      // 4. Deslogar a instância secundária para limpar a memória
+      // 4. Desloga a secundária
       await signOut(secondaryAuth);
+
+      // --- 5. REGISTRA O LOG DE AUDITORIA (CORREÇÃO) ---
+      await logAudit(
+        "Criação de Usuário",
+        `O usuário "${data.displayName}" (${data.email}) foi criado com o perfil "${data.role}".`,
+        `Usuário: ${data.email}`
+      );
+      // ------------------------------------------------
 
       toast.success(`Usuário ${data.displayName} criado com sucesso!`, { id: toastId });
       reset();
@@ -84,10 +92,8 @@ const CreateUserForm = ({ onClose }) => {
       if (error.code === 'auth/email-already-in-use') msg = "Este e-mail já está cadastrado.";
       toast.error(`Erro: ${msg}`, { id: toastId });
     } finally {
-      // Limpeza: Deleta a instância secundária se ela foi criada
       if (secondaryApp) {
-        // O delete() é uma promise, mas não precisamos esperar bloquear a UI
-        // secondaryApp.delete(); // (Opcional em versões recentes do SDK, o garbage collector resolve)
+        // Limpeza (opcional, garbage collector cuida)
       }
     }
   };
@@ -102,7 +108,7 @@ const CreateUserForm = ({ onClose }) => {
       ) : (
         <>
           <fieldset className={styles.fieldset}>
-            <legend className={styles.subtitle}>Novo Usuário (Plano Free)</legend>
+            <legend className={styles.subtitle}>Novo Usuário</legend>
             
             <div className={styles.formGroup}>
               <label htmlFor="displayName">Nome</label>
@@ -125,12 +131,11 @@ const CreateUserForm = ({ onClose }) => {
               {errors.email && <p className={styles.errorMessage}>{errors.email.message}</p>}
             </div>
 
-            {/* Campo de Senha Adicionado Obrigatóriamente */}
             <div className={styles.formGroup}>
               <label htmlFor="password">Senha Inicial</label>
               <input 
                 id="password" 
-                type="text" // Mostra a senha para o admin copiar/anotar
+                type="text" 
                 placeholder="Defina uma senha (min 6 chars)"
                 {...register("password")} 
                 className={errors.password ? styles.inputError : ''}

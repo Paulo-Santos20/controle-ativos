@@ -8,8 +8,11 @@ import { toast } from 'sonner';
 // Reutiliza o CSS das outras páginas de cadastro (Princípio 5)
 import styles from '../Cadastros/CadastroPages.module.css'; 
 import Modal from '../../components/Modal/Modal';
-// Importa o novo formulário de Perfil
-import AddRoleForm from '../../components/Users/AddRoleForm';
+// Importa o formulário de Perfil (com .jsx explícito para evitar erros de Vite)
+import AddRoleForm from '../../components/Users/AddRoleForm.jsx';
+
+// Importa o Logger de Auditoria
+import { logAudit } from '/src/utils/auditLogger';
 
 /**
  * Página para listar e gerenciar Perfis (Roles) do sistema.
@@ -42,15 +45,25 @@ const ProfileListPage = () => {
   // --- Ação de Deletar ---
   const handleDelete = async (roleDoc) => {
     const roleId = roleDoc.id;
+    const roleName = roleDoc.data().name;
+
     if (roleId === 'admin_geral' || roleId === 'guest') {
       toast.error("Este perfil padrão não pode ser excluído.");
       return;
     }
     
-    if (window.confirm(`Tem certeza que deseja excluir o perfil "${roleDoc.data().name}"?`)) {
+    if (window.confirm(`Tem certeza que deseja excluir o perfil "${roleName}"?`)) {
       const toastId = toast.loading("Excluindo perfil...");
       try {
         await deleteDoc(doc(db, 'roles', roleId));
+        
+        // Log de Auditoria
+        await logAudit(
+          "Exclusão de Perfil", 
+          `O perfil "${roleName}" (ID: ${roleId}) foi excluído.`, 
+          `Perfil: ${roleName}`
+        );
+
         toast.success("Perfil excluído com sucesso!", { id: toastId });
       } catch (err) {
         toast.error("Erro ao excluir: " + err.message, { id: toastId });
@@ -138,8 +151,6 @@ const ProfileListPage = () => {
         </button>
       </header>
       
-      {/* (Não precisamos de filtro de busca aqui, pois a lista é pequena) */}
-
       {/* --- Conteúdo da Lista --- */}
       <div className={styles.content}>
         {renderList()}
