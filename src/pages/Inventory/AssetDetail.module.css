@@ -1,5 +1,4 @@
 /* AssetDetail.module.css */
-/* Princípios: Mobile-First, UI/UX de Excelência */
 
 .page {
   display: flex;
@@ -7,92 +6,101 @@
   gap: var(--spacing-lg);
 }
 
-/* --- Cabeçalho (Botões de Ação) --- */
+/* --- Cabeçalho --- */
 .header {
   display: flex;
-  flex-direction: column; /* Mobile-First: Pilha */
+  flex-direction: column;
   gap: var(--spacing-md);
   justify-content: space-between;
-  align-items: flex-start;
-}
-.backButton {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  text-decoration: none;
-  color: var(--color-primary);
-  font-weight: 500;
-  padding: var(--spacing-xs);
-}
-.actions {
-  display: flex;
-  flex-wrap: wrap; /* Quebra linha no mobile */
-  gap: var(--spacing-sm);
-  width: 100%; /* Ocupa 100% no mobile */
 }
 
-/* Botões de Ação */
-.primaryButton, .actionButton, .actionButtonSecondary {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: none;
-  border-radius: var(--border-radius);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  flex-grow: 1; /* Fazem botões crescerem no mobile */
-}
-.primaryButton {
-  background-color: var(--color-primary);
-  color: white;
-  order: 1; /* Editar vem primeiro no mobile */
-}
-.primaryButton:hover { background-color: var(--color-primary-dark); }
-
-.actionButton {
-  background-color: var(--color-bg-page);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
-  order: 2;
-}
-.actionButton:hover { background-color: var(--color-border); }
-
-.actionButtonSecondary {
-  background-color: var(--color-bg-page);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
-  order: 3;
-}
-.actionButtonSecondary:hover { background-color: var(--color-border); }
-
-/* Desktop: Lado a Lado */
 @media (min-width: 768px) {
   .header {
     flex-direction: row;
     align-items: center;
   }
-  .actions {
-    width: auto;
-  }
-  .primaryButton, .actionButton, .actionButtonSecondary {
-    flex-grow: 0;
-  }
 }
 
-/* --- Grid de Conteúdo (Mobile-First) --- */
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.titleWrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+}
+.backButton:hover { color: var(--color-primary); }
+
+/* --- Botões de Ação --- */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.primaryButton, .actionButton, .actionButtonSecondary, .deleteButton, .iconButton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.primaryButton { background-color: var(--color-primary); color: white; }
+.primaryButton:hover { background-color: var(--color-primary-dark); }
+
+.actionButton { background-color: #fff; border: 1px solid var(--color-border); color: var(--color-text-primary); }
+.actionButton:hover { background-color: var(--color-bg-page); }
+
+.actionButtonSecondary { background-color: #fef3c7; color: #92400e; } /* Amarelo */
+.actionButtonSecondary:hover { background-color: #fde68a; }
+
+.deleteButton { background-color: #fee2e2; color: #991b1b; } /* Vermelho */
+.deleteButton:hover { background-color: #fecaca; }
+
+.iconButton {
+  padding: 8px;
+  border-radius: 50%;
+  background-color: #fff;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+.iconButton:hover { background-color: var(--color-bg-page); color: var(--color-primary); }
+
+/* --- Grid de Conteúdo --- */
 .contentGrid {
   display: grid;
-  grid-template-columns: 1fr; /* 1 coluna */
+  grid-template-columns: 1fr;
   gap: var(--spacing-lg);
 }
-/* Desktop: 2 colunas */
 @media (min-width: 1024px) {
-  .contentGrid {
-    grid-template-columns: 1fr 1fr; /* 50% / 50% */
-    align-items: flex-start; /* Alinha o topo dos cards */
-  }
+  .contentGrid { grid-template-columns: 2fr 1fr; } /* Informação maior que histórico */
 }
 
 /* --- Card de Informações --- */
@@ -101,194 +109,117 @@
   padding: var(--spacing-lg);
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
+  border: 1px solid var(--color-border);
 }
+
 .infoTitle {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
   border-bottom: 1px solid var(--color-border);
   padding-bottom: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
 }
-.assetType {
-  font-size: var(--font-size-sm);
+
+.titleIcon {
+  padding: 12px;
+  background-color: var(--color-bg-page);
+  border-radius: 50%;
+  color: var(--color-primary);
+}
+
+.assetType { font-size: 0.8rem; text-transform: uppercase; color: var(--color-text-secondary); font-weight: 600; letter-spacing: 0.5px; }
+.assetName { font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); margin: 0; }
+.assetId { font-size: 0.9rem; color: var(--color-text-secondary); }
+
+.detailSubtitle {
+  font-size: 1rem;
   font-weight: 600;
   color: var(--color-primary);
-  text-transform: uppercase;
-}
-.assetName {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
-}
-.assetId {
-  font-size: var(--font-size-md);
-  color: var(--color-text-secondary);
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-sm);
+  display: block;
+  border-bottom: 1px dashed var(--color-border);
+  padding-bottom: 4px;
 }
 
 .infoGrid {
   display: grid;
-  grid-template-columns: 1fr; /* Mobile: 1 coluna */
+  grid-template-columns: 1fr;
   gap: var(--spacing-md);
 }
 @media (min-width: 640px) {
-  .infoGrid {
-    grid-template-columns: 1fr 1fr; /* Desktop: 2 colunas */
-  }
+  .infoGrid { grid-template-columns: 1fr 1fr; }
 }
+
 .infoGrid div { display: flex; flex-direction: column; }
-.infoGrid span { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
-.infoGrid strong { font-size: 1.1rem; font-weight: 500; }
+.infoGrid span { font-size: 0.8rem; color: var(--color-text-secondary); }
+.infoGrid strong { font-size: 1rem; font-weight: 500; color: var(--color-text-primary); }
 
-.statusBadge {
-  font-weight: 600 !important;
-  color: var(--color-warning); /* Default */
+.obsText {
+  background-color: var(--color-bg-page);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  font-style: italic;
+  color: var(--color-text-secondary);
 }
-/* TODO: Adicionar classes de cor por status (como em InventoryList.module.css) */
 
-
-/* --- Card de Histórico (UI/UX) --- */
+/* --- Card de Histórico --- */
 .historyCard {
   background-color: var(--color-bg-component);
   padding: var(--spacing-lg);
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
-  max-height: 600px; /* Limita a altura do log */
-  overflow-y: auto; /* Adiciona scroll se o log for longo */
+  border: 1px solid var(--color-border);
+  max-height: 800px;
+  overflow-y: auto;
 }
+
 .sectionTitle {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: var(--spacing-lg);
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
 }
-.historyList {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-.emptyHistory {
-  color: var(--color-text-secondary);
-}
+
+.historyList { list-style: none; display: flex; flex-direction: column; }
+
 .historyItem {
   display: flex;
   gap: var(--spacing-md);
-  position: relative;
-  padding-bottom: var(--spacing-md);
+  padding: var(--spacing-md) 0;
   border-bottom: 1px solid var(--color-bg-page);
 }
-.historyItem:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-.historyIcon {
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-}
-.historyContent {
-  display: flex;
-  flex-direction: column;
-}
-.historyContent strong {
-  color: var(--color-text-primary);
-  font-weight: 600;
-}
-.historyContent small {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  margin-bottom: var(--spacing-xs);
-}
-.historyContent p {
-  color: var(--color-text-primary);
-  font-size: var(--font-size-md);
-  margin: 0;
-}
+.historyItem:last-child { border-bottom: none; }
 
-/* --- Estados --- */
-.loadingState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-xl);
-  color: var(--color-text-secondary);
-}
-.spinner {
-  animation: spin 1s linear infinite;
-  color: var(--color-primary);
-}
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-.errorText {
-  color: var(--color-danger);
-}
-/* Adicione estes estilos ao final do seu AssetDetail.module.css */
+.historyIcon { color: var(--color-text-secondary); margin-top: 4px; }
 
-/* --- Estilos do Título --- */
-.infoTitle {
-  display: flex;
-  gap: var(--spacing-md);
-  align-items: center;
-  border-bottom: 1px solid var(--color-border);
-  padding-bottom: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-}
-.titleIcon {
-  flex-shrink: 0;
-  padding: var(--spacing-sm);
-  background-color: var(--color-bg-page);
-  border-radius: var(--border-radius);
-  color: var(--color-primary);
-}
-.assetType {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-primary);
+.historyContent { display: flex; flex-direction: column; }
+.historyContent strong { font-size: 0.9rem; color: var(--color-text-primary); }
+.historyContent small { font-size: 0.75rem; color: var(--color-text-secondary); margin-bottom: 2px; }
+.historyContent p { font-size: 0.85rem; color: var(--color-text-primary); margin: 4px 0; }
+
+/* --- Status Badges --- */
+.statusBadge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
-.assetName {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin: 0;
-  line-height: 1.2;
-}
-.assetId {
-  font-size: var(--font-size-md);
-  color: var(--color-text-secondary);
-  margin: 0;
-}
+.statusUsage { background-color: #def7ec; color: #03543f; }
+.statusMaintenance { background-color: #fdf6b2; color: #9f580a; }
+.statusStock { background-color: #e1effe; color: #1e429f; }
+.statusInactive { background-color: #f3f4f6; color: #374151; }
+.statusReturned { background-color: #fee2e2; color: #991b1b; text-decoration: line-through; }
 
-/* --- Subtítulo da Seção --- */
-.detailSubtitle {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin-top: var(--spacing-lg); /* Mais espaço entre seções */
-  margin-bottom: var(--spacing-xs);
-  padding-bottom: var(--spacing-xs);
-  border-bottom: 1px solid var(--color-border);
-}
-
-/* --- Texto de Observação --- */
-.obsText {
-  color: var(--color-text-secondary);
-  font-style: italic;
-  white-space: pre-wrap; /* Preserva quebras de linha */
-}
-
-/* --- Badges de Status (UI/UX) --- */
-.statusBadge {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: 12px;
-  font-weight: 600 !important;
-  font-size: var(--font-size-sm);
-  background-color: rgba(110, 110, 115, 0.15); /* Padrão (Inativo) */
-  color: #6e6e73;
-}
-.statusUsage { background-color: rgba(52, 199, 89, 0.15); color: #28a745; }
-.statusMaintenance { background-color: rgba(255, 149, 0, 0.15); color: #ff9500; }
-.statusStock { background-color: rgba(0, 122, 255, 0.15); color: var(--color-primary); }
-.statusInactive { background-color: rgba(110, 110, 115, 0.15); color: #6e6e73; }
+/* --- Estados --- */
+.loadingState { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: var(--color-text-secondary); gap: 10px; }
+.errorState { text-align: center; padding: 40px; color: var(--color-danger); }
+.emptyHistory { display: flex; flex-direction: column; align-items: center; padding: 40px; color: var(--color-text-secondary); gap: 10px; }
+.spinner { animation: spin 1s linear infinite; color: var(--color-primary); }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

@@ -1,18 +1,30 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { doc, collection, query, orderBy } from 'firebase/firestore';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { 
+  doc, 
+  collection, 
+  query, 
+  orderBy, 
+  deleteDoc, 
+  getDocs, 
+  writeBatch 
+} from 'firebase/firestore';
 import { useDocumentData, useCollection } from 'react-firebase-hooks/firestore';
-import { db } from '/src/lib/firebase.js'; // Caminho absoluto
+import { db } from '/src/lib/firebase.js'; 
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
 import { 
   ArrowLeft, Pencil, Truck, Wrench, History, Loader2, 
-  HardDrive, Printer, Laptop, ShieldAlert 
+  HardDrive, Printer, Laptop, ShieldAlert, Trash2, QrCode, Tag
 } from 'lucide-react';
 
-// --- 1. IMPORTA AUTH PARA SEGURANÇA ---
+// --- 1. IMPORTA AUTH E UTILS ---
 import { useAuth } from '/src/hooks/useAuth.js';
+import { generateQrCodePdf } from '/src/utils/qrCodeGenerator.jsx';
+import { logAudit } from '/src/utils/auditLogger';
 
+// --- 2. IMPORTA ESTILOS E COMPONENTES ---
 import styles from './AssetDetail.module.css'; 
 import Modal from '../../components/Modal/Modal';
 import EditAssetForm from '../../components/Inventory/EditAssetForm'; 
@@ -33,14 +45,17 @@ const getStatusClass = (status) => {
   if (status === 'Em manutenção') return styles.statusMaintenance;
   if (status === 'Estoque') return styles.statusStock;
   if (status === 'Inativo') return styles.statusInactive;
+  if (status === 'Devolvido') return styles.statusReturned;
   return '';
 };
 
 const AssetDetail = () => {
   const { assetId } = useParams(); 
+  const navigate = useNavigate();
   const [modalView, setModalView] = useState(null); 
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // --- 2. DADOS DE PERMISSÃO ---
+  // --- DADOS DE PERMISSÃO ---
   const { isAdmin, allowedUnits, permissions, loading: authLoading } = useAuth();
 
   // Hook para buscar os dados do Ativo
@@ -65,11 +80,18 @@ const AssetDetail = () => {
   }
 
   if (errorAsset || !asset) {
-    return <p className={styles.errorText}>Erro: Ativo não encontrado.</p>;
+    return (
+      <div className={styles.errorState}>
+        <h3>Ativo não encontrado</h3>
+        <p>Verifique se o ID está correto ou se o item foi excluído.</p>
+        <button onClick={() => navigate('/inventory')} className={styles.secondaryButton}>
+          Voltar para Inventário
+        </button>
+      </div>
+    );
   }
 
-  // --- 3. BLOQUEIO DE SEGURANÇA (Acesso Direto via URL) ---
-  // Se não for admin E a unidade do ativo não estiver na lista permitida
+  // --- BLOQUEIO DE SEGURANÇA ---
   if (!isAdmin && !allowedUnits.includes(asset.unitId)) {
     return (
       <div className={styles.loadingState}>
@@ -85,9 +107,57 @@ const AssetDetail = () => {
     );
   }
 
-  // Funções do Modal
+  // --- FUNÇÕES DE AÇÃO ---
+
   const handleOpenModal = (view) => setModalView(view);
   const handleCloseModal = () => setModalView(null);
+
+  const handleGenerateQrCode = async () => {
+    const toastId = toast.loading("Gerando PDF...");
+    try {
+      // Substitua por uma URL real do logo da sua empresa (hospedada ou base64)
+      const logoUrl = ""; 
+      await generateQrCodePdf([{ id: assetId, tombamento: asset.tombamento || assetId }], logoUrl, "ITAM Hospitalar");
+      toast.success("QR Code gerado!", { id: toastId });
+    } catch (error) {
+      toast.error("Erro ao gerar QR Code.", { id: toastId });
+      console.error(error);
+    }
+  };
+
+  const handleDeleteAsset = async () => {
+    if (!window.confirm(`ATENÇÃO: Tem certeza que deseja EXCLUIR PERMANENTEMENTE o ativo ${asset.tombamento}?`)) return;
+    
+    setIsDeleting(true);
+    const toastId = toast.loading("Excluindo ativo...");
+
+    try {
+      // 1. Excluir subcoleção history (Firestore não deleta subcoleções automaticamente)
+      const historySnapshot = await getDocs(collection(db, 'assets', assetId, 'history'));
+      const batch = writeBatch(db);
+      historySnapshot.forEach((doc) => batch.delete(doc.ref));
+      
+      // 2. Excluir documento principal
+      batch.delete(doc(db, 'assets', assetId));
+      
+      await batch.commit();
+
+      // 3. Log de Auditoria
+      await logAudit(
+        "Exclusão de Ativo",
+        `Ativo "${asset.tombamento}" excluído permanentemente.`,
+        `Ativo: ${asset.tombamento}`
+      );
+
+      toast.success("Ativo excluído com sucesso.", { id: toastId });
+      navigate('/inventory');
+    } catch (error) {
+      toast.error("Erro ao excluir: " + error.message, { id: toastId });
+      setIsDeleting(false);
+    }
+  };
+
+  // --- RENDERIZAÇÃO ---
 
   const renderEditForm = () => {
     if (asset.type === 'computador') {
@@ -96,7 +166,7 @@ const AssetDetail = () => {
     if (asset.type === 'impressora') {
       return <EditPrinterForm onClose={handleCloseModal} assetId={assetId} existingData={asset} />;
     }
-    return <p>Este tipo de ativo não pode ser editado.</p>;
+    return <p>Este tipo de ativo não possui formulário de edição.</p>;
   };
 
   const renderModalContent = () => {
@@ -122,22 +192,51 @@ const AssetDetail = () => {
         {renderModalContent()}
       </Modal>
 
+      {/* Cabeçalho */}
       <header className={styles.header}>
-        <Link to="/inventory" className={styles.backButton}>
-          <ArrowLeft size={18} /> Voltar ao Inventário
-        </Link>
+        <div className={styles.headerLeft}>
+          <button onClick={() => navigate(-1)} className={styles.backButton}>
+            <ArrowLeft size={20} />
+            <span>Voltar</span>
+          </button>
+          <div className={styles.titleWrapper}>
+            <h1 className={styles.title}>Detalhes do Ativo</h1>
+            <span className={`${styles.statusBadge} ${getStatusClass(asset.status)}`}>{asset.status}</span>
+          </div>
+        </div>
+
         <div className={styles.actions}>
-          {/* Botões protegidos visualmente (opcional, já que o backend protege) */}
-          <button className={styles.actionButton} onClick={() => handleOpenModal('move')}>
-            <Truck size={16} /> Movimentar
-          </button>
-          <button className={styles.actionButtonSecondary} onClick={() => handleOpenModal('maintenance')}>
-            <Wrench size={16} /> Preventiva
-          </button>
-          
+          {/* Botão QR Code (Leitura) */}
+          {permissions?.ativos?.read && (
+            <button className={styles.iconButton} onClick={handleGenerateQrCode} title="Gerar QR Code">
+              <QrCode size={20} />
+            </button>
+          )}
+
+          {/* Botões Operacionais (Create/Update) */}
           {permissions?.ativos?.update && (
-            <button className={styles.primaryButton} onClick={() => handleOpenModal('edit')}>
-              <Pencil size={16} /> Editar
+            <>
+              <button className={styles.actionButton} onClick={() => handleOpenModal('move')}>
+                <Truck size={18} /> Movimentar
+              </button>
+              <button className={styles.actionButtonSecondary} onClick={() => handleOpenModal('maintenance')}>
+                <Wrench size={18} /> Preventiva
+              </button>
+              <button className={styles.primaryButton} onClick={() => handleOpenModal('edit')}>
+                <Pencil size={18} /> Editar
+              </button>
+            </>
+          )}
+
+          {/* Botão Excluir (Delete) */}
+          {permissions?.ativos?.delete && (
+            <button 
+              className={styles.deleteButton} 
+              onClick={handleDeleteAsset} 
+              disabled={isDeleting}
+              title="Excluir Ativo"
+            >
+              {isDeleting ? <Loader2 className={styles.spinner} size={18} /> : <Trash2 size={18} />}
             </button>
           )}
         </div>
@@ -158,13 +257,11 @@ const AssetDetail = () => {
 
           <h3 className={styles.detailSubtitle}>Dados Principais</h3>
           <div className={styles.infoGrid}>
-            <div><span>Status</span><strong className={`${styles.statusBadge} ${getStatusClass(asset.status)}`}>{asset.status}</strong></div>
             <div><span>Modelo</span><strong>{asset.modelo}</strong></div>
             <div><span>Serial</span><strong>{asset.serial}</strong></div>
             <div><span>Propriedade</span><strong>{asset.propriedade || asset.posse}</strong></div>
             {asset.serviceTag && <div><span>Service Tag</span><strong>{asset.serviceTag}</strong></div>}
-            {/* Exibe MAC Address se existir */}
-            {asset.macAddress && <div><span>Endereço MAC</span><strong>{asset.macAddress}</strong></div>}
+            {asset.macAddress && <div><span>MAC Address</span><strong>{asset.macAddress}</strong></div>}
           </div>
 
           <h3 className={styles.detailSubtitle}>Localização Atual</h3>
@@ -176,10 +273,10 @@ const AssetDetail = () => {
             <div><span>Funcionário</span><strong>{asset.funcionario || "---"}</strong></div>
           </div>
           
-          {/* Renderização Condicional: Computador */}
+          {/* Dados de Computador */}
           {asset.type === 'computador' && (
             <>
-              <h3 className={styles.detailSubtitle}>Configuração do Computador</h3>
+              <h3 className={styles.detailSubtitle}>Configuração Técnica</h3>
               <div className={styles.infoGrid}>
                 <div><span>Processador</span><strong>{asset.processador || "---"}</strong></div>
                 <div><span>Memória</span><strong>{asset.memoria || "---"}</strong></div>
@@ -191,10 +288,10 @@ const AssetDetail = () => {
             </>
           )}
 
-          {/* Renderização Condicional: Impressora */}
+          {/* Dados de Impressora */}
           {asset.type === 'impressora' && (
             <>
-              <h3 className={styles.detailSubtitle}>Configuração da Impressora</h3>
+              <h3 className={styles.detailSubtitle}>Configuração de Rede</h3>
               <div className={styles.infoGrid}>
                 <div><span>Conectividade</span><strong>{asset.conectividade || "---"}</strong></div>
                 <div><span>Frente e Verso</span><strong>{asset.frenteVerso || "---"}</strong></div>
@@ -222,11 +319,14 @@ const AssetDetail = () => {
         <div className={styles.historyCard}>
           <h2 className={styles.sectionTitle}><History size={18} /> Histórico do Ativo</h2>
           
-          {loadingHistory && <p>Carregando histórico...</p>}
+          {loadingHistory && <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>}
           {errorHistory && <p className={styles.errorText}>Erro ao carregar histórico.</p>}
           
           {history && history.docs.length === 0 && (
-            <p className={styles.emptyHistory}>Nenhum histórico registrado para este ativo.</p>
+            <div className={styles.emptyHistory}>
+              <Tag size={32} />
+              <p>Nenhum histórico registrado.</p>
+            </div>
           )}
             
           <ul className={styles.historyList}>
@@ -236,9 +336,10 @@ const AssetDetail = () => {
               return (
                 <li key={doc.id} className={styles.historyItem}>
                   <div className={styles.historyIcon}>
-                    {/* Ícone dinâmico baseado no tipo de log */}
+                    {/* Ícones Dinâmicos para o Log */}
                     {log.type === 'Movimentação' ? <Truck size={16} /> : 
                      log.type === 'Registro' ? <Pencil size={16} /> : 
+                     log.type === 'Atualização de Status' ? <ShieldAlert size={16} /> :
                      <Wrench size={16} />}
                   </div>
                   <div className={styles.historyContent}>
