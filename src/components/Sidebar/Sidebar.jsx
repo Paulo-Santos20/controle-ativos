@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import styles from './Sidebar.module.css';
 
 // --- A CORREÇÃO ESTÁ AQUI ---
-// 'Pencil' foi adicionado à lista de importação.
+// Adicionei 'Settings' e 'Briefcase' à lista de importações
 import { 
     LayoutDashboard, 
     HardDrive, 
@@ -19,7 +19,8 @@ import {
     History,
     UserCog,
     Pencil,
-    Briefcase
+    Briefcase,
+    Settings // <-- O ícone que faltava
 } from 'lucide-react'; 
 
 import { auth } from '/src/lib/firebase.js'; // Caminho absoluto
@@ -28,21 +29,17 @@ import { toast } from 'sonner';
 
 /**
  * Componente da barra lateral de navegação principal.
- * (Princípios: UI/UX de Excelência, Design Responsivo)
  */
 const Sidebar = () => {
     // Estado para os submenus colapsíveis
     const [isCadastrosOpen, setIsCadastrosOpen] = useState(false);
     const [isUsuariosOpen, setIsUsuariosOpen] = useState(false);
 
-    /**
-     * Lida com o logout do usuário.
-     */
     const handleLogout = () => {
         signOut(auth).then(() => {
             toast.success("Você saiu com segurança.");
         }).catch((error) => {
-            toast.error("Erro ao sair: ".concat(error.message));
+            toast.error("Erro ao sair: " + error.message);
         });
     };
 
@@ -146,6 +143,15 @@ const Sidebar = () => {
                                         <span>Empresas</span>
                                     </NavLink>
                                 </li>
+                                {/* Link para Opções do Sistema */}
+                                <li>
+                                    <NavLink to="/cadastros/opcoes" className={({ isActive }) =>
+                                        isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
+                                    }>
+                                        <Settings size={18} />
+                                        <span>Opções do Sistema</span>
+                                    </NavLink>
+                                </li>
                             </ul>
                         )}
                     </li>
@@ -189,7 +195,11 @@ const Sidebar = () => {
                 </ul>
             </nav>
 
-          
+            {/* Seção do Usuário (agora apenas visual/logout rápido se o menu do header falhar) */}
+            {/* Você pode remover isso se o UserMenu no Header for suficiente */}
+            <div className={styles.userSection} style={{display: 'none'}}> 
+                {/* Mantido oculto por enquanto para respeitar o layout anterior */}
+            </div>
         </aside>
     );
 };

@@ -16,7 +16,7 @@ import NotFound from "./pages/NotFound/NotFound";
 
 // Páginas de Cadastro
 import UnidadesPage from "./pages/Cadastros/UnidadesPage";
-import AssetModelPage from "./pages/Cadastros/AssetModelPage"; 
+import AssetModelPage from "./pages/Cadastros/AssetModelPage";
 
 // Página de Atividades
 import ActivityLogPage from "./pages/ActivityLog/ActivityLogPage";
@@ -25,6 +25,8 @@ import ActivityLogPage from "./pages/ActivityLog/ActivityLogPage";
 import ProfileListPage from "./pages/Users/ProfileListPage";
 
 import SuppliersPage from "./pages/Cadastros/SuppliersPage";
+
+import OptionsPage from "./pages/Cadastros/OptionsPage";
 
 export const router = createBrowserRouter([
   {
@@ -38,7 +40,7 @@ export const router = createBrowserRouter([
         <App />
       </ProtectedRoute>
     ),
-    errorElement: <NotFound />, 
+    errorElement: <NotFound />,
     children: [
       { index: true, element: <Dashboard /> },
       { path: "inventory", element: <InventoryList /> },
@@ -46,32 +48,34 @@ export const router = createBrowserRouter([
       { path: "atividades", element: <ActivityLogPage /> },
       { path: "reports", element: <Reports /> },
       { path: "profile", element: <UserProfile /> },
-      
+
       // Rotas de Cadastros
       { path: "cadastros/unidades", element: <UnidadesPage /> },
-      { 
-        path: "cadastros/computadores", 
-        element: <AssetModelPage type="computador" title="Computadores" /> 
+      {
+        path: "cadastros/computadores",
+        element: <AssetModelPage type="computador" title="Computadores" />
       },
-      { 
-        path: "cadastros/impressoras", 
-        element: <AssetModelPage type="impressora" title="Impressoras" /> 
+      {
+        path: "cadastros/impressoras",
+        element: <AssetModelPage type="impressora" title="Impressoras" />
       },
-      
-      { 
+
+      {
         path: "cadastros/empresas",  // <-- Nova Rota
-        element: <SuppliersPage /> 
+        element: <SuppliersPage />
       },
+
+      { path: "cadastros/opcoes", element: <OptionsPage /> },
       // --- ROTAS DE USUÁRIOS ATUALIZADAS ---
-      { 
+      {
         path: "usuarios/lista", // Rota principal
-        element: <UserList /> 
+        element: <UserList />
       },
-      { 
+      {
         path: "usuarios/perfis", // Nova rota para Gerenciar Perfis
-        element: <ProfileListPage /> 
+        element: <ProfileListPage />
       },
-      
+
       // Redirecionamento (opcional): Se alguém for para /users, manda para a lista
       // Esta era a linha 70 que estava causando o erro
       { path: "users", element: <Navigate to="/usuarios/lista" replace /> },

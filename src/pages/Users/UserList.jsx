@@ -1,46 +1,75 @@
 import React, { useState, useMemo } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, orderBy, query } from 'firebase/firestore';
-import { db } from '/src/lib/firebase.js';
-import { Loader2, Search, User, UserCheck, Pencil, PackageSearch, Plus } from 'lucide-react';
-import { useAuth } from '/src/hooks/useAuth.js'; 
+import { db, auth } from '/src/lib/firebase.js';
+import { 
+  Loader2, Search, User, UserCheck, Pencil, PackageSearch, 
+  Plus, Ban, CheckCircle, Filter 
+} from 'lucide-react';
+import { toast } from 'sonner';
 
+import { useAuth } from '/src/hooks/useAuth.js';
 import styles from '../Cadastros/CadastroPages.module.css'; 
 import Modal from '../../components/Modal/Modal';
 import EditUserForm from '/src/components/Users/EditUserForm.jsx';
 import CreateUserForm from '/src/components/Users/CreateUserForm.jsx'; 
 
-/**
- * Página para listar e gerenciar usuários do sistema.
- */
 const UserList = () => {
-  // Usa o Hook de Auth para verificar permissões
   const { permissions, loading: authLoading } = useAuth();
-
   const [modalView, setModalView] = useState(null); 
   const [editingUserDoc, setEditingUserDoc] = useState(null); 
+  
+  // --- ESTADOS DOS FILTROS ---
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("active"); // Padrão: Mostrar só ativos
+  const [filterRole, setFilterRole] = useState("all");
+  const [filterUnit, setFilterUnit] = useState("all");
 
-  // Busca todos os usuários
-  const q = query(collection(db, 'users'), orderBy('displayName', 'asc'));
-  const [users, loadingUsers, error] = useCollection(q);
+  // --- BUSCA DE DADOS ---
+  // Usuários
+  const qUsers = query(collection(db, 'users'), orderBy('displayName', 'asc'));
+  const [users, loadingUsers, error] = useCollection(qUsers);
 
-  // Filtro de busca local
+  // Roles (para o filtro)
+  const [roles] = useCollection(query(collection(db, 'roles'), orderBy('name', 'asc')));
+  
+  // Unidades (para o filtro)
+  const [units] = useCollection(query(collection(db, 'units'), orderBy('name', 'asc')));
+
+  // --- LÓGICA DE FILTRAGEM AVANÇADA ---
   const filteredUsers = useMemo(() => {
     if (!users) return [];
-    if (!searchTerm) return users.docs;
-
-    const search = searchTerm.toLowerCase();
+    
     return users.docs.filter(doc => {
       const data = doc.data();
-      return (
-        (data.displayName && data.displayName.toLowerCase().includes(search)) ||
-        (data.email && data.email.toLowerCase().includes(search))
-      );
-    });
-  }, [users, searchTerm]);
+      const isActive = data.isActive !== false; // Se undefined, é true
 
-  // --- Funções de Controle do Modal ---
+      // 1. Filtro de Status
+      if (filterStatus === 'active' && !isActive) return false;
+      if (filterStatus === 'inactive' && isActive) return false;
+
+      // 2. Filtro de Role (Perfil)
+      if (filterRole !== 'all' && data.role !== filterRole) return false;
+
+      // 3. Filtro de Unidade
+      // Verifica se a unidade selecionada está no array de unidades do usuário
+      if (filterUnit !== 'all') {
+        if (!data.assignedUnits || !data.assignedUnits.includes(filterUnit)) return false;
+      }
+
+      // 4. Filtro de Texto (Nome ou Email)
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        const nameMatch = data.displayName && data.displayName.toLowerCase().includes(search);
+        const emailMatch = data.email && data.email.toLowerCase().includes(search);
+        if (!nameMatch && !emailMatch) return false;
+      }
+
+      return true;
+    });
+  }, [users, searchTerm, filterStatus, filterRole, filterUnit]);
+
+  // --- AÇÕES ---
   const handleOpenEdit = (userDoc) => {
     setEditingUserDoc(userDoc);
     setModalView('edit');
@@ -56,41 +85,44 @@ const UserList = () => {
     setTimeout(() => setEditingUserDoc(null), 300);
   };
 
+  const handleToggleStatus = async (userDoc) => {
+    const currentStatus = userDoc.data().isActive !== false;
+    const newStatus = !currentStatus;
+    
+    if (userDoc.id === auth.currentUser.uid) {
+      toast.error("Você não pode desativar sua própria conta!");
+      return;
+    }
+
+    const confirmMsg = newStatus 
+      ? `Reativar o usuário ${userDoc.data().displayName}?` 
+      : `Desativar ${userDoc.data().displayName}? Ele será desconectado imediatamente.`;
+
+    if (window.confirm(confirmMsg)) {
+      try {
+        await updateDoc(doc(db, 'users', userDoc.id), {
+          isActive: newStatus
+        });
+        toast.success(newStatus ? "Usuário reativado." : "Usuário desativado.");
+      } catch (error) {
+        toast.error("Erro ao atualizar status: " + error.message);
+      }
+    }
+  };
+
   const isLoading = authLoading || loadingUsers;
 
-  // Renderiza a lista de usuários
   const renderList = () => {
-    if (isLoading) {
-      return (
-        <div className={styles.loadingState}>
-          <Loader2 className={styles.spinner} />
-          <p>Carregando usuários...</p>
-        </div>
-      );
-    }
+    if (isLoading) return <div className={styles.loadingState}><Loader2 className={styles.spinner} /><p>Carregando usuários...</p></div>;
     
-    if (error) {
-      // Mostra erro de permissão claramente
-      return (
-        <div className={styles.errorState}>
-           <h3>⚠️ Erro ao Carregar Usuários</h3>
-           <p>{error.message}</p>
-           {error.code === 'permission-denied' && (
-             <p style={{fontSize: '0.9rem', marginTop: '8px'}}>
-               Seu usuário atual não tem permissão para listar usuários.
-               Verifique as Regras de Segurança do Firestore.
-             </p>
-           )}
-        </div>
-      );
-    }
+    if (error) return <div className={styles.errorState}><h3>Erro</h3><p>{error.message}</p></div>;
 
     if (filteredUsers.length === 0) {
       return (
         <div className={styles.emptyState}>
           <PackageSearch size={50} />
           <h3>Nenhum usuário encontrado</h3>
-          <p>Usuários que se registrarem no aplicativo aparecerão aqui.</p>
+          <p>Tente ajustar os filtros de busca.</p>
         </div>
       );
     }
@@ -99,24 +131,24 @@ const UserList = () => {
       <div className={styles.list}>
         {filteredUsers.map(doc => {
           const user = doc.data();
-          // Verifica se é admin para destacar o ícone
           const isAdmin = user.role === 'admin_geral' || user.role === 'gestor';
-          
+          const isActive = user.isActive !== false; 
+
           return (
-            <div key={doc.id} className={styles.listItem}>
-              <div className={styles.listItemIcon} style={{ color: isAdmin ? 'var(--color-warning)' : 'var(--color-primary)' }}>
+            <div key={doc.id} className={`${styles.listItem} ${!isActive ? styles.itemInactive : ''}`}>
+              <div className={styles.listItemIcon} style={{ color: !isActive ? '#999' : (isAdmin ? 'var(--color-warning)' : 'var(--color-primary)') }}>
                 {isAdmin ? <UserCheck size={24} /> : <User size={24} />}
               </div>
               
               <div className={styles.listItemContent}>
-                <strong>{user.displayName || 'Usuário sem nome'}</strong>
-                <small>{user.email}</small>
+                <strong style={{ textDecoration: !isActive ? 'line-through' : 'none' }}>
+                  {user.displayName || 'Usuário sem nome'}
+                </strong>
+                {!isActive && <span className={styles.badgeInactive}>DESATIVADO</span>}
                 
-                {/* Exibe Role e Unidades com estilo */}
+                <small>{user.email}</small>
                 <div style={{marginTop: '4px'}}>
-                   <span className={styles.userRole}>
-                      Role: <strong>{user.role || 'N/A'}</strong>
-                   </span>
+                   <span className={styles.userRole}>Role: <strong>{user.role || 'N/A'}</strong></span>
                    <span style={{fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginLeft: '8px'}}>
                       Unidades: {user.assignedUnits && user.assignedUnits.length > 0 ? user.assignedUnits.join(', ') : 'Nenhuma'}
                    </span>
@@ -125,11 +157,19 @@ const UserList = () => {
 
               <div className={styles.listItemActions}>
                 <button 
+                  className={styles.iconButton}
+                  onClick={() => handleToggleStatus(doc)}
+                  disabled={!permissions.usuarios.update}
+                  title={isActive ? "Desativar Usuário" : "Reativar Usuário"}
+                  style={{ color: isActive ? '#ef4444' : '#22c55e' }} 
+                >
+                  {isActive ? <Ban size={18} /> : <CheckCircle size={18} />}
+                </button>
+
+                <button 
                   className={styles.secondaryButton}
                   onClick={() => handleOpenEdit(doc)}
-                  // Só habilita o botão de gerenciar se tiver permissão
                   disabled={!permissions.usuarios.update}
-                  title={!permissions.usuarios.update ? "Sem permissão para editar" : "Gerenciar Usuário"}
                 >
                   <Pencil size={16} />
                   <span>Gerenciar</span>
@@ -144,55 +184,78 @@ const UserList = () => {
 
   return (
     <div className={styles.page}>
-      
-      {/* --- O Modal Dinâmico --- */}
-      <Modal 
-        isOpen={!!modalView} 
-        onClose={handleCloseModal} 
-        title={modalView === 'edit' ? "Gerenciar Usuário" : "Criar Novo Usuário"}
-      >
-        {modalView === 'edit' && editingUserDoc && (
-          <EditUserForm 
-            userDoc={editingUserDoc} 
-            onClose={handleCloseModal} 
-          />
-        )}
-        {modalView === 'create' && (
-          <CreateUserForm 
-            onClose={handleCloseModal} 
-          />
-        )}
+      <Modal isOpen={!!modalView} onClose={handleCloseModal} title={modalView === 'edit' ? "Gerenciar Usuário" : "Criar Novo Usuário"}>
+        {modalView === 'edit' && editingUserDoc && <EditUserForm userDoc={editingUserDoc} onClose={handleCloseModal} />}
+        {modalView === 'create' && <CreateUserForm onClose={handleCloseModal} />}
       </Modal>
 
-      {/* --- Cabeçalho da Página --- */}
       <header className={styles.header}>
         <h1 className={styles.title}>Gestão de Usuários</h1>
-        
         <button 
           className={styles.primaryButton} 
           onClick={handleOpenAddNew}
           disabled={!permissions.usuarios.create} 
-          title={permissions.usuarios.create ? "Criar um novo usuário" : "Você não tem permissão para criar usuários"}
+          title={permissions.usuarios.create ? "" : "Sem permissão"}
         >
           <Plus size={18} /> Novo Usuário
         </button>
       </header>
 
-      {/* --- Barra de Filtro --- */}
       <div className={styles.toolbar}>
+        {/* Barra de Busca */}
         <div className={styles.searchBox}>
           <Search size={18} />
           <input 
             type="text" 
             placeholder="Buscar por nome ou e-mail..." 
-            className={styles.searchInput}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)} 
           />
+        </div>
+
+        {/* Filtros Dropdown */}
+        <div className={styles.filterRow}>
+          <div className={styles.filterGroup}>
+            <Filter size={16} />
+            
+            {/* Filtro Status */}
+            <select 
+              value={filterStatus} 
+              onChange={(e) => setFilterStatus(e.target.value)} 
+              className={styles.filterSelect}
+            >
+              <option value="active">Ativos</option>
+              <option value="inactive">Inativos (Desativados)</option>
+              <option value="all">Todos</option>
+            </select>
+
+            {/* Filtro Perfil */}
+            <select 
+              value={filterRole} 
+              onChange={(e) => setFilterRole(e.target.value)} 
+              className={styles.filterSelect}
+            >
+              <option value="all">Todos os Perfis</option>
+              {roles?.docs.map(doc => (
+                <option key={doc.id} value={doc.id}>{doc.data().name}</option>
+              ))}
+            </select>
+
+            {/* Filtro Unidade */}
+            <select 
+              value={filterUnit} 
+              onChange={(e) => setFilterUnit(e.target.value)} 
+              className={styles.filterSelect}
+            >
+              <option value="all">Todas as Unidades</option>
+              {units?.docs.map(doc => (
+                <option key={doc.id} value={doc.id}>{doc.data().sigla}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* --- Conteúdo da Lista --- */}
       <div className={styles.content}>
         {renderList()}
       </div>

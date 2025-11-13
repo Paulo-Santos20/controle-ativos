@@ -1,62 +1,71 @@
-import React, { useEffect } from 'react'; // Importar useEffect
+import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '../lib/firebase.js'; // Importar 'db'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'; // Importar funções do Firestore
+import { auth, db } from '../lib/firebase.js';
+// Importamos onSnapshot para ouvir mudanças em TEMPO REAL
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore'; 
+import { signOut } from 'firebase/auth';
+import { toast } from 'sonner';
 import Loading from './Loading/Loading';
 
 const ProtectedRoute = ({ children }) => {
   const [user, loading, error] = useAuthState(auth);
 
-  // --- ARQUITETURA: Sincronização de Usuário (Auth -> Firestore) ---
+  // --- LÓGICA DE SINCRONIZAÇÃO E SEGURANÇA ---
   useEffect(() => {
+    let unsubscribe = () => {};
+
     if (user) {
-      // O usuário está logado. Vamos garantir que ele exista no Firestore.
       const userRef = doc(db, 'users', user.uid);
       
+      // 1. Cria o usuário se não existir (Lógica anterior)
       const checkAndCreateUser = async () => {
         try {
           const docSnap = await getDoc(userRef);
-          
           if (!docSnap.exists()) {
-            // Documento não existe, vamos criá-lo
-            console.log(`Documento de usuário para ${user.uid} não encontrado. Criando...`);
             await setDoc(userRef, {
               email: user.email,
-              displayName: user.displayName || user.email.split('@')[0], // Padrão
-              role: 'guest', // Role padrão (sem permissão)
-              assignedUnits: [], // Nenhuma unidade
+              displayName: user.displayName || user.email.split('@')[0],
+              role: 'guest',
+              isActive: true, // <--- NOVO: Padrão é ativo
+              assignedUnits: [],
               createdAt: serverTimestamp()
             });
-            toast.info("Perfil de usuário criado no banco de dados.");
           }
         } catch (err) {
-          console.error("Erro ao sincronizar usuário no Firestore:", err);
-          toast.error("Erro ao verificar perfil de usuário.");
+          console.error("Erro sync:", err);
         }
       };
-
       checkAndCreateUser();
-    }
-  }, [user]); // Roda toda vez que o 'user' (do Auth) mudar
 
-  // --- Lógica de Roteamento (Original) ---
-  if (loading) {
-    // Exibe um loading em tela cheia enquanto o Firebase verifica a auth
-    return <Loading />;
-  }
+      // 2. VIGILÂNCIA EM TEMPO REAL (O "Expulsor")
+      // Escuta mudanças no documento do usuário. Se 'isActive' virar false, desloga.
+      unsubscribe = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          // Se isActive for explicitamente false (e não undefined)
+          if (data.isActive === false) {
+            toast.error("Sua conta foi desativada pelo administrador.");
+            signOut(auth); // <-- TCHAU! Força o logout
+          }
+        }
+      });
+    }
+
+    return () => unsubscribe(); // Limpa o ouvinte ao desmontar
+  }, [user]);
+
+  if (loading) return <Loading />;
 
   if (error) {
-    console.error("Erro de autenticação:", error);
+    console.error("Erro auth:", error);
     return <Navigate to="/login" replace />;
   }
 
   if (!user) {
-    // Usuário não está logado, redireciona para a página de login
     return <Navigate to="/login" replace />;
   }
 
-  // Usuário está logado, renderiza a página solicitada
   return children;
 };
 

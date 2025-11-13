@@ -372,3 +372,66 @@
 .userRole strong {
   text-transform: capitalize;
 }
+
+/* Adicione ao CadastroPages.module.css */
+
+.itemInactive {
+  opacity: 0.7;
+  background-color: #f9fafb;
+}
+
+.badgeInactive {
+  background-color: #fee2e2;
+  color: #991b1b;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: 700;
+}
+/* Adicione ao final de CadastroPages.module.css */
+
+/* --- Estilos para Filtros (Reutilizados) --- */
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  align-items: center;
+  margin-top: var(--spacing-sm);
+}
+
+.filterGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.filterGroup svg {
+  color: var(--color-text-secondary);
+}
+
+.filterSelect {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  background-color: var(--color-bg-page);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  /* Mobile: Ocupa espaço disponível */
+  flex-grow: 1; 
+}
+
+/* Desktop: Alinhamento */
+@media (min-width: 768px) {
+  .toolbar {
+    display: flex;
+    flex-direction: column; /* Mantém busca em cima, filtros em baixo */
+    gap: var(--spacing-sm);
+  }
+  
+  .filterSelect {
+    flex-grow: 0;
+    min-width: 150px;
+  }
+}

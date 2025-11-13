@@ -2,24 +2,27 @@ import React, { useState } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, orderBy, query } from 'firebase/firestore';
 import { db } from '/src/lib/firebase.js';
-import { Plus, Building, Loader2, Search, MapPin, Pencil } from 'lucide-react';
+import { Plus, Building, Loader2, Search, MapPin, Pencil, Lock } from 'lucide-react'; // Lock icon
+
+// --- 1. IMPORTA AUTH ---
+import { useAuth } from '/src/hooks/useAuth.js';
 
 import styles from './CadastroPages.module.css';
 import Modal from '../../components/Modal/Modal';
 import AddUnitForm from '../../components/Settings/AddUnitForm';
 
 const UnidadesPage = () => {
-  // --- LÓGICA DE MODAL ATUALIZADA ---
+  // --- 2. VERIFICA PERMISSÕES ---
+  const { permissions } = useAuth();
+  const canManageUnits = permissions?.cadastros_unidades?.update; // Ou create
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Guarda o doc da unidade a ser editada (null se for para "criar")
   const [editingUnitDoc, setEditingUnitDoc] = useState(null); 
-  
   const [searchTerm, setSearchTerm] = useState("");
 
   const q = query(collection(db, 'units'), orderBy('name', 'asc'));
   const [units, loading, error] = useCollection(q);
 
-  // Lógica do filtro (sem alteração)
   const filteredUnits = units?.docs.filter(doc => {
     if (!searchTerm) return true;
     const data = doc.data();
@@ -31,49 +34,28 @@ const UnidadesPage = () => {
     );
   });
 
-  // --- NOVAS FUNÇÕES PARA O MODAL ---
   const handleOpenAddNew = () => {
-    setEditingUnitDoc(null); // Limpa o estado de edição
+    setEditingUnitDoc(null);
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (unitDoc) => {
-    setEditingUnitDoc(unitDoc); // Define qual unidade editar
+    setEditingUnitDoc(unitDoc);
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    // Limpa o estado de edição ao fechar (boa prática)
-    // Damos um pequeno delay para a animação de fechar do modal
     setTimeout(() => setEditingUnitDoc(null), 300); 
   };
   
-  // Componente de UI para a lista (atualizado com o novo onClick)
   const renderList = () => {
-    if (loading) {
-      return (
-        <div className={styles.loadingState}>
-          <Loader2 className={styles.spinner} />
-          <p>Carregando unidades...</p>
-        </div>
-      );
-    }
-    if (error) {
-      return <p className={styles.errorText}>Erro: {error.message}</p>;
-    }
-    if (filteredUnits.length === 0) {
-      return (
-        <div className={styles.emptyState}>
-          <h3>Nenhuma unidade encontrada</h3>
-          <p>Verifique seu filtro ou registre uma nova unidade.</p>
-        </div>
-      );
-    }
+    if (loading) return <div className={styles.loadingState}><Loader2 className={styles.spinner} /><p>Carregando unidades...</p></div>;
+    if (error) return <p className={styles.errorText}>Erro: {error.message}</p>;
 
     return (
       <div className={styles.list}>
-        {filteredUnits.map(doc => {
+        {filteredUnits?.map(doc => {
           const unit = doc.data();
           return (
             <div key={doc.id} className={styles.listItem}>
@@ -86,22 +68,20 @@ const UnidadesPage = () => {
               </div>
               <div className={styles.listItemActions}>
                 {unit.geolocalizacao && (
-                  <a 
-                    href={unit.geolocalizacao} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className={styles.iconButton}
-                    title="Abrir no Google Maps"
-                  >
+                  <a href={unit.geolocalizacao} target="_blank" rel="noopener noreferrer" className={styles.iconButton}>
                     <MapPin size={18} />
                   </a>
                 )}
-                {/* --- BOTÃO DE EDITAR AGORA É FUNCIONAL --- */}
+                
+                {/* --- BOTÃO PROTEGIDO --- */}
                 <button 
                   className={styles.secondaryButton}
-                  onClick={() => handleOpenEdit(doc)} // Passa o doc inteiro
+                  onClick={() => handleOpenEdit(doc)}
+                  disabled={!canManageUnits}
+                  title={!canManageUnits ? "Sem permissão para editar" : "Editar"}
+                  style={{ opacity: !canManageUnits ? 0.5 : 1, cursor: !canManageUnits ? 'not-allowed' : 'pointer' }}
                 >
-                  <Pencil size={16} />
+                  {canManageUnits ? <Pencil size={16} /> : <Lock size={16} />}
                   <span>Editar</span>
                 </button>
               </div>
@@ -114,37 +94,28 @@ const UnidadesPage = () => {
 
   return (
     <div className={styles.page}>
-      {/* O Modal agora é dinâmico */}
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={handleCloseModal} 
-        title={editingUnitDoc ? "Editar Unidade" : "Registrar Nova Unidade"}
-      >
-        {/* Passa a unidade para o formulário */}
-        <AddUnitForm 
-          onClose={handleCloseModal} 
-          existingUnitDoc={editingUnitDoc} // Passa o doc para o form
-        />
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingUnitDoc ? "Editar Unidade" : "Registrar Nova Unidade"}>
+        <AddUnitForm onClose={handleCloseModal} existingUnitDoc={editingUnitDoc} />
       </Modal>
 
       <header className={styles.header}>
         <h1 className={styles.title}>Cadastro de Unidades</h1>
-        {/* O botão de novo agora usa a nova função */}
-        <button className={styles.primaryButton} onClick={handleOpenAddNew}>
+        
+        {/* --- BOTÃO NOVO PROTEGIDO --- */}
+        <button 
+          className={styles.primaryButton} 
+          onClick={handleOpenAddNew}
+          disabled={!canManageUnits}
+          style={{ opacity: !canManageUnits ? 0.5 : 1, cursor: !canManageUnits ? 'not-allowed' : 'pointer' }}
+        >
           <Plus size={18} /> Registrar Nova Unidade
         </button>
       </header>
 
-      {/* Barra de Filtro (sem alteração) */}
       <div className={styles.toolbar}>
         <div className={styles.searchBox}>
           <Search size={18} />
-          <input 
-            type="text" 
-            placeholder="Buscar por nome, sigla ou CNPJ..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
       </div>
 

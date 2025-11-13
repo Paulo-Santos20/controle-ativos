@@ -22,13 +22,15 @@ export const useAuth = () => {
   const userDocRef = authUser ? doc(db, 'users', authUser.uid) : null;
   const [userData, userLoading] = useDocumentData(userDocRef);
 
-  const roleDocRef = userData?.role ? doc(db, 'roles', userData.role) : null;
+  // Só busca a role se tivermos o userData
+  const roleName = userData?.role || 'guest';
+  const roleDocRef = userData?.role ? doc(db, 'roles', roleName) : null;
   const [roleData, roleLoading] = useDocumentData(roleDocRef);
 
   const authData = useMemo(() => {
     const loading = authLoading || userLoading || roleLoading;
 
-    if (loading || !authUser) {
+    if (loading) {
       return { 
         user: null, 
         userData: null, 
@@ -39,24 +41,33 @@ export const useAuth = () => {
       };
     }
 
-    // Verifica se é "Super Admin" (Gestor)
-    // Assumimos que 'admin_geral' ou permissão total define o admin
-    const isAdmin = userData?.role === 'admin_geral' || userData?.role === 'gestor';
+    if (!authUser) {
+       return { user: null, loading: false, isAdmin: false };
+    }
 
-    // Lista de unidades permitidas (Array de IDs)
+    // --- LÓGICA DE ADMIN ROBUSTA ---
+    // Aceita variações de escrita para evitar bugs
+    const currentRole = userData?.role ? userData.role.toLowerCase() : 'guest';
+    const isAdmin = 
+      currentRole === 'admin_geral' || 
+      currentRole === 'gestor' || 
+      currentRole === 'administrador';
+
+    // Lista de unidades permitidas
     const allowedUnits = userData?.assignedUnits || [];
+
 
     return {
       user: authUser,
       userData: userData,
       role: userData?.role || 'guest',
-      isAdmin,
-      allowedUnits, // <-- Importante para filtrar as queries
+      isAdmin, // <-- Se isso for true, você vê tudo
+      allowedUnits,
       
       permissions: {
         ...defaultPermissions,
         ...roleData?.permissions,
-        // Merge profundo para garantir segurança
+        // Merge profundo de segurança
         dashboard: { ...defaultPermissions.dashboard, ...roleData?.permissions?.dashboard },
         ativos: { ...defaultPermissions.ativos, ...roleData?.permissions?.ativos },
         cadastros_unidades: { ...defaultPermissions.cadastros_unidades, ...roleData?.permissions?.cadastros_unidades },

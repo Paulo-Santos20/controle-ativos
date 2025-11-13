@@ -1,15 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom'; // <-- A CORREÇÃO ESTÁ AQUI
+import { Link } from 'react-router-dom';
 import { collectionGroup, query, orderBy, where } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { db } from '/src/lib/firebase.js';
+import { db, auth } from '/src/lib/firebase.js';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Loader2, PackageSearch, Filter, History, Truck, Wrench, FilePlus, Edit } from 'lucide-react';
 
+import { useAuth } from '/src/hooks/useAuth.js'; // Importa o hook atualizado
 import styles from './ActivityLogPage.module.css';
 
-// Constantes para os filtros
 const filterOptions = [
   { value: "all", label: "Todos os Tipos" },
   { value: "Registro", label: "Registro" },
@@ -18,7 +18,6 @@ const filterOptions = [
   { value: "Manutenção/Preventiva", label: "Manutenção/Preventiva" },
 ];
 
-// Helper de Ícone (UI/UX)
 const LogIcon = ({ type }) => {
   if (type === 'Movimentação') return <Truck size={18} />;
   if (type === 'Atualização de Status') return <Edit size={18} />;
@@ -27,47 +26,61 @@ const LogIcon = ({ type }) => {
   return <History size={18} />;
 };
 
-/**
- * Página para exibir o log de histórico completo de todos os ativos.
- */
 const ActivityLogPage = () => {
-  // Estados para os filtros
-  const [filterType, setFilterType] = useState("all");
-  const [filterUser, setFilterUser] = useState(""); // Filtro de texto
+  // Pega o isAdmin do hook atualizado
+  const { isAdmin, loading: authLoading } = useAuth();
 
-  // Hook de Query Dinâmica (Princípio 2: Performance Total)
+  const [filterType, setFilterType] = useState("all");
+  const [filterUser, setFilterUser] = useState(""); 
+
+  // --- CONSULTA AO BANCO ---
   const historyQuery = useMemo(() => {
     let constraints = [orderBy('timestamp', 'desc')];
-
-    // Adiciona filtros de servidor
     if (filterType !== "all") {
       constraints.push(where("type", "==", filterType));
     }
-    
     return query(collectionGroup(db, 'history'), ...constraints);
-  }, [filterType]); // Dependência: filterType
+  }, [filterType]); 
 
   const [history, loading, error] = useCollection(historyQuery);
 
-  // Filtro de Cliente (para o 'user', que é um campo de texto)
+  // --- FILTRAGEM NO CLIENTE (CORRIGIDA) ---
   const filteredHistory = useMemo(() => {
     if (!history) return [];
-    if (!filterUser) return history.docs;
+    
+    let docs = history.docs;
 
-    const search = filterUser.toLowerCase();
-    return history.docs.filter(doc => 
-      doc.data().user.toLowerCase().includes(search)
-    );
-  }, [history, filterUser]);
+    // 1. REGRA DE SEGURANÇA: 
+    // Se NÃO for admin, vê apenas logs onde o usuário é ele mesmo.
+    // (Isso é uma medida de segurança paliativa até termos unitId no log)
+    if (!isAdmin && !authLoading) {
+       const currentUserEmail = auth.currentUser?.email;
+       const currentUserName = auth.currentUser?.displayName;
+       
+       docs = docs.filter(doc => {
+         const logUser = doc.data().user;
+         // Verifica se o log foi feito por este usuário
+         return logUser === currentUserEmail || logUser === currentUserName;
+       });
+    }
+
+    // 2. Filtro de Texto da UI (Busca por nome de quem fez)
+    if (filterUser) {
+      const search = filterUser.toLowerCase();
+      docs = docs.filter(doc => 
+        doc.data().user && doc.data().user.toLowerCase().includes(search)
+      );
+    }
+    
+    return docs;
+  }, [history, filterUser, isAdmin, authLoading]);
 
   return (
     <div className={styles.page}>
-      {/* --- Cabeçalho da Página --- */}
       <header className={styles.header}>
         <h1 className={styles.title}>Log de Atividades</h1>
       </header>
 
-      {/* --- Barra de Filtros (UI/UX) --- */}
       <div className={styles.toolbar}>
         <div className={styles.filterGroup}>
           <Filter size={16} />
@@ -85,14 +98,13 @@ const ActivityLogPage = () => {
             type="text" 
             placeholder="Filtrar por usuário (ex: tecnico@...)" 
             value={filterUser}
-            onChange={(e) => setFilterUser(e.gexet.value)}
+            onChange={(e) => setFilterUser(e.target.value)}
           />
         </div>
       </div>
 
-      {/* --- Conteúdo da Lista (Responsivo) --- */}
       <div className={styles.content}>
-        {loading && (
+        {(loading || authLoading) && (
           <div className={styles.loadingState}>
             <Loader2 className={styles.spinner} />
             <p>Carregando histórico...</p>
@@ -103,7 +115,7 @@ const ActivityLogPage = () => {
           <div className={styles.errorState}>
              <h3>⚠️ Erro ao Carregar Histórico</h3>
              <p>{error.message}</p>
-             <p className={styles.errorTextSmall}>Verifique se o Firestore precisa de um índice (veja o console F12).</p>
+             <p className={styles.errorTextSmall}>Se for erro de índice, clique no link no Console (F12).</p>
            </div>
         )}
 
@@ -111,7 +123,7 @@ const ActivityLogPage = () => {
           <div className={styles.emptyState}>
             <PackageSearch size={50} />
             <h3>Nenhum registro encontrado</h3>
-            <p>Tente ajustar seus filtros.</p>
+            <p>{isAdmin ? "Nenhuma atividade registrada no sistema." : "Nenhuma atividade realizada por você."}</p>
           </div>
         )}
 
@@ -119,8 +131,7 @@ const ActivityLogPage = () => {
           {filteredHistory.map(doc => {
             const log = doc.data();
             const date = log.timestamp?.toDate();
-            // Acessa o ID do Ativo "Pai" (ex: "PAT-123")
-            const assetId = doc.ref.parent.parent.id; 
+            const assetId = doc.ref.parent?.parent?.id || "Desconhecido";
             
             return (
               <li key={doc.id} className={styles.historyItem}>
@@ -132,7 +143,6 @@ const ActivityLogPage = () => {
                   <small className={styles.historyTime}>
                     {date ? format(date, "dd 'de' MMM, yyyy 'às' HH:mm", { locale: ptBR }) : '...'}
                   </small>
-                  {/* UI/UX: Link para o ativo */}
                   <Link to={`/inventory/${assetId}`} className={styles.assetLink}>
                     Ativo: {assetId}
                   </Link>
