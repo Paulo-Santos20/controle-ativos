@@ -4,9 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { doc, updateDoc, collection, query, orderBy } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { db } from '/src/lib/firebase.js'; // Caminho absoluto
+import { db } from '/src/lib/firebase.js'; 
 import { toast } from 'sonner';
-// Reutiliza o CSS de formulário mais complexo
 import styles from '../Settings/AddUnitForm.module.css'; 
 import { Loader2 } from 'lucide-react';
 
@@ -15,23 +14,20 @@ import { Loader2 } from 'lucide-react';
  */
 const userSchema = z.object({
   displayName: z.string().min(1, "O nome é obrigatório"),
+  // --- ATUALIZADO: Validação de E-mail adicionada ---
+  email: z.string().email("E-mail inválido").min(1, "O e-mail é obrigatório"),
   role: z.string().min(1, "A 'Role' é obrigatória"),
   assignedUnits: z.array(z.string()).optional(), 
 });
 
 /**
- * Formulário para editar as permissões (Role, Unidades) de um usuário.
- * @param {object} props
- * @param {() => void} props.onClose - Função para fechar o modal.
- * @param {DocumentSnapshot} props.userDoc - O documento do usuário a ser editado.
+ * Formulário para editar as permissões e dados de um usuário.
  */
 const EditUserForm = ({ onClose, userDoc }) => {
-  // Busca as 'Roles' disponíveis (admin_geral, tecnico_local, etc.)
   const [roles, loadingRoles] = useCollection(
     query(collection(db, 'roles'), orderBy('name', 'asc'))
   );
   
-  // Busca as 'Unidades' disponíveis (HMR, HSS, etc.)
   const [units, loadingUnits] = useCollection(
     query(collection(db, 'units'), orderBy('name', 'asc'))
   );
@@ -39,24 +35,26 @@ const EditUserForm = ({ onClose, userDoc }) => {
   const { 
     register, 
     handleSubmit, 
-    control, // Necessário para os checkboxes
+    control, 
     reset,
     formState: { errors, isSubmitting } 
   } = useForm({
     resolver: zodResolver(userSchema),
     defaultValues: {
       displayName: "",
+      email: "", // Adicionado
       role: "",
-      assignedUnits: [] // Inicia como array vazio
+      assignedUnits: [] 
     }
   });
 
-  // UI/UX: Preenche o formulário com os dados existentes
+  // Preenche o formulário com os dados existentes
   useEffect(() => {
     if (userDoc) {
       const data = userDoc.data();
       reset({
         displayName: data.displayName || "",
+        email: data.email || "", // Carrega o e-mail atual
         role: data.role || "",
         assignedUnits: data.assignedUnits || []
       }); 
@@ -67,18 +65,25 @@ const EditUserForm = ({ onClose, userDoc }) => {
    * Salva as alterações no documento do usuário no Firestore.
    */
   const onSubmit = async (data) => {
-    const toastId = toast.loading("Salvando permissões...");
+    const toastId = toast.loading("Salvando alterações...");
     try {
       const userRef = doc(db, 'users', userDoc.id);
 
+      // --- ATUALIZADO: Salva o e-mail também ---
       await updateDoc(userRef, {
         displayName: data.displayName,
+        email: data.email, // Atualiza o campo no banco
         role: data.role,
         assignedUnits: data.assignedUnits
       });
       
-      toast.success("Usuário atualizado com sucesso!", { id: toastId });
-      onClose(); // Fecha o modal
+      toast.success("Dados do usuário atualizados!", { id: toastId });
+      // Aviso amigável sobre a limitação do Auth
+      if (data.email !== userDoc.data().email) {
+        toast.info("Nota: O e-mail de login deve ser alterado pelo próprio usuário.", { duration: 5000 });
+      }
+      
+      onClose(); 
     } catch (error) {
       toast.error("Erro ao salvar: " + error.message, { id: toastId });
       console.error(error);
@@ -100,8 +105,16 @@ const EditUserForm = ({ onClose, userDoc }) => {
             <legend className={styles.subtitle}>Informações do Usuário</legend>
 
             <div className={styles.formGroup}>
-              <label>E-mail (Não editável)</label>
-              <input defaultValue={userDoc.data().email} disabled className={styles.inputDisabled} />
+              <label htmlFor="email">E-mail</label>
+              {/* --- ATUALIZADO: Input habilitado para edição --- */}
+              <input 
+                id="email" 
+                type="email"
+                {...register("email")}
+                className={errors.email ? styles.inputError : ''}
+                // Removido o 'disabled' e o estilo 'inputDisabled'
+              />
+              {errors.email && <p className={styles.errorMessage}>{errors.email.message}</p>}
             </div>
 
             <div className={styles.formGroup}>
@@ -169,7 +182,6 @@ const EditUserForm = ({ onClose, userDoc }) => {
         </>
       )}
 
-      {/* --- Botões de Ação --- */}
       <div className={styles.buttonContainer}>
         <button type="button" onClick={onClose} className={styles.secondaryButton}>
           Cancelar
@@ -181,6 +193,5 @@ const EditUserForm = ({ onClose, userDoc }) => {
     </form>
   );
 };
-
 
 export default EditUserForm;
