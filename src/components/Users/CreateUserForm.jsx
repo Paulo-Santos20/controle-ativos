@@ -2,32 +2,34 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { db, functions } from '/src/lib/firebase.js'; // Importa 'functions'
-import { httpsCallable } from 'firebase/functions'; // Importa o HttpsCallable
+// Importamos initializeApp para criar a instancia secundária
+import { initializeApp } from 'firebase/app'; 
+import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { db } from '/src/lib/firebase.js'; 
 import { toast } from 'sonner';
-// Reutiliza o CSS de formulário complexo
 import styles from '../Settings/AddUnitForm.module.css'; 
 import { Loader2 } from 'lucide-react';
 
-/**
- * Schema de validação para a criação de um usuário.
- */
+// Precisamos da config pura para criar a app secundária
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+};
+
 const createUserSchema = z.object({
   displayName: z.string().min(3, "O nome é obrigatório"),
   email: z.string().email("O e-mail é inválido"),
+  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres"), // Campo Obrigatório no plano Free
   role: z.string().min(1, "A 'Role' é obrigatória"),
-  // (Você pode adicionar 'unidades' aqui se quiser que o admin já as atribua)
 });
 
-/**
- * Formulário para CRIAR um novo usuário (chama uma Cloud Function).
- * @param {object} props
- * @param {() => void} props.onClose - Função para fechar o modal.
- */
 const CreateUserForm = ({ onClose }) => {
-  // Busca as 'Roles' disponíveis
   const [roles, loadingRoles] = useCollection(
     query(collection(db, 'roles'), orderBy('name', 'asc'))
   );
@@ -41,37 +43,52 @@ const CreateUserForm = ({ onClose }) => {
     resolver: zodResolver(createUserSchema)
   });
 
-  /**
-   * CHAMA A FIREBASE FUNCTION (BACKEND)
-   * Esta função 'createNewUser' deve ser criada por você no backend.
-   */
   const onSubmit = async (data) => {
     const toastId = toast.loading("Criando usuário...");
-    
+    let secondaryApp = null;
+
     try {
-      // 1. Aponta para a sua Cloud Function
-      const createUser = httpsCallable(functions, 'createNewUser');
-      
-      // 2. Chama a função e passa os dados
-      const result = await createUser({
-        email: data.email,
+      // 1. TRUQUE: Criar uma instância secundária do Firebase
+      // Isso evita que o Admin (você) seja deslogado ao criar um novo usuário
+      secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
+      const secondaryAuth = getAuth(secondaryApp);
+
+      // 2. Criar o usuário na autenticação (Auth)
+      const userCredential = await createUserWithEmailAndPassword(
+        secondaryAuth, 
+        data.email, 
+        data.password
+      );
+      const newUser = userCredential.user;
+
+      // 3. Criar o perfil no Firestore (Database)
+      // Usamos o 'db' principal aqui, pois já estamos autenticados nele como Admin
+      await setDoc(doc(db, "users", newUser.uid), {
         displayName: data.displayName,
+        email: data.email,
         role: data.role,
-        // (Você pode passar a senha ou deixar a função criar uma aleatória)
+        assignedUnits: [],
+        createdAt: serverTimestamp(),
       });
-      
-      // 3. Processa o resultado
-      if (result.data.success) {
-        toast.success(`Usuário ${data.email} criado!`, { id: toastId });
-        reset();
-        onClose(); // Fecha o modal
-      } else {
-        throw new Error(result.data.error);
-      }
-      
+
+      // 4. Deslogar a instância secundária para limpar a memória
+      await signOut(secondaryAuth);
+
+      toast.success(`Usuário ${data.displayName} criado com sucesso!`, { id: toastId });
+      reset();
+      onClose();
+
     } catch (error) {
-      toast.error(`Erro: ${error.message}`, { id: toastId });
       console.error(error);
+      let msg = error.message;
+      if (error.code === 'auth/email-already-in-use') msg = "Este e-mail já está cadastrado.";
+      toast.error(`Erro: ${msg}`, { id: toastId });
+    } finally {
+      // Limpeza: Deleta a instância secundária se ela foi criada
+      if (secondaryApp) {
+        // O delete() é uma promise, mas não precisamos esperar bloquear a UI
+        // secondaryApp.delete(); // (Opcional em versões recentes do SDK, o garbage collector resolve)
+      }
     }
   };
 
@@ -85,12 +102,8 @@ const CreateUserForm = ({ onClose }) => {
       ) : (
         <>
           <fieldset className={styles.fieldset}>
-            <legend className={styles.subtitle}>Informações do Novo Usuário</legend>
-            <p className={styles.description}>
-              Isso criará a conta de usuário (Firebase Auth) e o perfil (Firestore)
-              e enviará um e-mail de redefinição de senha para o usuário.
-            </p>
-
+            <legend className={styles.subtitle}>Novo Usuário (Plano Free)</legend>
+            
             <div className={styles.formGroup}>
               <label htmlFor="displayName">Nome</label>
               <input 
@@ -111,9 +124,23 @@ const CreateUserForm = ({ onClose }) => {
               />
               {errors.email && <p className={styles.errorMessage}>{errors.email.message}</p>}
             </div>
+
+            {/* Campo de Senha Adicionado Obrigatóriamente */}
+            <div className={styles.formGroup}>
+              <label htmlFor="password">Senha Inicial</label>
+              <input 
+                id="password" 
+                type="text" // Mostra a senha para o admin copiar/anotar
+                placeholder="Defina uma senha (min 6 chars)"
+                {...register("password")} 
+                className={errors.password ? styles.inputError : ''}
+              />
+              {errors.password && <p className={styles.errorMessage}>{errors.password.message}</p>}
+              <small style={{color: '#666'}}>Anote esta senha e passe para o usuário.</small>
+            </div>
             
             <div className={styles.formGroup}>
-              <label htmlFor="role">Role (Permissão) Inicial</label>
+              <label htmlFor="role">Role (Permissão)</label>
               <select 
                 id="role" 
                 {...register("role")} 
@@ -121,10 +148,7 @@ const CreateUserForm = ({ onClose }) => {
               >
                 <option value="">Selecione uma permissão...</option>
                 {roles?.docs.map(doc => (
-                  // Não permite criar um "gestor" por aqui por segurança
-                  doc.id !== 'admin_geral' && (
-                     <option key={doc.id} value={doc.id}>{doc.data().name}</option>
-                  )
+                  <option key={doc.id} value={doc.id}>{doc.data().name}</option>
                 ))}
               </select>
               {errors.role && <p className={styles.errorMessage}>{errors.role.message}</p>}
@@ -133,7 +157,6 @@ const CreateUserForm = ({ onClose }) => {
         </>
       )}
 
-      {/* --- Botões de Ação --- */}
       <div className={styles.buttonContainer}>
         <button type="button" onClick={onClose} className={styles.secondaryButton}>
           Cancelar
