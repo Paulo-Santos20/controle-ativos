@@ -13,16 +13,16 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recha
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Link } from 'react-router-dom'; // Importa o Link
+import { Link } from 'react-router-dom';
 import { 
   Laptop, 
   Printer, 
   Wrench, 
-  History, // Ícone que vamos usar no título
+  History, 
   Plus, 
   PackageSearch,
   Loader2,
-  ArrowRight // Ícone para o link "Ver Tudo"
+  ArrowRight
 } from 'lucide-react';
 
 import styles from './Dashboard.module.css';
@@ -31,126 +31,157 @@ import AssetTypeSelector from '../../components/Inventory/AssetTypeSelector';
 import AddAssetForm from '../../components/Inventory/AddAssetForm';
 import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
 
-// Cores para o gráfico (UI/UX)
+// --- NOVAS IMPORTAÇÕES PARA A MANUTENÇÃO ---
+import AssetSearchForm from '../../components/Inventory/AssetSearchForm';
+import MaintenanceAssetForm from '../../components/Inventory/MaintenanceAssetForm';
+
 const COLORS = ['#007aff', '#5ac8fa', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
 
-/**
- * Painel principal com visão geral do status dos ativos.
- */
 const Dashboard = () => {
-  // --- LÓGICA DO MODAL (UI/UX) ---
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalView, setModalView] = useState('select'); // 'select' | 'computer' | 'printer'
+  const [modalView, setModalView] = useState('select'); 
+  
+  // --- NOVO ESTADO: Guarda o ativo encontrado para manutenção ---
+  const [maintenanceTarget, setMaintenanceTarget] = useState(null);
 
-  // --- CONSULTAS DE DADOS REAIS (Performance Total) ---
-
-  // 1. Card: Em Manutenção
+  // --- QUERIES (Sem alteração) ---
   const [maintenanceAssets, loadingMaintenance] = useCollection(
     query(collection(db, 'assets'), where('status', '==', 'Em manutenção'))
   );
-
-  // 2. Card: Total de Computadores
   const [computerAssets, loadingComputers] = useCollection(
     query(collection(db, 'assets'), where('type', '==', 'computador'))
   );
-
-  // 3. Card: Total de Impressoras
   const [printerAssets, loadingPrinters] = useCollection(
     query(collection(db, 'assets'), where('type', '==', 'impressora'))
   );
-
-  // 4. Gráfico de Pizza: Busca as Unidades
   const [units, loadingUnits] = useCollection(
     query(collection(db, 'units'), orderBy('name', 'asc'))
   );
-
-  // 5. Feed de Atividade: Busca na subcoleção 'history'
   const [history, loadingHistory, errorHistory] = useCollection(
     query(collectionGroup(db, 'history'), orderBy('timestamp', 'desc'), limit(5))
   );
 
-  // --- Processamento dos dados para o Gráfico ---
   const pieChartData = units?.docs.map((doc, index) => ({
     name: doc.data().sigla || doc.data().name, 
     value: doc.data().assetCount || 0, 
     fill: COLORS[index % COLORS.length] 
   })) || [];
   
-  // --- Lógica do Modal ---
-  const handleOpenModal = () => { setModalView('select'); setIsModalOpen(true); };
-  const handleCloseModal = () => { setIsModalOpen(false); setTimeout(() => setModalView('select'), 300); };
+  // --- LÓGICA DE CONTROLE DO MODAL ---
+  
+  const handleOpenRegister = () => {
+    setModalView('select');
+    setIsModalOpen(true);
+  };
+
+  // NOVO: Abre o modal no modo de busca
+  const handleOpenMaintenance = () => {
+    setMaintenanceTarget(null); // Limpa seleção anterior
+    setModalView('maintenance_search');
+    setIsModalOpen(true);
+  };
+
+  // NOVO: Quando o ativo é encontrado na busca
+  const handleAssetFound = (assetData) => {
+    setMaintenanceTarget(assetData);
+    setModalView('maintenance_form'); // Troca para o formulário
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setTimeout(() => {
+      setModalView('select');
+      setMaintenanceTarget(null);
+    }, 300);
+  };
+
   const renderModalContent = () => {
     switch (modalView) {
+      // Fluxo de Registro
       case 'select': return <AssetTypeSelector onSelectType={setModalView} />;
-      case 'computer': return <AddAssetForm onClose={handleCloseModal} onBack={() => setModalView('select')} />;
-      case 'printer': return <AddPrinterForm onClose={handleCloseModal} onBack={() => setModalView('select')} />;
+      case 'computer': return <AddAssetForm onClose={handleCloseModal} />;
+      case 'printer': return <AddPrinterForm onClose={handleCloseModal} />;
+      
+      // NOVO: Fluxo de Manutenção
+      case 'maintenance_search': 
+        return <AssetSearchForm onAssetFound={handleAssetFound} onCancel={handleCloseModal} />;
+      case 'maintenance_form':
+        return (
+          <MaintenanceAssetForm 
+            onClose={handleCloseModal} 
+            assetId={maintenanceTarget?.id} 
+            currentData={maintenanceTarget} 
+          />
+        );
+        
       default: return null;
     }
   };
 
-  // Helper para os contadores (UI/UX)
-  const getCount = (loading, snapshot) => {
+  // Título dinâmico do modal
+  const getModalTitle = () => {
+    if (modalView === 'maintenance_search') return "Buscar Ativo para Manutenção";
+    if (modalView === 'maintenance_form') return `Manutenção: ${maintenanceTarget?.id}`;
+    if (modalView === 'computer') return "Registrar Novo Computador";
+    if (modalView === 'printer') return "Registrar Nova Impressora";
+    return "Registrar Novo Ativo";
+  };
+
+  const getActiveCount = (loading, snapshot) => {
     if (loading) return <Loader2 size={16} className={styles.spinnerSmall} />;
-    return snapshot ? snapshot.size : 0;
+    if (!snapshot) return 0;
+    return snapshot.docs.filter(doc => doc.data().status !== 'Devolvido').length;
   };
 
   return (
     <div className={styles.dashboard}>
-      {/* --- MODAL --- */}
       <Modal 
         isOpen={isModalOpen} 
         onClose={handleCloseModal} 
-        title={
-          modalView === 'select' ? "Registrar Novo Ativo" :
-          modalView === 'computer' ? "Registrar Novo Computador" :
-          "Registrar Nova Impressora"
-        }
+        title={getModalTitle()} // Título dinâmico atualizado
       >
         {renderModalContent()}
       </Modal>
 
-      {/* --- CABEÇALHO --- */}
       <header className={styles.header}>
         <h1 className={styles.title}>Dashboard</h1>
         <div className={styles.quickActions}>
-          <button className={styles.actionButton} onClick={handleOpenModal}>
+          <button className={styles.actionButton} onClick={handleOpenRegister}>
             <Plus size={18} /> Registrar Novo Ativo
           </button>
-          <button className={styles.actionButtonSecondary}>
+          
+          {/* BOTÃO AGORA É FUNCIONAL */}
+          <button className={styles.actionButtonSecondary} onClick={handleOpenMaintenance}>
             <Wrench size={18} /> Iniciar Manutenção
           </button>
         </div>
       </header>
 
-      {/* --- CARDS DE RESUMO (com dados reais) --- */}
       <div className={styles.cardGrid}>
         <div className={styles.card}>
           <Wrench className={styles.cardIcon} style={{ color: 'var(--color-warning)' }} />
           <span className={styles.cardTitle}>Em Manutenção</span>
           <span className={styles.cardValue}>
-            {getCount(loadingMaintenance, maintenanceAssets)}
+            {maintenanceAssets ? maintenanceAssets.size : 0}
           </span>
         </div>
         <div className={styles.card}>
           <Laptop className={styles.cardIcon} style={{ color: 'var(--color-primary)' }} />
-          <span className={styles.cardTitle}>Total Computadores</span>
+          <span className={styles.cardTitle}>Computadores Ativos</span>
           <span className={styles.cardValue}>
-            {getCount(loadingComputers, computerAssets)}
+            {getActiveCount(loadingComputers, computerAssets)}
           </span>
         </div>
         <div className={styles.card}>
           <Printer className={styles.cardIcon} style={{ color: 'var(--color-text-secondary)' }} />
-          <span className={styles.cardTitle}>Total Impressoras</span>
+          <span className={styles.cardTitle}>Impressoras Ativas</span>
           <span className={styles.cardValue}>
-            {getCount(loadingPrinters, printerAssets)}
+            {getActiveCount(loadingPrinters, printerAssets)}
           </span>
         </div>
       </div>
 
-      {/* --- LINHA DE CONTEÚDO (Gráfico e Feed) --- */}
       <div className={styles.contentRow}>
-        
-        {/* GRÁFICO DE PIZZA (com dados reais) */}
         <div className={styles.chartContainer}>
           <h2 className={styles.sectionTitle}>Ativos por Unidade</h2>
           {loadingUnits ? (
@@ -178,30 +209,17 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* FEED DE ATIVIDADE (com dados reais) */}
         <div className={styles.feedContainer}>
-          
-          {/* --- CABEÇALHO DO FEED ATUALIZADO --- */}
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>
-              <History size={18} /> {/* 3. ÍCONE ADICIONADO AQUI */}
-              Últimas Atividades
+              <History size={18} /> Últimas Atividades
             </h2>
             <Link to="/atividades" className={styles.viewAllLink}>
-              Ver Tudo
-              <ArrowRight size={16} />
+              Ver Tudo <ArrowRight size={16} />
             </Link>
           </div>
           
           {loadingHistory && <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>}
-          
-          {errorHistory && (
-             <div className={styles.emptyFeed}>
-               <p className={styles.errorText}>Erro ao carregar histórico.</p>
-               <p className={styles.errorTextSmall}>Verifique as regras e índices do Firestore (veja console).</p>
-               {console.error("Erro no Feed:", errorHistory)}
-             </div>
-          )}
           
           {!loadingHistory && history?.docs.length === 0 && (
             <div className={styles.emptyFeed}>

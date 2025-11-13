@@ -1,0 +1,164 @@
+/* NotificationMenu.module.css */
+
+.container {
+  position: relative;
+}
+
+.trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: background-color 0.2s;
+}
+
+.trigger:hover, .trigger.active {
+  background-color: var(--color-bg-page);
+  color: var(--color-primary);
+}
+
+/* Bolinha Vermelha (Badge) */
+.badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: #ef4444; /* Vermelho */
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2px;
+  border: 2px solid #fff; /* Borda branca para separar do ícone */
+}
+
+/* Dropdown */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: -60px; /* Centraliza melhor em relação ao sino */
+  width: 320px;
+  background-color: var(--color-bg-component);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  z-index: 50;
+  animation: fadeIn 0.2s ease-out;
+  overflow: hidden;
+}
+
+/* Ajuste para mobile */
+@media (max-width: 480px) {
+  .dropdown {
+    position: fixed;
+    top: 60px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  background-color: #f9fafb;
+}
+
+.header h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.markReadButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.markReadButton:hover {
+  text-decoration: underline;
+}
+
+.list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.emptyState {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+/* Item da Lista */
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--color-bg-page);
+  transition: background-color 0.2s;
+}
+.item:hover {
+  background-color: #f9fafb;
+}
+
+.itemIcon {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.iconDelay { color: #f59e0b; } /* Amarelo */
+.iconUser { color: #ef4444; } /* Vermelho */
+
+.itemContent {
+  flex: 1;
+}
+.itemContent strong {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+.itemContent p {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Indicador de Não Lido (Ponto Azul) */
+.unread {
+  background-color: #eff6ff; /* Fundo azulado muito sutil */
+}
+.unreadDot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  margin-top: 6px;
+}

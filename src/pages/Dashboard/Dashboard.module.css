@@ -1,4 +1,6 @@
 /* Dashboard.module.css */
+
+/* --- Layout do Header Principal --- */
 .header {
   display: flex;
   flex-direction: column;
@@ -9,13 +11,14 @@
 }
 
 .title {
-  font-size: 2rem; /* 32px */
+  font-size: 2rem;
   font-weight: 700;
+  color: var(--color-text-primary);
 }
 
 .quickActions {
   display: flex;
-  flex-wrap: wrap; /* Quebra linha no mobile */
+  flex-wrap: wrap;
   gap: var(--spacing-sm);
 }
 
@@ -48,7 +51,6 @@
   background-color: var(--color-bg-page);
 }
 
-/* Responsividade do Header */
 @media (min-width: 768px) {
   .header {
     flex-direction: row;
@@ -56,73 +58,72 @@
   }
 }
 
-/* Grid de Cards (Mobile-First) */
+/* --- Grid de Cards (Resumo) --- */
 .cardGrid {
   display: grid;
-  grid-template-columns: 1fr; /* Uma coluna no mobile */
+  grid-template-columns: 1fr;
   gap: var(--spacing-md);
   margin-bottom: var(--spacing-lg);
 }
 
-/* Duas colunas em tablets */
 @media (min-width: 640px) {
-  .cardGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  .cardGrid { grid-template-columns: repeat(2, 1fr); }
 }
-
-/* Três colunas em desktops */
 @media (min-width: 1024px) {
-  .cardGrid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .cardGrid { grid-template-columns: repeat(3, 1fr); }
 }
 
 .card {
   display: grid;
-  grid-template-areas:
-    "icon title"
-    "icon value";
+  grid-template-areas: "icon title" "icon value";
   grid-template-columns: auto 1fr;
-  gap: var(--spacing-xs) var(--spacing-sm);
+  gap: 4px var(--spacing-sm);
   background-color: var(--color-bg-component);
   padding: var(--spacing-lg);
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
+  border: 1px solid var(--color-border);
 }
 
 .cardIcon {
   grid-area: icon;
-  font-size: 2rem; /* 32px */
-  margin-right: var(--spacing-sm);
+  font-size: 2rem; /* Ajuste se usar Lucide icons diretamente no tamanho */
+  padding: 10px;
+  background-color: var(--color-bg-page);
+  border-radius: 50%;
   align-self: center;
 }
 
 .cardTitle {
   grid-area: title;
-  font-size: var(--font-size-md);
-  font-weight: 500;
+  font-size: 0.9rem;
+  font-weight: 600;
   color: var(--color-text-secondary);
+  align-self: end;
 }
 
 .cardValue {
   grid-area: value;
-  font-size: 2rem; /* 32px */
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--color-text-primary);
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* Linha de Conteúdo (Mobile-First) */
+/* --- Layout de Conteúdo (Gráfico e Feed) --- */
 .contentRow {
   display: grid;
-  grid-template-columns: 1fr; /* Uma coluna */
+  grid-template-columns: 1fr;
   gap: var(--spacing-lg);
 }
 
-/* Duas colunas em desktop */
 @media (min-width: 1024px) {
   .contentRow {
     grid-template-columns: 2fr 1fr; /* Gráfico maior, feed menor */
+    align-items: start;
   }
 }
 
@@ -131,27 +132,62 @@
   padding: var(--spacing-lg);
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
-  height: 100%;
+  border: 1px solid var(--color-border);
+  /* Altura mínima para garantir alinhamento */
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Cabeçalhos de Seção (Novo) --- */
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--spacing-sm);
 }
 
 .sectionTitle {
-  font-size: 1.25rem; /* 20px */
+  font-size: 1.1rem;
   font-weight: 600;
-  margin-bottom: var(--spacing-lg);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm); /* Espaço entre Ícone e Texto */
+  color: var(--color-text-primary);
 }
 
+.viewAllLink {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: gap 0.2s ease;
+}
+.viewAllLink:hover {
+  text-decoration: underline;
+  gap: 6px; /* Efeito de mover a seta */
+}
+
+/* --- Lista do Feed --- */
 .feedList {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  /* gap removido para usar border-bottom */
 }
 
 .feedItem {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) 0;
   border-bottom: 1px solid var(--color-bg-page);
-  padding-bottom: var(--spacing-md);
+  position: relative;
 }
 .feedItem:last-child {
   border-bottom: none;
@@ -160,27 +196,88 @@
 
 .feedIcon {
   color: var(--color-text-secondary);
-  margin-top: 4px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.feedContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding-right: 60px; /* Espaço para a data absoluta */
 }
 
 .feedContent strong {
+  font-size: 0.95rem;
   color: var(--color-text-primary);
-}
-.feedContent p {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  margin-top: var(--spacing-xs);
-}
-.sectionTitle {
-  font-size: 1.25rem;
-  font-weight: 600;
-  
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  /* --- FIM DAS ADIÇÕES --- */
+  margin-bottom: 4px;
 }
 
-.sectionHeader .sectionTitle {
-  margin-bottom: 0;
+.feedContent p {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.feedContent small {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Data no canto superior direito */
+.feedTime {
+  position: absolute;
+  top: var(--spacing-md);
+  right: 0;
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-page);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* --- Estados de Carregamento e Vazio --- */
+.loadingState, .emptyFeed {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  text-align: center;
+  min-height: 200px;
+}
+
+.emptyFeed p {
+  margin-top: var(--spacing-sm);
+}
+
+.errorText {
+  color: var(--color-danger);
+  font-weight: 500;
+}
+.errorTextSmall {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+/* Spinners */
+.spinner {
+  animation: spin 1s linear infinite;
+  color: var(--color-primary);
+  height: 32px;
+  width: 32px;
+}
+
+.spinnerSmall {
+  animation: spin 1s linear infinite;
+  /* Herda a cor do texto pai */
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
