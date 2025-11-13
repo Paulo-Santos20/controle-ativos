@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
-import { db, auth } from '../../lib/firebase.js'; 
+import React, { useState, useMemo } from 'react';
+import { db } from '../../lib/firebase.js'; 
 import { 
   collection, 
   query, 
   orderBy, 
   limit, 
   where, 
-  collectionGroup 
+  collectionGroup,
+  documentId // Importante para filtrar a coleção de unidades pelo ID
 } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -25,66 +26,127 @@ import {
   ArrowRight
 } from 'lucide-react';
 
+// --- IMPORTA O HOOK DE SEGURANÇA ---
+import { useAuth } from '/src/hooks/useAuth.js';
+
 import styles from './Dashboard.module.css';
 import Modal from '../../components/Modal/Modal';
+
+// Componentes do Fluxo de Registro
 import AssetTypeSelector from '../../components/Inventory/AssetTypeSelector';
 import AddAssetForm from '../../components/Inventory/AddAssetForm';
 import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
 
-// --- NOVAS IMPORTAÇÕES PARA A MANUTENÇÃO ---
+// Componentes do Fluxo de Manutenção
 import AssetSearchForm from '../../components/Inventory/AssetSearchForm';
 import MaintenanceAssetForm from '../../components/Inventory/MaintenanceAssetForm';
 
 const COLORS = ['#007aff', '#5ac8fa', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
 
 const Dashboard = () => {
+  // --- 1. SEGURANÇA E PERMISSÕES ---
+  const { isAdmin, allowedUnits, permissions, loading: authLoading } = useAuth();
+
+  // --- 2. ESTADOS DE UI ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalView, setModalView] = useState('select'); 
-  
-  // --- NOVO ESTADO: Guarda o ativo encontrado para manutenção ---
   const [maintenanceTarget, setMaintenanceTarget] = useState(null);
 
-  // --- QUERIES (Sem alteração) ---
-  const [maintenanceAssets, loadingMaintenance] = useCollection(
-    query(collection(db, 'assets'), where('status', '==', 'Em manutenção'))
-  );
-  const [computerAssets, loadingComputers] = useCollection(
-    query(collection(db, 'assets'), where('type', '==', 'computador'))
-  );
-  const [printerAssets, loadingPrinters] = useCollection(
-    query(collection(db, 'assets'), where('type', '==', 'impressora'))
-  );
-  const [units, loadingUnits] = useCollection(
-    query(collection(db, 'units'), orderBy('name', 'asc'))
-  );
+  // --- 3. QUERIES SEGURAS (Baseadas em Permissão) ---
+
+  // Helper para construir constraints baseadas na permissão
+  const getPermissionConstraints = () => {
+    if (isAdmin) return []; // Admin vê tudo
+    if (allowedUnits.length > 0) return [where('unitId', 'in', allowedUnits)]; // Usuário vê suas unidades
+    return [where('unitId', '==', 'SEM_PERMISSAO')]; // Bloqueia tudo
+  };
+
+  // Query 1: Em Manutenção
+  const maintenanceQuery = useMemo(() => {
+    if (authLoading) return null;
+    return query(
+      collection(db, 'assets'), 
+      where('status', '==', 'Em manutenção'),
+      ...getPermissionConstraints()
+    );
+  }, [authLoading, isAdmin, allowedUnits]);
+  const [maintenanceAssets, loadingMaintenance] = useCollection(maintenanceQuery);
+
+  // Query 2: Computadores
+  const computersQuery = useMemo(() => {
+    if (authLoading) return null;
+    return query(
+      collection(db, 'assets'), 
+      where('type', '==', 'computador'),
+      ...getPermissionConstraints()
+    );
+  }, [authLoading, isAdmin, allowedUnits]);
+  const [computerAssets, loadingComputers] = useCollection(computersQuery);
+
+  // Query 3: Impressoras
+  const printersQuery = useMemo(() => {
+    if (authLoading) return null;
+    return query(
+      collection(db, 'assets'), 
+      where('type', '==', 'impressora'),
+      ...getPermissionConstraints()
+    );
+  }, [authLoading, isAdmin, allowedUnits]);
+  const [printerAssets, loadingPrinters] = useCollection(printersQuery);
+
+  // Query 4: Unidades (Para o Gráfico)
+  const unitsQuery = useMemo(() => {
+    if (authLoading) return null;
+    if (isAdmin) {
+      // Admin vê todas as unidades ordenadas por nome
+      return query(collection(db, 'units'), orderBy('name', 'asc'));
+    } else if (allowedUnits.length > 0) {
+      // Usuário comum vê apenas suas unidades (filtro pelo ID do documento)
+      return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
+    } else {
+      return null;
+    }
+  }, [authLoading, isAdmin, allowedUnits]);
+  const [units, loadingUnits] = useCollection(unitsQuery);
+
+  // Query 5: Feed de Histórico
+  // Nota: collectionGroup não suporta 'where unitId in [...]' facilmente sem índices complexos.
+  // Por enquanto, buscamos global e filtramos visualmente se necessário, ou confiamos nas Regras de Segurança.
   const [history, loadingHistory, errorHistory] = useCollection(
     query(collectionGroup(db, 'history'), orderBy('timestamp', 'desc'), limit(5))
   );
 
+  // --- PROCESSAMENTO DE DADOS ---
+  
   const pieChartData = units?.docs.map((doc, index) => ({
     name: doc.data().sigla || doc.data().name, 
     value: doc.data().assetCount || 0, 
     fill: COLORS[index % COLORS.length] 
   })) || [];
-  
-  // --- LÓGICA DE CONTROLE DO MODAL ---
-  
+
+  // Helper para contar ativos (excluindo devolvidos)
+  const getActiveCount = (loading, snapshot) => {
+    if (loading || authLoading) return <Loader2 size={16} className={styles.spinnerSmall} />;
+    if (!snapshot) return 0;
+    return snapshot.docs.filter(doc => doc.data().status !== 'Devolvido').length;
+  };
+
+  // --- LÓGICA DE MODAL ---
+
   const handleOpenRegister = () => {
     setModalView('select');
     setIsModalOpen(true);
   };
 
-  // NOVO: Abre o modal no modo de busca
   const handleOpenMaintenance = () => {
-    setMaintenanceTarget(null); // Limpa seleção anterior
+    setMaintenanceTarget(null);
     setModalView('maintenance_search');
     setIsModalOpen(true);
   };
 
-  // NOVO: Quando o ativo é encontrado na busca
   const handleAssetFound = (assetData) => {
     setMaintenanceTarget(assetData);
-    setModalView('maintenance_form'); // Troca para o formulário
+    setModalView('maintenance_form');
   };
 
   const handleCloseModal = () => {
@@ -95,14 +157,19 @@ const Dashboard = () => {
     }, 300);
   };
 
+  const getModalTitle = () => {
+    if (modalView === 'maintenance_search') return "Buscar Ativo para Manutenção";
+    if (modalView === 'maintenance_form') return `Manutenção: ${maintenanceTarget?.id}`;
+    if (modalView === 'computer') return "Registrar Novo Computador";
+    if (modalView === 'printer') return "Registrar Nova Impressora";
+    return "Registrar Novo Ativo";
+  };
+
   const renderModalContent = () => {
     switch (modalView) {
-      // Fluxo de Registro
       case 'select': return <AssetTypeSelector onSelectType={setModalView} />;
       case 'computer': return <AddAssetForm onClose={handleCloseModal} />;
       case 'printer': return <AddPrinterForm onClose={handleCloseModal} />;
-      
-      // NOVO: Fluxo de Manutenção
       case 'maintenance_search': 
         return <AssetSearchForm onAssetFound={handleAssetFound} onCancel={handleCloseModal} />;
       case 'maintenance_form':
@@ -113,24 +180,8 @@ const Dashboard = () => {
             currentData={maintenanceTarget} 
           />
         );
-        
       default: return null;
     }
-  };
-
-  // Título dinâmico do modal
-  const getModalTitle = () => {
-    if (modalView === 'maintenance_search') return "Buscar Ativo para Manutenção";
-    if (modalView === 'maintenance_form') return `Manutenção: ${maintenanceTarget?.id}`;
-    if (modalView === 'computer') return "Registrar Novo Computador";
-    if (modalView === 'printer') return "Registrar Nova Impressora";
-    return "Registrar Novo Ativo";
-  };
-
-  const getActiveCount = (loading, snapshot) => {
-    if (loading) return <Loader2 size={16} className={styles.spinnerSmall} />;
-    if (!snapshot) return 0;
-    return snapshot.docs.filter(doc => doc.data().status !== 'Devolvido').length;
   };
 
   return (
@@ -138,7 +189,7 @@ const Dashboard = () => {
       <Modal 
         isOpen={isModalOpen} 
         onClose={handleCloseModal} 
-        title={getModalTitle()} // Título dinâmico atualizado
+        title={getModalTitle()}
       >
         {renderModalContent()}
       </Modal>
@@ -146,17 +197,31 @@ const Dashboard = () => {
       <header className={styles.header}>
         <h1 className={styles.title}>Dashboard</h1>
         <div className={styles.quickActions}>
-          <button className={styles.actionButton} onClick={handleOpenRegister}>
+          
+          {/* Botão Registrar (Protegido por Permissão) */}
+          <button 
+            className={styles.actionButton} 
+            onClick={handleOpenRegister}
+            disabled={!permissions.ativos.create}
+            title={!permissions.ativos.create ? "Sem permissão para registrar" : "Registrar Novo Ativo"}
+            style={{ opacity: !permissions.ativos.create ? 0.6 : 1, cursor: !permissions.ativos.create ? 'not-allowed' : 'pointer' }}
+          >
             <Plus size={18} /> Registrar Novo Ativo
           </button>
           
-          {/* BOTÃO AGORA É FUNCIONAL */}
-          <button className={styles.actionButtonSecondary} onClick={handleOpenMaintenance}>
+          {/* Botão Manutenção (Protegido - assume permissão de update ou create) */}
+          <button 
+            className={styles.actionButtonSecondary} 
+            onClick={handleOpenMaintenance}
+            disabled={!permissions.ativos.update}
+            style={{ opacity: !permissions.ativos.update ? 0.6 : 1, cursor: !permissions.ativos.update ? 'not-allowed' : 'pointer' }}
+          >
             <Wrench size={18} /> Iniciar Manutenção
           </button>
         </div>
       </header>
 
+      {/* CARDS */}
       <div className={styles.cardGrid}>
         <div className={styles.card}>
           <Wrench className={styles.cardIcon} style={{ color: 'var(--color-warning)' }} />
@@ -182,9 +247,11 @@ const Dashboard = () => {
       </div>
 
       <div className={styles.contentRow}>
+        
+        {/* GRÁFICO (Dados Seguros) */}
         <div className={styles.chartContainer}>
           <h2 className={styles.sectionTitle}>Ativos por Unidade</h2>
-          {loadingUnits ? (
+          {loadingUnits || authLoading ? (
             <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
@@ -209,6 +276,7 @@ const Dashboard = () => {
           )}
         </div>
 
+        {/* FEED */}
         <div className={styles.feedContainer}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>
@@ -221,10 +289,17 @@ const Dashboard = () => {
           
           {loadingHistory && <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>}
           
+          {errorHistory && (
+             <div className={styles.emptyFeed}>
+               <p className={styles.errorText}>Erro ao carregar histórico.</p>
+               <p className={styles.errorTextSmall}>Verifique os índices no console.</p>
+             </div>
+          )}
+          
           {!loadingHistory && history?.docs.length === 0 && (
             <div className={styles.emptyFeed}>
               <PackageSearch size={30} />
-              <p>Nenhuma atividade registrada ainda.</p>
+              <p>Nenhuma atividade registrada.</p>
             </div>
           )}
 

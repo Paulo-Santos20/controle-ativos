@@ -18,7 +18,8 @@ import {
     Printer,
     History,
     UserCog,
-    Pencil // <-- CORRIGIDO
+    Pencil,
+    Briefcase
 } from 'lucide-react'; 
 
 import { auth } from '/src/lib/firebase.js'; // Caminho absoluto
@@ -135,6 +136,14 @@ const Sidebar = () => {
                                     }>
                                         <Printer size={18} />
                                         <span>Impressoras</span>
+                                    </NavLink>
+                                </li>
+                                <li>
+                                    <NavLink to="/cadastros/empresas" className={({ isActive }) =>
+                                        isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
+                                    }>
+                                        <Briefcase size={18} />
+                                        <span>Empresas</span>
                                     </NavLink>
                                 </li>
                             </ul>

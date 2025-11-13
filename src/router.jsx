@@ -24,6 +24,8 @@ import ActivityLogPage from "./pages/ActivityLog/ActivityLogPage";
 // Página de Gerenciamento de Perfis
 import ProfileListPage from "./pages/Users/ProfileListPage";
 
+import SuppliersPage from "./pages/Cadastros/SuppliersPage";
+
 export const router = createBrowserRouter([
   {
     path: "/login",
@@ -56,6 +58,10 @@ export const router = createBrowserRouter([
         element: <AssetModelPage type="impressora" title="Impressoras" /> 
       },
       
+      { 
+        path: "cadastros/empresas",  // <-- Nova Rota
+        element: <SuppliersPage /> 
+      },
       // --- ROTAS DE USUÁRIOS ATUALIZADAS ---
       { 
         path: "usuarios/lista", // Rota principal
