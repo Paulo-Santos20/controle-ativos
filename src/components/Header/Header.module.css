@@ -64,3 +64,27 @@
     gap: var(--spacing-md);
   }
 }
+
+/* Header.module.css */
+/* ... seus estilos existentes ... */
+
+.header {
+  /* Garanta que é flex e espaçado */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* ... */
+}
+
+.rightSection {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.separator {
+  width: 1px;
+  height: 24px;
+  background-color: var(--color-border);
+  margin: 0 var(--spacing-xs);
+}

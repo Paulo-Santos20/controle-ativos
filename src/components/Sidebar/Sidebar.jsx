@@ -180,15 +180,7 @@ const Sidebar = () => {
                 </ul>
             </nav>
 
-            {/* Seção do Usuário */}
-            <div className={styles.userSection}>
-                <NavLink to="/profile" className={styles.userProfileLink}>
-                    <span className={styles.userName}>{user?.displayName || 'Técnico'}</span>
-                </NavLink>
-                <button onClick={handleLogout} className={styles.logoutButton} title="Sair">
-                    <LogOut size={20} />
-                </button>
-            </div>
+          
         </aside>
     );
 };

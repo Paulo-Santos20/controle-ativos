@@ -1,34 +1,39 @@
 import React from 'react';
 import styles from './Header.module.css';
-import { LuMenu, LuBell, LuSearch, LuCircleUserRound } from 'react-icons/lu';
+import { Menu, Bell } from 'lucide-react';
+import UserMenu from './UserMenu'; // <-- Importa o novo componente
 
 // O Header recebe a função para abrir o menu mobile
 const Header = ({ onToggleMobileMenu }) => {
   return (
     <header className={styles.header}>
-      {/* Botão de Menu (Apenas Mobile) */}
-      <button 
-        className={`${styles.iconButton} ${styles.mobileOnly}`}
-        onClick={onToggleMobileMenu}
-        aria-label="Abrir menu"
-      >
-        <LuMenu size={24} />
-      </button>
-
-      {/* Logo (Apenas Mobile) */}
-      <div className={`${styles.logoMobile} ${styles.mobileOnly}`}>
-        ITAM Hospitalar
+      
+      {/* Lado Esquerdo: Menu Mobile e Título (opcional) */}
+      <div className={styles.leftSection}>
+        <button 
+          className={`${styles.iconButton} ${styles.mobileOnly}`}
+          onClick={onToggleMobileMenu}
+          aria-label="Abrir menu"
+        >
+          <Menu size={24} />
+        </button>
+        
+        {/* Você pode colocar um título ou breadcrumb aqui se quiser */}
+        {/* <h2 className={styles.pageTitle}>ITAM</h2> */}
       </div>
 
-      {/* Ações do Lado Direito (Desktop) */}
-      <div className={styles.desktopActions}>
-        {/* Futuramente: <div className={styles.searchBar}>...</div> */}
+      {/* Lado Direito: Ações e Perfil */}
+      <div className={styles.rightSection}>
+        {/* Ações Rápidas */}
         <button className={styles.iconButton} aria-label="Notificações">
-          <LuBell size={22} />
+          <Bell size={20} />
+          {/* <span className={styles.badge}>3</span> Exemplo de badge */}
         </button>
-        <button className={styles.iconButton} aria-label="Meu Perfil">
-          <LuCircleUserRound size={22} />
-        </button>
+
+        <div className={styles.separator}></div>
+
+        {/* O Novo Menu de Usuário */}
+        <UserMenu />
       </div>
     </header>
   );
