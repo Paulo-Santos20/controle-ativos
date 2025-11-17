@@ -10,18 +10,18 @@ import {
   browserSessionPersistence,
   sendPasswordResetEmail 
 } from 'firebase/auth';
-import { auth } from '/src/lib/firebase.js'; // Caminho absoluto
+import { auth } from '/src/lib/firebase.js'; 
 import { toast } from 'sonner';
-import { Hospital, Eye, EyeOff, AlertCircle } from 'lucide-react'; // Novos ícones
+import { Hospital, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react'; 
 
 import styles from './Login.module.css';
 
-// Schema de validação (Segurança: Input Sanitization)
+// Schema de validação
 const loginSchema = z.object({
   email: z.string()
     .min(1, "O e-mail é obrigatório")
     .email("Formato de e-mail inválido")
-    .trim() // Remove espaços acidentais
+    .trim()
     .toLowerCase(),
   password: z.string()
     .min(1, "A senha é obrigatória"), 
@@ -30,13 +30,15 @@ const loginSchema = z.object({
 const Login = () => {
   const navigate = useNavigate();
   const [rememberMe, setRememberMe] = useState(true);
-  const [showPassword, setShowPassword] = useState(false); // Estado para mostrar senha
-  const [loginError, setLoginError] = useState(""); // Estado para erro geral
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [isResetting, setIsResetting] = useState(false); // Loading do reset
 
   const { 
     register, 
     handleSubmit, 
-    getValues,
+    getValues, // Para pegar o e-mail sem submeter o form
+    trigger,   // Para validar o campo de e-mail isoladamente
     formState: { errors, isSubmitting } 
   } = useForm({
     resolver: zodResolver(loginSchema)
@@ -48,28 +50,25 @@ const Login = () => {
       case 'auth/invalid-credential':
       case 'auth/user-not-found':
       case 'auth/wrong-password':
-        // Segurança: Não revelar qual dos dois está errado
         return "E-mail ou senha incorretos.";
       case 'auth/too-many-requests':
-        // Segurança: Proteção contra força bruta
-        return "Muitas tentativas falhas. O acesso foi bloqueado temporariamente. Tente novamente mais tarde.";
+        return "Muitas tentativas falhas. O acesso foi bloqueado temporariamente.";
       case 'auth/user-disabled':
         return "Esta conta foi desativada pelo administrador.";
       case 'auth/network-request-failed':
         return "Erro de conexão. Verifique sua internet.";
+      case 'auth/invalid-email':
+        return "O formato do e-mail é inválido.";
       default:
-        return "Ocorreu um erro inesperado. Tente novamente.";
+        return "Ocorreu um erro inesperado (" + errorCode + ").";
     }
   };
 
   const onSubmit = async (data) => {
-    setLoginError(""); // Limpa erros anteriores
+    setLoginError(""); 
     try {
-      // Define persistência
       const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
       await setPersistence(auth, persistence);
-      
-      // Tenta logar
       await signInWithEmailAndPassword(auth, data.email, data.password);
       
       toast.success("Bem-vindo ao sistema!");
@@ -77,27 +76,46 @@ const Login = () => {
     } catch (error) {
       console.error("Login Error:", error.code);
       const msg = getFriendlyErrorMessage(error.code);
-      setLoginError(msg); // Mostra o erro no formulário
-      toast.error(msg); // Mostra o toast também
+      setLoginError(msg); 
+      toast.error(msg); 
     }
   };
 
+  // --- LÓGICA DE RECUPERAÇÃO DE SENHA ---
   const handlePasswordReset = async () => {
     const email = getValues("email");
-    // Validação rápida de e-mail antes de enviar
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     
-    if (!email || !emailRegex.test(email)) {
-      toast.error("Por favor, digite um e-mail válido no campo acima para redefinir.");
+    // 1. Valida se o campo e-mail tem algo escrito
+    const isValidEmail = await trigger("email");
+    
+    if (!isValidEmail || !email) {
+      toast.warning("Por favor, digite seu e-mail no campo 'E-mail Corporativo' primeiro.");
+      // Foca no input de e-mail visualmente
+      document.getElementById("email")?.focus();
       return;
     }
 
+    setIsResetting(true);
+    const toastId = toast.loading("Enviando e-mail de recuperação...");
+
     try {
+      // 2. Envia o link do Firebase
       await sendPasswordResetEmail(auth, email);
-      toast.success("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
+      
+      toast.success("E-mail enviado! Verifique sua caixa de entrada e spam.", { id: toastId, duration: 5000 });
+      setLoginError(""); // Limpa erro se houver
     } catch (error) {
-      const msg = getFriendlyErrorMessage(error.code);
-      toast.error(msg);
+      console.error("Reset Error:", error.code);
+      let msg = getFriendlyErrorMessage(error.code);
+      
+      // Tratamento específico para user-not-found no reset (opcional, por segurança às vezes não se diz)
+      if (error.code === 'auth/user-not-found') {
+        msg = "Este e-mail não está cadastrado no sistema.";
+      }
+      
+      toast.error(msg, { id: toastId });
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -112,7 +130,6 @@ const Login = () => {
           <p className={styles.subtitle}>Acesso ao Sistema de Ativos</p>
         </div>
 
-        {/* Exibe erro de login global se houver */}
         {loginError && (
           <div className={styles.errorBanner}>
             <AlertCircle size={18} />
@@ -146,12 +163,11 @@ const Login = () => {
                 {...register("password")}
                 autoComplete="current-password"
               />
-              {/* Botão para mostrar/esconder senha */}
               <button 
                 type="button"
                 className={styles.eyeButton}
                 onClick={() => setShowPassword(!showPassword)}
-                tabIndex="-1" // Pula o tab para focar direto no botão entrar
+                tabIndex="-1" 
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -169,17 +185,19 @@ const Login = () => {
               <span>Lembrar de mim</span>
             </label>
             
+            {/* Botão de Esqueci Senha */}
             <button
               type="button"
               className={styles.forgotPassword}
               onClick={handlePasswordReset}
+              disabled={isResetting || isSubmitting}
             >
-              Esqueceu a senha?
+              {isResetting ? <span style={{display:'flex', gap:4, alignItems:'center'}}><Loader2 size={12} className={styles.spinner}/> Enviando...</span> : "Esqueceu a senha?"}
             </button>
           </div>
 
-          <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
-            {isSubmitting ? "Autenticando..." : "Acessar Sistema"}
+          <button type="submit" className={styles.submitButton} disabled={isSubmitting || isResetting}>
+            {isSubmitting ? <span style={{display:'flex', gap:6, justifyContent:'center', alignItems:'center'}}><Loader2 className={styles.spinner} /> Entrando...</span> : "Acessar Sistema"}
           </button>
         </form>
       </div>

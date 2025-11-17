@@ -13,7 +13,7 @@ import styles from '../Settings/AddUnitForm.module.css'; // Reutiliza CSS de for
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 // Importa o Logger de Auditoria
-import { logAudit } from '/src/utils/auditLogger';
+import { logAudit } from '../../utils/AuditLogger';
 
 // Precisamos da config pura para criar a app secundária
 const firebaseConfig = {
