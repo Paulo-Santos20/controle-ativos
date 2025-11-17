@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { doc } from 'firebase/firestore';
 import { useDocumentData } from 'react-firebase-hooks/firestore';
-import { db } from '/src/lib/firebase.js';
+import { db } from '../../lib/firebase';
 import { Loader2, PackageSearch, MapPin, Calendar, Tag, CheckCircle, AlertTriangle, Box } from 'lucide-react';
 import styles from './AssetScanPage.module.css'; // Vamos criar este CSS
 
