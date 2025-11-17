@@ -7,79 +7,116 @@ import { db } from '../lib/firebase';
 const ITEMS_PER_PAGE = 20;
 
 /**
- * Hook que gerencia a busca, paginação, filtro e CACHE do inventário.
+ * Hook avançado que gerencia busca, paginação e filtros combinados no servidor.
  */
-export const useInventoryQuery = ({ 
-  filters, 
-  isAdmin, 
-  allowedUnits 
-}) => {
+export const useInventoryQuery = ({ filters, isAdmin, allowedUnits }) => {
   
   return useInfiniteQuery({
-    // A "Chave do Cache". Se qualquer um desses valores mudar, 
-    // o React Query entende que é uma nova busca e reseta a lista.
     queryKey: ['inventory', filters, isAdmin, allowedUnits],
     
     queryFn: async ({ pageParam = null }) => {
       const { searchTerm, type, status, unit } = filters;
-      let q;
       const collectionRef = collection(db, 'assets');
 
-      // --- MODO BUSCA ESPECÍFICA (Texto) ---
-      if (searchTerm) {
-        // Busca por ID (Tombamento) com prefixo
-        // Nota: Buscas textuais complexas não suportam paginação simples do Firestore
-        const constraints = [
-          orderBy(documentId()),
-          where(documentId(), '>=', searchTerm),
-          where(documentId(), '<=', searchTerm + '\uf8ff'),
-          limit(50)
-        ];
-        q = query(collectionRef, ...constraints);
-      
-      } else {
-        // --- MODO LISTAGEM NORMAL (Com Paginação) ---
-        let constraints = [orderBy('createdAt', 'desc')];
+      // --- CONSTRAINTS DE SEGURANÇA E FILTROS COMUNS ---
+      // Criamos uma lista base de filtros que sempre se aplicam
+      const baseConstraints = [];
 
-        // 1. Segurança
-        if (!isAdmin) {
-          if (allowedUnits.length > 0) constraints.push(where("unitId", "in", allowedUnits));
-          else constraints.push(where("unitId", "==", "SEM_PERMISSAO"));
+      // 1. Segurança (Server-Side)
+      if (!isAdmin) {
+        if (allowedUnits.length > 0) {
+          baseConstraints.push(where("unitId", "in", allowedUnits));
+        } else {
+          // Se não tem permissão, força uma query impossível
+          baseConstraints.push(where("unitId", "==", "BLOQUEADO"));
         }
-
-        // 2. Filtros
-        if (type !== "all") constraints.push(where("type", "==", type));
-        if (status !== "all") constraints.push(where("status", "==", status));
-        if (unit !== "all") {
-           if (isAdmin || allowedUnits.includes(unit)) {
-             constraints.push(where("unitId", "==", unit));
-           }
-        }
-
-        // 3. Paginação
-        constraints.push(limit(ITEMS_PER_PAGE));
-        if (pageParam) {
-          constraints.push(startAfter(pageParam));
-        }
-
-        q = query(collectionRef, ...constraints);
       }
 
-      // Executa a busca
+      // 2. Filtros Dropdown (Server-Side)
+      if (type !== "all") baseConstraints.push(where("type", "==", type));
+      if (status !== "all") baseConstraints.push(where("status", "==", status));
+      if (unit !== "all") {
+         // Validação extra de segurança
+         if (isAdmin || allowedUnits.includes(unit)) {
+           baseConstraints.push(where("unitId", "==", unit));
+         }
+      }
+
+      // =========================================================
+      // CENÁRIO A: BUSCA TEXTUAL (MODO AVANÇADO PARALELO)
+      // =========================================================
+      if (searchTerm) {
+        const term = searchTerm.toUpperCase(); // Normalizar para busca
+        // O Firestore só busca por prefixo ("COMEÇA COM")
+        const endTerm = term + '\uf8ff';
+
+        // Disparamos 3 buscas simultâneas no servidor para cobrir todos os campos
+        // Nota: Isso requer índices compostos se combinado com outros filtros.
+        // Para simplificar e evitar erros de índice agora, na busca textual
+        // aplicamos a segurança/filtros básicos no cliente DEPOIS de buscar no servidor.
+        
+        const queries = [
+          // 1. Busca por ID (Tombamento)
+          query(collectionRef, where(documentId(), '>=', term), where(documentId(), '<=', endTerm), limit(20)),
+          // 2. Busca por Serial
+          query(collectionRef, where('serial', '>=', term), where('serial', '<=', endTerm), limit(20)),
+          // 3. Busca por Hostname
+          query(collectionRef, where('hostname', '>=', term), where('hostname', '<=', endTerm), limit(20))
+        ];
+
+        // Executa tudo ao mesmo tempo (Parallel Execution)
+        const snapshots = await Promise.all(queries.map(q => getDocs(q)));
+
+        // Junta e Dedupilica os resultados
+        const combinedMap = new Map();
+        snapshots.forEach(snap => {
+          snap.docs.forEach(doc => {
+            // AQUI aplicamos o filtro de segurança/tipo manualmente 
+            // pois o Firestore não suporta OR + AND complexos facilmente
+            const data = doc.data();
+            
+            // Verifica Filtros
+            const passType = type === 'all' || data.type === type;
+            const passStatus = status === 'all' || data.status === status;
+            const passUnit = isAdmin || allowedUnits.includes(data.unitId);
+            const passUnitFilter = unit === 'all' || data.unitId === unit;
+
+            if (passType && passStatus && passUnit && passUnitFilter) {
+               combinedMap.set(doc.id, { id: doc.id, ...data });
+            }
+          });
+        });
+
+        return {
+          data: Array.from(combinedMap.values()),
+          nextCursor: undefined, // Busca textual desativa paginação infinita por enquanto
+        };
+      }
+
+      // =========================================================
+      // CENÁRIO B: LISTAGEM PADRÃO (PAGINADA)
+      // =========================================================
+      
+      // Adiciona ordenação por data (padrão)
+      const constraints = [...baseConstraints, orderBy('createdAt', 'desc')];
+
+      // Adiciona Paginação
+      constraints.push(limit(ITEMS_PER_PAGE));
+      if (pageParam) {
+        constraints.push(startAfter(pageParam));
+      }
+
+      const q = query(collectionRef, ...constraints);
       const snapshot = await getDocs(q);
       const assets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      // Retorna os dados e o "cursor" para a próxima página
       return {
         data: assets,
         nextCursor: snapshot.docs.length === ITEMS_PER_PAGE ? snapshot.docs[snapshot.docs.length - 1] : undefined,
       };
     },
     
-    // Define como pegar o próximo cursor
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    
-    // Mantém os dados anteriores na tela enquanto carrega novos (UX Fluida)
     placeholderData: (previousData) => previousData,
   });
 };

@@ -1,0 +1,57 @@
+/* Breadcrumbs.module.css */
+
+.breadcrumbs {
+  margin-bottom: var(--spacing-md);
+  /* Opcional: Fundo sutil ou transparente */
+  /* background-color: var(--color-bg-page); */
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 0;
+  margin: 0;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.separator {
+  margin: 0 6px;
+  color: #9ca3af; /* Cinza claro */
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--color-text-secondary);
+  transition: color 0.2s;
+  font-weight: 500;
+}
+
+.link:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.current {
+  color: var(--color-text-primary); /* Cor mais escura para a página atual */
+  font-weight: 600;
+  /* Evita quebra de linha no meio da palavra */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px; /* Limite para IDs longos */
+}
+
+/* Ajuste para ícone da Home */
+.link svg {
+  display: block;
+}

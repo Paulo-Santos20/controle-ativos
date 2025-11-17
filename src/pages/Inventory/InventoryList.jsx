@@ -310,6 +310,7 @@ const InventoryList = () => {
           <Search size={18} />
           <input type="text" placeholder="Buscar Tombamento (ID)..." className={styles.searchInput} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           {searchTerm && (<button onClick={() => setSearchTerm("")} style={{background:'none', border:'none', cursor:'pointer', color:'#999'}}><X size={16} /></button>)}
+       onChange={(e) => setSearchTerm(e.target.value.toUpperCase())}
         </div>
         
         <div className={styles.filterRow}>

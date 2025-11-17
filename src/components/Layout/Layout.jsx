@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import styles from './Layout.module.css';
 
-// Importando os novos componentes
+// Componentes de Estrutura
 import Sidebar from '../Sidebar/Sidebar';
 import Header from '../Header/Header';
 import MobileNav from '../MobileNav/MobileNav';
 
+// --- NOVO: Importa o Breadcrumbs ---
+import Breadcrumbs from '../UI/Breadcrumbs';
+
 const Layout = ({ children }) => {
-  // Estado para controlar o menu mobile (Mobile-First)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => {
@@ -16,26 +18,30 @@ const Layout = ({ children }) => {
 
   return (
     <>
-      {/* 1. Menu Mobile (controlado por estado) */}
+      {/* Menu Mobile (Overlay) */}
       <MobileNav 
         isOpen={isMobileMenuOpen} 
         onClose={() => setIsMobileMenuOpen(false)} 
       />
 
-      {/* 2. Layout Principal (Grid) */}
+      {/* Grid Principal */}
       <div className={styles.layoutContainer}>
         
-        {/* Sidebar (só aparece em desktop) */}
+        {/* Sidebar (Desktop) */}
         <Sidebar />
 
-        {/* Wrapper de Conteúdo (ocupa o espaço certo no grid) */}
+        {/* Área de Conteúdo */}
         <div className={styles.contentWrapper}>
           
-          {/* Header (sempre visível) */}
+          {/* Header (Topo) */}
           <Header onToggleMobileMenu={toggleMobileMenu} />
 
-          {/* Conteúdo da Página */}
+          {/* Conteúdo Principal */}
           <main className={styles.mainContent}>
+            {/* --- BREADCRUMBS ADICIONADO AQUI --- */}
+            <Breadcrumbs />
+            
+            {/* Onde as páginas são renderizadas */}
             {children}
           </main>
         </div>
