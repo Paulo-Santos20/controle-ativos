@@ -23,7 +23,7 @@ import OptionsPage from "./pages/Cadastros/OptionsPage";
 // Página de Atividades
 import ActivityLogPage from "./pages/ActivityLog/ActivityLogPage";
 
-// --- AQUI ESTAVA O PROBLEMA: Importação Explícita ---
+// --- AQUI ESTÁ A CORREÇÃO: Importação do ProfileListPage ---
 import ProfileListPage from "./pages/Users/ProfileListPage";
 
 // Página Pública
@@ -35,16 +35,18 @@ export const router = createBrowserRouter([
     element: <Login />,
   },
   
-  // --- ROTA DE SCAN (FORA DO LAYOUT PRINCIPAL) ---
+  // =================================================================
+  // ÁREA PÚBLICA (SEM LOGIN)
+  // Esta rota está FORA do ProtectedRoute para o QR Code funcionar
+  // =================================================================
   {
     path: "/scan/:assetId",
-    element: (
-      <ProtectedRoute>
-        <AssetScanPage />
-      </ProtectedRoute>
-    ),
+    element: <AssetScanPage />, 
   },
 
+  // =================================================================
+  // ÁREA PRIVADA (COM LOGIN)
+  // =================================================================
   {
     path: "/",
     element: (
@@ -76,7 +78,10 @@ export const router = createBrowserRouter([
       
       // Rotas de Usuários
       { path: "usuarios/lista", element: <UserList /> },
-      { path: "usuarios/perfis", element: <ProfileListPage /> },
+      { 
+        path: "usuarios/perfis", 
+        element: <ProfileListPage /> // Agora a variável está definida
+      },
       
       // Redirecionamento legado
       { path: "users", element: <Navigate to="/usuarios/lista" replace /> },
