@@ -21,7 +21,7 @@ import {
 
 import { useAuth } from '/src/hooks/useAuth.js';
 // REMOVIDO: import { generateQrCodePdf } from '/src/utils/qrCodeGenerator.jsx';
-import { logAudit } from '/src/utils/auditLogger';
+import { logAudit } from '../../utils/AuditLogger.js';
 
 import styles from './AssetDetail.module.css'; 
 import Modal from '../../components/Modal/Modal';
