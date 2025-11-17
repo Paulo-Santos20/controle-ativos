@@ -1,10 +1,9 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import { getFunctions } from "firebase/functions"; // <-- 1. IMPORTAR FUNÇÕES
+import { getFunctions } from "firebase/functions";
 
-// O Vite lê as variáveis do .env através do objeto 'import.meta.env'
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -14,13 +13,24 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Inicializa o Firebase
-const app = initializeApp(firebaseConfig);
+// --- Singleton Pattern para evitar inicialização dupla ---
+let app;
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
+}
 
-// Exporta os serviços que seu app precisa
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-export const functions = getFunctions(app); 
+// Configuração de Cache Offline Robusta (Evita conflitos de abas)
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+});
 
+const auth = getAuth(app);
+const storage = getStorage(app);
+const functions = getFunctions(app);
+
+export { auth, db, storage, functions };
 export default app;

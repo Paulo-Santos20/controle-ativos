@@ -31,6 +31,8 @@ import AssetScanPage from "./pages/Public/AssetScanPage";
 
 import BulkImportPage from "./pages/Inventory/BulkImportPage";
 
+import MonitoringPage from "./pages/Monitoring/MonitoringPage";
+
 export const router = createBrowserRouter([
   {
     path: "/login",
@@ -88,6 +90,9 @@ export const router = createBrowserRouter([
       
       // Redirecionamento legado
       { path: "users", element: <Navigate to="/usuarios/lista" replace /> },
+      
+      { path: "monitoramento", element: <MonitoringPage /> },
+
     ],
   },
   { path: "*", element: <NotFound /> },

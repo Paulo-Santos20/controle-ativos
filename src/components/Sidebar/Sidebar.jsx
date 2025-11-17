@@ -4,24 +4,25 @@ import styles from './Sidebar.module.css';
 
 // --- A CORREÇÃO ESTÁ AQUI ---
 // Adicionei 'Settings' e 'Briefcase' à lista de importações
-import { 
-    LayoutDashboard, 
-    HardDrive, 
-    PieChart, 
-    Users, 
+import {
+    LayoutDashboard,
+    HardDrive,
+    PieChart,
+    Users,
     LogOut,
     Hospital,
-    Database, 
-    Building, 
+    Database,
+    Building,
     ChevronDown,
-    Laptop,   
+    Laptop,
     Printer,
     History,
     UserCog,
     Pencil,
     Briefcase,
-    Settings // <-- O ícone que faltava
-} from 'lucide-react'; 
+    Settings,
+    Timer
+} from 'lucide-react';
 
 import { auth } from '/src/lib/firebase.js'; // Caminho absoluto
 import { signOut } from 'firebase/auth';
@@ -48,7 +49,7 @@ const Sidebar = () => {
     return (
         <aside className={styles.sidebar}>
             <div className={styles.logoContainer}>
-                <Hospital size={30} /> 
+                <Hospital size={30} />
                 <h1>ITAM Hospitalar</h1>
             </div>
 
@@ -63,7 +64,7 @@ const Sidebar = () => {
                             <span>Dashboard</span>
                         </NavLink>
                     </li>
-                    
+
                     {/* Link do Inventário */}
                     <li>
                         <NavLink to="/inventory" className={({ isActive }) =>
@@ -73,7 +74,14 @@ const Sidebar = () => {
                             <span>Inventário</span>
                         </NavLink>
                     </li>
-                    
+                    <li>
+                        <NavLink to="/monitoramento" className={({ isActive }) =>
+                            isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
+                        }>
+                            <Timer size={20} />
+                            <span>Monitoramento</span>
+                        </NavLink>
+                    </li>
                     {/* Link de Atividades */}
                     <li>
                         <NavLink to="/atividades" className={({ isActive }) =>
@@ -83,7 +91,7 @@ const Sidebar = () => {
                             <span>Atividades</span>
                         </NavLink>
                     </li>
-                    
+
                     {/* Link de Relatórios */}
                     <li>
                         <NavLink to="/reports" className={({ isActive }) =>
@@ -96,19 +104,19 @@ const Sidebar = () => {
 
                     {/* Menu "Cadastros" Colapsível */}
                     <li className={styles.submenuItem}>
-                        <button 
-                            type="button" 
-                            className={`${styles.navLink} ${styles.submenuToggle}`} 
+                        <button
+                            type="button"
+                            className={`${styles.navLink} ${styles.submenuToggle}`}
                             onClick={() => setIsCadastrosOpen(!isCadastrosOpen)}
                         >
                             <Database size={20} />
                             <span>Cadastros</span>
-                            <ChevronDown 
-                                size={16} 
-                                className={`${styles.submenuIcon} ${isCadastrosOpen ? styles.open : ''}`} 
+                            <ChevronDown
+                                size={16}
+                                className={`${styles.submenuIcon} ${isCadastrosOpen ? styles.open : ''}`}
                             />
                         </button>
-                        
+
                         {isCadastrosOpen && (
                             <ul className={styles.submenu}>
                                 <li>
@@ -158,19 +166,19 @@ const Sidebar = () => {
 
                     {/* Menu "Usuários" Colapsível */}
                     <li className={styles.submenuItem}>
-                        <button 
-                            type="button" 
-                            className={`${styles.navLink} ${styles.submenuToggle}`} 
+                        <button
+                            type="button"
+                            className={`${styles.navLink} ${styles.submenuToggle}`}
                             onClick={() => setIsUsuariosOpen(!isUsuariosOpen)}
                         >
                             <UserCog size={20} />
                             <span>Usuários</span>
-                            <ChevronDown 
-                                size={16} 
-                                className={`${styles.submenuIcon} ${isUsuariosOpen ? styles.open : ''}`} 
+                            <ChevronDown
+                                size={16}
+                                className={`${styles.submenuIcon} ${isUsuariosOpen ? styles.open : ''}`}
                             />
                         </button>
-                        
+
                         {isUsuariosOpen && (
                             <ul className={styles.submenu}>
                                 <li>
@@ -197,7 +205,7 @@ const Sidebar = () => {
 
             {/* Seção do Usuário (agora apenas visual/logout rápido se o menu do header falhar) */}
             {/* Você pode remover isso se o UserMenu no Header for suficiente */}
-            <div className={styles.userSection} style={{display: 'none'}}> 
+            <div className={styles.userSection} style={{ display: 'none' }}>
                 {/* Mantido oculto por enquanto para respeitar o layout anterior */}
             </div>
         </aside>

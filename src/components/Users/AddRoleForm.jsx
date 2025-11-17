@@ -7,9 +7,6 @@ import { db } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
 import styles from '../Settings/AddUnitForm.module.css'; 
 
-/**
- * Define uma ação CRUD
- */
 const crudSchema = z.object({
   create: z.boolean(),
   read: z.boolean(),
@@ -17,15 +14,16 @@ const crudSchema = z.object({
   delete: z.boolean(),
 });
 
-/**
- * Estrutura de permissões
- */
 const permissionsSchema = z.object({
   dashboard: z.object({ read: z.boolean() }),
   ativos: crudSchema,
   cadastros_unidades: crudSchema,
   cadastros_modelos: crudSchema,
-  cadastros_empresas: crudSchema, // <-- NOVO: Permissão de Empresas
+  cadastros_empresas: crudSchema,
+  cadastros_opcoes: crudSchema,
+  // --- NOVO: Monitoramento ---
+  monitoramento: z.object({ read: z.boolean() }),
+  // ---------------------------
   movimentacao: z.object({ create: z.boolean() }),
   preventiva: z.object({ create: z.boolean() }),
   usuarios: crudSchema,
@@ -51,7 +49,9 @@ const AddRoleForm = ({ onClose, existingRoleDoc }) => {
       ativos: { ...defaultCrud },
       cadastros_unidades: { ...defaultCrud },
       cadastros_modelos: { ...defaultCrud },
-      cadastros_empresas: { ...defaultCrud }, // <-- NOVO: Padrão
+      cadastros_empresas: { ...defaultCrud },
+      cadastros_opcoes: { ...defaultCrud },
+      monitoramento: { read: false }, // <-- NOVO DEFAULT
       movimentacao: { create: false },
       preventiva: { create: false },
       usuarios: { ...defaultCrud },
@@ -73,12 +73,10 @@ const AddRoleForm = ({ onClose, existingRoleDoc }) => {
   useEffect(() => {
     if (isEditing && existingRoleDoc) {
       const data = existingRoleDoc.data();
-      
-      // Merge profundo para garantir que campos novos não quebrem perfis antigos
       const mergedPermissions = {
         ...defaultValues.permissions,
         ...data.permissions,
-        cadastros_empresas: { ...defaultValues.permissions.cadastros_empresas, ...data.permissions?.cadastros_empresas },
+        monitoramento: { ...defaultValues.permissions.monitoramento, ...data.permissions?.monitoramento },
       };
 
       reset({
@@ -161,20 +159,26 @@ const AddRoleForm = ({ onClose, existingRoleDoc }) => {
               <td><Checkbox name="permissions.ativos.update" /></td>
               <td><Checkbox name="permissions.ativos.delete" /></td>
             </tr>
+            {/* --- NOVO: MONITORAMENTO --- */}
+            <tr>
+              <td>Monitoramento (SLA)</td>
+              <td><Checkbox name="permissions.monitoramento.read" /></td>
+              <DisabledCell /><DisabledCell /><DisabledCell />
+            </tr>
+            {/* --------------------------- */}
             <tr>
               <td>Movimentação</td>
-              <td>(via Ativos)</td>
+              <td>(Ver Ativos)</td>
               <td><Checkbox name="permissions.movimentacao.create" /></td>
               <DisabledCell /><DisabledCell />
             </tr>
              <tr>
               <td>Preventiva</td>
-              <td>(via Ativos)</td>
+              <td>(Ver Ativos)</td>
               <td><Checkbox name="permissions.preventiva.create" /></td>
               <DisabledCell /><DisabledCell />
             </tr>
             
-            {/* --- CADASTROS --- */}
             <tr>
               <td>Cad: Unidades</td>
               <td><Checkbox name="permissions.cadastros_unidades.read" /></td>
@@ -189,7 +193,6 @@ const AddRoleForm = ({ onClose, existingRoleDoc }) => {
               <td><Checkbox name="permissions.cadastros_modelos.update" /></td>
               <td><Checkbox name="permissions.cadastros_modelos.delete" /></td>
             </tr>
-            {/* --- NOVO: EMPRESAS --- */}
             <tr>
               <td>Cad: Empresas</td>
               <td><Checkbox name="permissions.cadastros_empresas.read" /></td>
@@ -197,8 +200,14 @@ const AddRoleForm = ({ onClose, existingRoleDoc }) => {
               <td><Checkbox name="permissions.cadastros_empresas.update" /></td>
               <td><Checkbox name="permissions.cadastros_empresas.delete" /></td>
             </tr>
+            <tr>
+              <td>Cad: Opções</td>
+              <td><Checkbox name="permissions.cadastros_opcoes.read" /></td>
+              <td><Checkbox name="permissions.cadastros_opcoes.create" /></td>
+              <td><Checkbox name="permissions.cadastros_opcoes.update" /></td>
+              <td><Checkbox name="permissions.cadastros_opcoes.delete" /></td>
+            </tr>
 
-            {/* --- GESTÃO --- */}
             <tr>
               <td>Usuários</td>
               <td><Checkbox name="permissions.usuarios.read" /></td>

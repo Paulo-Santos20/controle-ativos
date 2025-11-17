@@ -1,0 +1,153 @@
+/* MonitoringPage.module.css */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.title { font-size: 2rem; font-weight: 700; color: var(--color-text-primary); margin: 0; }
+.subtitle { color: var(--color-text-secondary); margin-top: 4px; }
+
+/* Badge de Alerta no Topo */
+.alertBadge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #fef2f2;
+  color: #b91c1c;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: 1px solid #fca5a5;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  gap: var(--spacing-md);
+  background-color: var(--color-bg-component);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  flex-wrap: wrap;
+}
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--color-bg-page);
+  padding: 8px 12px;
+  border-radius: 8px;
+  flex: 1;
+  min-width: 200px;
+  border: 1px solid var(--color-border);
+}
+.searchBox input { border: none; background: transparent; width: 100%; outline: none; }
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.filterSelect {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-page);
+  font-weight: 500;
+}
+
+/* Tabela */
+.tableWrapper {
+  background-color: var(--color-bg-component);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  overflow-x: auto;
+}
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: 16px; text-align: left; border-bottom: 1px solid var(--color-border); }
+.table th { background-color: var(--color-bg-page); font-size: 0.85rem; text-transform: uppercase; color: var(--color-text-secondary); }
+
+/* Linha Atrasada */
+.rowOverdue {
+  background-color: #fff1f2; /* Fundo vermelho muito claro */
+}
+.rowOverdue td {
+  border-bottom-color: #fecaca;
+}
+
+.colFlex { display: flex; flex-direction: column; }
+.colFlex small { color: var(--color-text-secondary); font-size: 0.8rem; }
+
+.tagAlert {
+  background-color: #ef4444;
+  color: white;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: bold;
+}
+
+.statusPill {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background-color: #f3f4f6;
+  color: #374151;
+}
+/* Cores específicas para os status de atenção */
+.statusPill[data-status="Em manutenção"] { background-color: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
+.statusPill[data-status="Manutenção agendada"] { background-color: #fffbeb; color: #b45309; border: 1px solid #fef3c7; }
+.statusPill[data-status="Devolvido"] { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2; }
+
+.durationBox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1rem;
+  color: var(--color-text-primary);
+}
+.durationBox[data-alert="true"] {
+  color: #dc2626; /* Vermelho forte */
+  font-weight: bold;
+}
+.timeAgo { font-size: 0.75rem; color: var(--color-text-secondary); display: block; margin-top: 2px; }
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--color-primary);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+.actionButton:hover { text-decoration: underline; }
+
+/* States */
+.loadingState, .emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+.spinner { animation: spin 1s linear infinite; color: var(--color-primary); margin-bottom: 10px; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
