@@ -303,3 +303,22 @@
     display: none; /* Esconde o ponto em telas pequenas */
   }
 }
+/* Adicione ao final do arquivo */
+
+.secondaryButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--color-border);
+  background-color: white;
+  color: var(--color-text-primary);
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.secondaryButton:hover {
+  background-color: var(--color-bg-page);
+  border-color: var(--color-text-secondary);
+}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { updateProfile, signOut } from 'firebase/auth'; // Importei signOut
+import { updateProfile, signOut } from 'firebase/auth';
 import { 
   doc, 
   updateDoc, 
@@ -11,36 +11,38 @@ import {
   serverTimestamp, 
   query, 
   orderBy, 
-  onSnapshot,
+  onSnapshot, 
   writeBatch 
 } from 'firebase/firestore';
-import { db, auth } from '/src/lib/firebase.js';
+import { db, auth } from '/src/lib/firebase.js'; // Caminho absoluto
 import { toast } from 'sonner';
 import { UAParser } from 'ua-parser-js'; 
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
-  User, 
-  Mail, 
-  Save, 
-  Loader2, 
-  Monitor, 
-  Smartphone, 
-  ShieldAlert,
-  LogOut // Ícone novo
+  User, Mail, Save, Loader2, Monitor, Smartphone, ShieldAlert, Globe, LockKeyhole 
 } from 'lucide-react';
+
+// Importa os utilitários e componentes
+import { getLocalIP } from '/src/utils/getInternalIP.js';
+import Modal from '../../components/Modal/Modal';
+import ChangePasswordModal from '../../components/Users/ChangePasswordModal';
 
 import styles from './UserProfile.module.css'; 
 
+// Schema de validação do perfil básico
 const profileSchema = z.object({
   displayName: z.string().min(3, "O nome deve ter pelo menos 3 caracteres"),
 });
 
 const UserProfile = () => {
   const user = auth.currentUser;
+  
+  // Estados
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [loadingSessions, setLoadingSessions] = useState(true);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false); // Controle do Modal de Senha
 
   const { 
     register, 
@@ -54,11 +56,12 @@ const UserProfile = () => {
     }
   });
 
-  // --- 1. RASTREAMENTO DE SESSÃO ---
+  // --- 1. RASTREAMENTO DE SESSÃO (IP Local + Público) ---
   useEffect(() => {
     if (!user) return;
 
     const trackSession = async () => {
+      // Identificador único para este navegador
       let sessionId = localStorage.getItem('device_session_id');
       if (!sessionId) {
         sessionId = crypto.randomUUID();
@@ -66,42 +69,50 @@ const UserProfile = () => {
       }
       setCurrentSessionId(sessionId);
 
+      // Coleta dados do User Agent
       const parser = new UAParser();
       const result = parser.getResult();
       
-      // Tratamento seguro para valores nulos
-      const osName = result.os.name || 'OS Desconhecido';
-      const osVersion = result.os.version || '';
-      const browserName = result.browser.name || 'Navegador';
-      
-      const os = `${osName} ${osVersion}`.trim();
-      const browser = `${browserName}`.trim(); // Simplificado
+      const os = `${result.os.name || 'OS'} ${result.os.version || ''}`.trim();
+      const browser = `${result.browser.name || 'Nav'} ${result.browser.version || ''}`.trim();
       const deviceType = result.device.type || 'desktop';
 
-      let ip = 'Oculto pelo Navegador';
+      // 1. Tenta pegar IP Local (WebRTC)
+      let localIp = await getLocalIP();
+
+      // 2. Tenta pegar IP Público (API Externa)
+      let publicIp = '';
       try {
         const response = await fetch('https://api.ipify.org?format=json');
         const data = await response.json();
-        ip = data.ip; 
+        publicIp = data.ip;
       } catch (err) {
-        console.error("Erro IP", err);
+        console.error("Erro ao obter IP Público", err);
       }
 
+      // Formata o IP para exibição
+      let displayIp = localIp || (publicIp ? `${publicIp} (WAN)` : 'Desconhecido');
+
+      // Salva no Firestore
       const sessionRef = doc(db, 'users', user.uid, 'sessions', sessionId);
       await setDoc(sessionRef, {
         os,
         browser,
         deviceType,
-        ip,
+        ip: displayIp,
+        localIp: localIp || null,
+        publicIp: publicIp || null,
         lastActive: serverTimestamp(),
-        isCurrent: true 
+        isCurrent: true,
+        // Recupera nome personalizado do localStorage se existir
+        deviceName: localStorage.getItem('device_custom_name') || null 
       }, { merge: true });
     };
 
     trackSession();
   }, [user]);
 
-  // --- 2. BUSCAR LISTA ---
+  // --- 2. LISTAR SESSÕES EM TEMPO REAL ---
   useEffect(() => {
     if (!user) return;
     
@@ -120,43 +131,44 @@ const UserProfile = () => {
     return () => unsubscribe();
   }, [user]);
 
-  // --- 3. ATUALIZAR PERFIL ---
+  // --- 3. ATUALIZAR PERFIL (Nome) ---
   const onSubmit = async (data) => {
     try {
+      // Atualiza no Auth
       await updateProfile(user, { displayName: data.displayName });
+      // Sincroniza no Firestore
       const userDocRef = doc(db, 'users', user.uid);
       await updateDoc(userDocRef, { displayName: data.displayName });
+      
       toast.success("Perfil atualizado com sucesso!");
     } catch (error) {
       toast.error("Erro ao atualizar perfil: " + error.message);
     }
   };
 
-  // --- 4. AÇÃO: SAIR DE TODOS ---
+  // --- 4. AÇÕES DE SESSÃO ---
+
   const handleSignOutAll = async () => {
-    if (!window.confirm("Isso irá desconectar você e limpar o histórico de todos os dispositivos. Continuar?")) {
-      return;
-    }
-
+    if (!window.confirm("Isso desconectará todos os dispositivos, inclusive este. Continuar?")) return;
     const toastId = toast.loading("Encerrando sessões...");
-
     try {
       const batch = writeBatch(db);
-      
-      // Deleta TODAS as sessões do banco
-      sessions.forEach((session) => {
-        batch.delete(session.ref);
-      });
-
+      sessions.forEach((session) => batch.delete(session.ref));
       await batch.commit();
-      
-      // Desloga o usuário atual
       await signOut(auth);
-      
       toast.success("Desconectado com segurança.", { id: toastId });
-      // O ProtectedRoute irá redirecionar para o login automaticamente
     } catch (error) {
-      toast.error("Erro ao limpar sessões: " + error.message, { id: toastId });
+      toast.error("Erro: " + error.message, { id: toastId });
+    }
+  };
+
+  const handleRenameDevice = async () => {
+    const name = prompt("Dê um nome para este computador (ex: PC Recepção):");
+    if (name) {
+      localStorage.setItem('device_custom_name', name);
+      const sessionRef = doc(db, 'users', user.uid, 'sessions', currentSessionId);
+      await updateDoc(sessionRef, { deviceName: name });
+      toast.success("Dispositivo renomeado!");
     }
   };
 
@@ -167,17 +179,27 @@ const UserProfile = () => {
 
   return (
     <div className={styles.page}>
+      {/* --- MODAL DE TROCA DE SENHA --- */}
+      <Modal 
+        isOpen={isPasswordModalOpen} 
+        onClose={() => setIsPasswordModalOpen(false)} 
+        title="Redefinir Senha"
+      >
+        <ChangePasswordModal onClose={() => setIsPasswordModalOpen(false)} />
+      </Modal>
+
       <header className={styles.header}>
         <h1 className={styles.title}>Meu Perfil</h1>
       </header>
 
       <div className={styles.grid}>
         
-        {/* COLUNA ESQUERDA */}
+        {/* COLUNA ESQUERDA (Formulário) */}
         <div className={styles.column}>
           <div className={styles.card}>
             <h2 className={styles.cardTitle}>Informações Pessoais</h2>
             <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
+              
               <div className={styles.formGroup}>
                 <label htmlFor="displayName">Nome de Exibição</label>
                 <div className={styles.inputWrapper}>
@@ -188,11 +210,25 @@ const UserProfile = () => {
               </div>
 
               <div className={styles.formGroup}>
-                <label>E-mail (Não editável)</label>
+                <label>E-mail (Login)</label>
                 <div className={`${styles.inputWrapper} ${styles.disabled}`}>
                   <Mail size={18} className={styles.inputIcon} />
                   <input value={user?.email || ''} disabled />
                 </div>
+                <small className={styles.hint}>O e-mail não pode ser alterado aqui.</small>
+              </div>
+
+              {/* --- BOTÃO ALTERAR SENHA --- */}
+              <div style={{marginTop: '10px', marginBottom: '10px'}}>
+                <button 
+                  type="button" 
+                  className={styles.secondaryButton}
+                  onClick={() => setIsPasswordModalOpen(true)}
+                  style={{width: '100%', justifyContent: 'center'}}
+                >
+                  <LockKeyhole size={18} /> 
+                  Alterar Senha
+                </button>
               </div>
 
               <div className={styles.formActions}>
@@ -205,32 +241,25 @@ const UserProfile = () => {
           </div>
         </div>
 
-        {/* COLUNA DIREITA: SESSÕES */}
+        {/* COLUNA DIREITA (Sessões) */}
         <div className={styles.column}>
           <div className={styles.card}>
             
-            {/* Cabeçalho do Card com Botão SEMPRE VISÍVEL se houver sessões */}
             <div className={styles.cardHeaderRow}>
-              <h2 className={styles.cardTitle}>Sessões Ativas</h2>
-              
+              <h2 className={styles.cardTitle}>Sessões Ativas ({sessions.length})</h2>
               {sessions.length > 0 && (
-                <button 
-                  onClick={handleSignOutAll} 
-                  className={styles.dangerButton}
-                  title="Limpar histórico e sair"
-                >
-                  <ShieldAlert size={14} />
-                  Sair de Todos
+                <button onClick={handleSignOutAll} className={styles.dangerButton}>
+                  <ShieldAlert size={14} /> Sair de Todos
                 </button>
               )}
             </div>
 
             <p className={styles.cardDescription}>
-              Dispositivos que acessaram sua conta recentemente.
+              Dispositivos conectados à sua conta.
             </p>
 
             <div className={styles.sessionList}>
-              {loadingSessions && <p>Carregando sessões...</p>}
+              {loadingSessions && <div style={{textAlign:'center', padding: 20}}><Loader2 className={styles.spinner}/></div>}
               
               {sessions.map((session) => {
                 const isThisDevice = session.id === currentSessionId;
@@ -238,25 +267,35 @@ const UserProfile = () => {
 
                 return (
                   <div key={session.id} className={`${styles.sessionItem} ${isThisDevice ? styles.activeItem : ''}`}>
-                    <div className={styles.deviceIcon}>
-                      {getDeviceIcon(session.deviceType)}
-                    </div>
+                    <div className={styles.deviceIcon}>{getDeviceIcon(session.deviceType)}</div>
                     
                     <div className={styles.sessionInfo}>
                       <div className={styles.sessionHeader}>
-                        <strong>{session.os} - {session.browser}</strong>
-                        {isThisDevice && <span className={styles.badge}>Este dispositivo</span>}
+                        {/* Mostra Nome Personalizado ou Info do Sistema */}
+                        <strong>{session.deviceName || `${session.os} • ${session.browser}`}</strong>
+                        {isThisDevice && (
+                           <span 
+                             className={styles.badge} 
+                             onClick={handleRenameDevice} 
+                             style={{cursor: 'pointer'}}
+                             title="Clique para renomear este dispositivo"
+                           >
+                             Este dispositivo (Renomear)
+                           </span>
+                        )}
                       </div>
                       
                       <div className={styles.sessionDetails}>
-                        <span>IP: {session.ip}</span>
+                        <span style={{display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'monospace'}}>
+                           <Globe size={12}/> {session.ip}
+                        </span>
                         <span className={styles.dot}>•</span>
                         <span>
                           {isThisDevice 
-                            ? "Ativo agora" 
+                            ? <span style={{color: '#10b981', fontWeight: 600}}>Online agora</span> 
                             : lastActive 
-                              ? `Visto há ${formatDistanceToNow(lastActive, { locale: ptBR })}` 
-                              : "Desconhecido"
+                              ? format(lastActive, "dd/MM HH:mm", { locale: ptBR }) 
+                              : "..."
                           }
                         </span>
                       </div>
