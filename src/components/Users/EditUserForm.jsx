@@ -10,7 +10,7 @@ import styles from '../Settings/AddUnitForm.module.css';
 import { Loader2 } from 'lucide-react';
 
 // --- 1. IMPORTA O LOGGER ---
-import { logAudit } from '/src/utils/auditLogger';
+import { logAudit } from '../../utils/AuditLogger';
 
 const userSchema = z.object({
   displayName: z.string().min(1, "O nome é obrigatório"),
