@@ -87,17 +87,18 @@ const MoveAssetForm = ({ onClose, assetId, currentData }) => {
         details: detailsLog,
         timestamp: serverTimestamp(),
         user: auth.currentUser.displayName || auth.currentUser.email,
+         unitId: currentData.unitId,
         // Salva os dados antigos e novos para auditoria
         oldData: {
           pavimento: currentData.pavimento || "",
           setor: currentData.setor || "",
-          sala: currentData.sala || "",
+          sala: currentData.sala || "",          
         },
         newData: {
           pavimento: data.pavimento,
           setor: data.setor,
           sala: data.sala,
-        }
+        }       
       });
 
       // 3. Executa a transação

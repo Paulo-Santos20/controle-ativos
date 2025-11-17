@@ -5,11 +5,10 @@ import { z } from 'zod';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
-// Reutiliza o CSS de formulário complexo
 import styles from '../Settings/AddUnitForm.module.css'; 
 
 /**
- * Define uma ação CRUD (Create, Read, Update, Delete)
+ * Define uma ação CRUD
  */
 const crudSchema = z.object({
   create: z.boolean(),
@@ -19,48 +18,31 @@ const crudSchema = z.object({
 });
 
 /**
- * Estrutura de permissões que será salva no documento.
- * (Princípio 1: Arquitetura Escalável)
+ * Estrutura de permissões
  */
 const permissionsSchema = z.object({
   dashboard: z.object({ read: z.boolean() }),
-  // Permissões de Ativos (Inventário)
   ativos: crudSchema,
-  // Permissões de Cadastros (Admin)
   cadastros_unidades: crudSchema,
   cadastros_modelos: crudSchema,
-  // Permissões de Ações (Logs)
+  cadastros_empresas: crudSchema, // <-- NOVO: Permissão de Empresas
   movimentacao: z.object({ create: z.boolean() }),
   preventiva: z.object({ create: z.boolean() }),
-  // Permissões de Gerenciamento de Usuários
   usuarios: crudSchema,
   perfis: crudSchema,
-  // (Você pode adicionar 'relatorios: crudSchema' aqui no futuro)
 });
 
-/**
- * Schema de validação do formulário completo (ID, Nome + Permissões).
- */
 const roleSchema = z.object({
-  id: z.string().min(3, "O ID é obrigatório (ex: gestor, tecnico_local)"),
+  id: z.string().min(3, "O ID é obrigatório"),
   name: z.string().min(3, "O Nome do Perfil é obrigatório"),
   permissions: permissionsSchema,
 });
 
-// Helper para criar um objeto CRUD padrão (tudo false)
 const defaultCrud = { create: false, read: false, update: false, delete: false };
 
-/**
- * Formulário para Criar ou Editar um Perfil (Role).
- * @param {object} props
- * @param {() => void} props.onClose - Função para fechar o modal.
- * @param {DocumentSnapshot} [props.existingRoleDoc] - O doc para editar.
- */
 const AddRoleForm = ({ onClose, existingRoleDoc }) => {
   const isEditing = !!existingRoleDoc;
 
-  // (Princípio 5: Código de Alta Qualidade)
-  // Define todos os valores padrão como 'false'
   const defaultValues = {
     id: "",
     name: "",
@@ -69,6 +51,7 @@ const AddRoleForm = ({ onClose, existingRoleDoc }) => {
       ativos: { ...defaultCrud },
       cadastros_unidades: { ...defaultCrud },
       cadastros_modelos: { ...defaultCrud },
+      cadastros_empresas: { ...defaultCrud }, // <-- NOVO: Padrão
       movimentacao: { create: false },
       preventiva: { create: false },
       usuarios: { ...defaultCrud },
@@ -79,7 +62,7 @@ const AddRoleForm = ({ onClose, existingRoleDoc }) => {
   const { 
     register, 
     handleSubmit, 
-    control, // Para os checkboxes
+    control, 
     reset,
     formState: { errors, isSubmitting } 
   } = useForm({
@@ -87,25 +70,15 @@ const AddRoleForm = ({ onClose, existingRoleDoc }) => {
     defaultValues: defaultValues
   });
 
-  // UI/UX: Preenche o formulário se estiver em modo de edição
   useEffect(() => {
     if (isEditing && existingRoleDoc) {
       const data = existingRoleDoc.data();
-      // 'merge' profundo dos valores padrão com os dados salvos
-      // Isso garante que se uma nova permissão for adicionada ao código,
-      // o formulário não quebre ao editar um perfil antigo.
+      
+      // Merge profundo para garantir que campos novos não quebrem perfis antigos
       const mergedPermissions = {
         ...defaultValues.permissions,
         ...data.permissions,
-        // Garante que os sub-objetos também sejam mesclados
-        dashboard: { ...defaultValues.permissions.dashboard, ...data.permissions?.dashboard },
-        ativos: { ...defaultValues.permissions.ativos, ...data.permissions?.ativos },
-        cadastros_unidades: { ...defaultValues.permissions.cadastros_unidades, ...data.permissions?.cadastros_unidades },
-        cadastros_modelos: { ...defaultValues.permissions.cadastros_modelos, ...data.permissions?.cadastros_modelos },
-        movimentacao: { ...defaultValues.permissions.movimentacao, ...data.permissions?.movimentacao },
-        preventiva: { ...defaultValues.permissions.preventiva, ...data.permissions?.preventiva },
-        usuarios: { ...defaultValues.permissions.usuarios, ...data.permissions?.usuarios },
-        perfis: { ...defaultValues.permissions.perfis, ...data.permissions?.perfis },
+        cadastros_empresas: { ...defaultValues.permissions.cadastros_empresas, ...data.permissions?.cadastros_empresas },
       };
 
       reset({
@@ -114,47 +87,35 @@ const AddRoleForm = ({ onClose, existingRoleDoc }) => {
         permissions: mergedPermissions,
       }); 
     } else {
-      reset(defaultValues); // Limpa para o padrão ao criar novo
+      reset(defaultValues);
     }
   }, [existingRoleDoc, isEditing, reset]);
 
-  /**
-   * Salva o Perfil (Role) no Firestore.
-   */
   const onSubmit = async (data) => {
     const toastId = toast.loading("Salvando perfil...");
     try {
       const roleRef = doc(db, 'roles', data.id);
-
       await setDoc(roleRef, {
         name: data.name,
         permissions: data.permissions,
       });
-      
       toast.success("Perfil salvo com sucesso!", { id: toastId });
-      onClose(); // Fecha o modal
+      onClose();
     } catch (error) {
       toast.error("Erro ao salvar: " + error.message, { id: toastId });
-      console.error(error);
     }
   };
   
-  // Helper de UI para criar um checkbox
   const Checkbox = ({ name }) => (
     <Controller
       name={name}
       control={control}
       render={({ field }) => (
-        <input 
-          type="checkbox" 
-          checked={!!field.value} // Garante que é booleano
-          onChange={field.onChange} 
-        />
+        <input type="checkbox" checked={!!field.value} onChange={field.onChange} />
       )}
     />
   );
 
-  // Helper de UI para Célula Desabilitada
   const DisabledCell = () => <td className={styles.disabledCell}></td>;
 
   return (
@@ -164,99 +125,89 @@ const AddRoleForm = ({ onClose, existingRoleDoc }) => {
         <legend className={styles.subtitle}>Informações do Perfil</legend>
         <div className={styles.formGroup}>
           <label htmlFor="id">ID (ex: gestor, tecnico_local)</label>
-          <input 
-            id="id" 
-            {...register("id")} 
-            className={errors.id ? styles.inputError : ''}
-            disabled={isEditing} // Não pode editar o ID
-          />
+          <input id="id" {...register("id")} className={errors.id ? styles.inputError : ''} disabled={isEditing} />
           {errors.id && <p className={styles.errorMessage}>{errors.id.message}</p>}
         </div>
         <div className={styles.formGroup}>
-          <label htmlFor="name">Nome (ex: Gestor, Técnico Local)</label>
-          <input 
-            id="name" 
-            {...register("name")} 
-            className={errors.name ? styles.inputError : ''}
-          />
+          <label htmlFor="name">Nome (ex: Técnico Local)</label>
+          <input id="name" {...register("name")} className={errors.name ? styles.inputError : ''} />
           {errors.name && <p className={styles.errorMessage}>{errors.name.message}</p>}
         </div>
       </fieldset>
 
       <fieldset className={styles.fieldset}>
-        <legend className={styles.subtitle}>Permissões (O que pode fazer?)</legend>
+        <legend className={styles.subtitle}>Permissões</legend>
         
-        {/* --- Tabela de Permissões CORRIGIDA (UI/UX) --- */}
         <table className={styles.permissionsTable}>
           <thead>
             <tr>
               <th>Módulo</th>
-              <th>Ver (read)</th>
-              <th>Criar (create)</th>
-              <th>Editar (update)</th>
-              <th>Excluir (delete)</th>
+              <th>Ver</th>
+              <th>Criar</th>
+              <th>Editar</th>
+              <th>Excluir</th>
             </tr>
           </thead>
           <tbody>
-            {/* Dashboard */}
             <tr>
               <td>Dashboard</td>
               <td><Checkbox name="permissions.dashboard.read" /></td>
-              <DisabledCell />
-              <DisabledCell />
-              <DisabledCell />
+              <DisabledCell /><DisabledCell /><DisabledCell />
             </tr>
-            {/* Inventário (Ativos) */}
             <tr>
-              <td>Inventário (Ativos)</td>
+              <td>Inventário</td>
               <td><Checkbox name="permissions.ativos.read" /></td>
               <td><Checkbox name="permissions.ativos.create" /></td>
               <td><Checkbox name="permissions.ativos.update" /></td>
               <td><Checkbox name="permissions.ativos.delete" /></td>
             </tr>
-            {/* Movimentação */}
             <tr>
-              <td>Movimentação (Log)</td>
-              <td>(incluído em "Ver Ativos")</td>
+              <td>Movimentação</td>
+              <td>(via Ativos)</td>
               <td><Checkbox name="permissions.movimentacao.create" /></td>
-              <DisabledCell />
-              <DisabledCell />
+              <DisabledCell /><DisabledCell />
             </tr>
-             {/* Preventiva */}
-            <tr>
-              <td>Preventiva (Log)</td>
-              <td>(incluído em "Ver Ativos")</td>
+             <tr>
+              <td>Preventiva</td>
+              <td>(via Ativos)</td>
               <td><Checkbox name="permissions.preventiva.create" /></td>
-              <DisabledCell />
-              <DisabledCell />
+              <DisabledCell /><DisabledCell />
             </tr>
-            {/* Cadastros: Unidades */}
+            
+            {/* --- CADASTROS --- */}
             <tr>
-              <td>Cadastro: Unidades</td>
+              <td>Cad: Unidades</td>
               <td><Checkbox name="permissions.cadastros_unidades.read" /></td>
               <td><Checkbox name="permissions.cadastros_unidades.create" /></td>
               <td><Checkbox name="permissions.cadastros_unidades.update" /></td>
               <td><Checkbox name="permissions.cadastros_unidades.delete" /></td>
             </tr>
-            {/* Cadastros: Modelos */}
             <tr>
-              <td>Cadastro: Modelos (PC/Imp)</td>
+              <td>Cad: Modelos</td>
               <td><Checkbox name="permissions.cadastros_modelos.read" /></td>
               <td><Checkbox name="permissions.cadastros_modelos.create" /></td>
               <td><Checkbox name="permissions.cadastros_modelos.update" /></td>
               <td><Checkbox name="permissions.cadastros_modelos.delete" /></td>
             </tr>
-            {/* Gerenciamento: Usuários */}
+            {/* --- NOVO: EMPRESAS --- */}
             <tr>
-              <td>Gerenciamento: Usuários</td>
+              <td>Cad: Empresas</td>
+              <td><Checkbox name="permissions.cadastros_empresas.read" /></td>
+              <td><Checkbox name="permissions.cadastros_empresas.create" /></td>
+              <td><Checkbox name="permissions.cadastros_empresas.update" /></td>
+              <td><Checkbox name="permissions.cadastros_empresas.delete" /></td>
+            </tr>
+
+            {/* --- GESTÃO --- */}
+            <tr>
+              <td>Usuários</td>
               <td><Checkbox name="permissions.usuarios.read" /></td>
               <td><Checkbox name="permissions.usuarios.create" /></td>
-              <td><Checkbox name="permissions.usuarios.update" /> (Nome)</td>
+              <td><Checkbox name="permissions.usuarios.update" /></td>
               <td><Checkbox name="permissions.usuarios.delete" /></td>
             </tr>
-            {/* Gerenciamento: Perfis */}
             <tr>
-              <td>Gerenciamento: Perfis (Roles)</td>
+              <td>Perfis (Roles)</td>
               <td><Checkbox name="permissions.perfis.read" /></td>
               <td><Checkbox name="permissions.perfis.create" /></td>
               <td><Checkbox name="permissions.perfis.update" /></td>
@@ -264,17 +215,11 @@ const AddRoleForm = ({ onClose, existingRoleDoc }) => {
             </tr>
           </tbody>
         </table>
-
       </fieldset>
 
-      {/* --- Botões de Ação --- */}
       <div className={styles.buttonContainer}>
-        <button type="button" onClick={onClose} className={styles.secondaryButton}>
-          Cancelar
-        </button>
-        <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>
-          {isSubmitting ? "Salvando..." : "Salvar Perfil"}
-        </button>
+        <button type="button" onClick={onClose} className={styles.secondaryButton}>Cancelar</button>
+        <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>Salvar Perfil</button>
       </div>
     </form>
   );

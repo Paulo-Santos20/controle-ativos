@@ -1,13 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { db } from '../../lib/firebase.js'; 
+import { db } from '../../lib/firebase.js';
 import { 
-  collection, 
-  query, 
-  orderBy, 
-  limit, 
-  where, 
-  collectionGroup,
-  documentId // Importante para filtrar a coleção de unidades pelo ID
+  collection, query, orderBy, limit, where, collectionGroup, documentId 
 } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -16,147 +10,91 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { 
-  Laptop, 
-  Printer, 
-  Wrench, 
-  History, 
-  Plus, 
-  PackageSearch,
-  Loader2,
-  ArrowRight
+  Laptop, Printer, Wrench, History, Plus, PackageSearch, Loader2, ArrowRight
 } from 'lucide-react';
 
-// --- IMPORTA O HOOK DE SEGURANÇA ---
-import { useAuth } from '/src/hooks/useAuth.js';
-
+import { useAuth } from '/src/hooks/useAuth.js'; // Hook de Auth
 import styles from './Dashboard.module.css';
 import Modal from '../../components/Modal/Modal';
-
-// Componentes do Fluxo de Registro
 import AssetTypeSelector from '../../components/Inventory/AssetTypeSelector';
 import AddAssetForm from '../../components/Inventory/AddAssetForm';
 import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
-
-// Componentes do Fluxo de Manutenção
 import AssetSearchForm from '../../components/Inventory/AssetSearchForm';
 import MaintenanceAssetForm from '../../components/Inventory/MaintenanceAssetForm';
 
 const COLORS = ['#007aff', '#5ac8fa', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
 
 const Dashboard = () => {
-  // --- 1. SEGURANÇA E PERMISSÕES ---
   const { isAdmin, allowedUnits, permissions, loading: authLoading } = useAuth();
-
-  // --- 2. ESTADOS DE UI ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalView, setModalView] = useState('select'); 
   const [maintenanceTarget, setMaintenanceTarget] = useState(null);
 
-  // --- 3. QUERIES SEGURAS (Baseadas em Permissão) ---
-
-  // Helper para construir constraints baseadas na permissão
+  // Helper para constraints de segurança
   const getPermissionConstraints = () => {
-    if (isAdmin) return []; // Admin vê tudo
-    if (allowedUnits.length > 0) return [where('unitId', 'in', allowedUnits)]; // Usuário vê suas unidades
-    return [where('unitId', '==', 'SEM_PERMISSAO')]; // Bloqueia tudo
+    if (isAdmin) return []; 
+    if (allowedUnits.length > 0) return [where('unitId', 'in', allowedUnits)]; 
+    return [where('unitId', '==', 'BLOQUEADO')];
   };
 
-  // Query 1: Em Manutenção
-  const maintenanceQuery = useMemo(() => {
-    if (authLoading) return null;
-    return query(
-      collection(db, 'assets'), 
-      where('status', '==', 'Em manutenção'),
-      ...getPermissionConstraints()
-    );
-  }, [authLoading, isAdmin, allowedUnits]);
-  const [maintenanceAssets, loadingMaintenance] = useCollection(maintenanceQuery);
+  // Queries dos Cards (Computadores, Impressoras, Manutenção)
+  const maintenanceQuery = useMemo(() => authLoading ? null : query(collection(db, 'assets'), where('status', '==', 'Em manutenção'), ...getPermissionConstraints()), [authLoading, isAdmin, allowedUnits]);
+  const [maintenanceAssets] = useCollection(maintenanceQuery);
 
-  // Query 2: Computadores
-  const computersQuery = useMemo(() => {
-    if (authLoading) return null;
-    return query(
-      collection(db, 'assets'), 
-      where('type', '==', 'computador'),
-      ...getPermissionConstraints()
-    );
-  }, [authLoading, isAdmin, allowedUnits]);
+  const computersQuery = useMemo(() => authLoading ? null : query(collection(db, 'assets'), where('type', '==', 'computador'), ...getPermissionConstraints()), [authLoading, isAdmin, allowedUnits]);
   const [computerAssets, loadingComputers] = useCollection(computersQuery);
 
-  // Query 3: Impressoras
-  const printersQuery = useMemo(() => {
-    if (authLoading) return null;
-    return query(
-      collection(db, 'assets'), 
-      where('type', '==', 'impressora'),
-      ...getPermissionConstraints()
-    );
-  }, [authLoading, isAdmin, allowedUnits]);
+  const printersQuery = useMemo(() => authLoading ? null : query(collection(db, 'assets'), where('type', '==', 'impressora'), ...getPermissionConstraints()), [authLoading, isAdmin, allowedUnits]);
   const [printerAssets, loadingPrinters] = useCollection(printersQuery);
 
-  // Query 4: Unidades (Para o Gráfico)
+  // Query do Gráfico (Unidades)
   const unitsQuery = useMemo(() => {
     if (authLoading) return null;
-    if (isAdmin) {
-      // Admin vê todas as unidades ordenadas por nome
-      return query(collection(db, 'units'), orderBy('name', 'asc'));
-    } else if (allowedUnits.length > 0) {
-      // Usuário comum vê apenas suas unidades (filtro pelo ID do documento)
-      return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
-    } else {
-      return null;
-    }
+    if (isAdmin) return query(collection(db, 'units'), orderBy('name', 'asc'));
+    if (allowedUnits.length > 0) return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
+    return null;
   }, [authLoading, isAdmin, allowedUnits]);
   const [units, loadingUnits] = useCollection(unitsQuery);
 
-  // Query 5: Feed de Histórico
-  // Nota: collectionGroup não suporta 'where unitId in [...]' facilmente sem índices complexos.
-  // Por enquanto, buscamos global e filtramos visualmente se necessário, ou confiamos nas Regras de Segurança.
-  const [history, loadingHistory, errorHistory] = useCollection(
-    query(collectionGroup(db, 'history'), orderBy('timestamp', 'desc'), limit(5))
-  );
+  // --- 5. FEED DE ATIVIDADE (ATUALIZADO COM FILTRO) ---
+  const historyQuery = useMemo(() => {
+    if (authLoading) return null;
+    
+    let constraints = [orderBy('timestamp', 'desc'), limit(5)];
 
-  // --- PROCESSAMENTO DE DADOS ---
-  
+    // Se NÃO for admin, filtra o histórico pela unidade
+    if (!isAdmin) {
+      if (allowedUnits.length > 0) {
+        constraints.push(where('unitId', 'in', allowedUnits));
+      } else {
+        return null; // Não busca nada
+      }
+    }
+    
+    return query(collectionGroup(db, 'history'), ...constraints);
+  }, [authLoading, isAdmin, allowedUnits]);
+
+  const [history, loadingHistory, errorHistory] = useCollection(historyQuery);
+
+  // Processamento de dados
   const pieChartData = units?.docs.map((doc, index) => ({
     name: doc.data().sigla || doc.data().name, 
     value: doc.data().assetCount || 0, 
     fill: COLORS[index % COLORS.length] 
   })) || [];
 
-  // Helper para contar ativos (excluindo devolvidos)
   const getActiveCount = (loading, snapshot) => {
     if (loading || authLoading) return <Loader2 size={16} className={styles.spinnerSmall} />;
     if (!snapshot) return 0;
     return snapshot.docs.filter(doc => doc.data().status !== 'Devolvido').length;
   };
 
-  // --- LÓGICA DE MODAL ---
-
-  const handleOpenRegister = () => {
-    setModalView('select');
-    setIsModalOpen(true);
-  };
-
-  const handleOpenMaintenance = () => {
-    setMaintenanceTarget(null);
-    setModalView('maintenance_search');
-    setIsModalOpen(true);
-  };
-
-  const handleAssetFound = (assetData) => {
-    setMaintenanceTarget(assetData);
-    setModalView('maintenance_form');
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setTimeout(() => {
-      setModalView('select');
-      setMaintenanceTarget(null);
-    }, 300);
-  };
-
+  // Funções de Modal (sem alteração)
+  const handleOpenRegister = () => { setModalView('select'); setIsModalOpen(true); };
+  const handleOpenMaintenance = () => { setMaintenanceTarget(null); setModalView('maintenance_search'); setIsModalOpen(true); };
+  const handleAssetFound = (assetData) => { setMaintenanceTarget(assetData); setModalView('maintenance_form'); };
+  const handleCloseModal = () => { setIsModalOpen(false); setTimeout(() => { setModalView('select'); setMaintenanceTarget(null); }, 300); };
+  
   const getModalTitle = () => {
     if (modalView === 'maintenance_search') return "Buscar Ativo para Manutenção";
     if (modalView === 'maintenance_form') return `Manutenção: ${maintenanceTarget?.id}`;
@@ -170,121 +108,53 @@ const Dashboard = () => {
       case 'select': return <AssetTypeSelector onSelectType={setModalView} />;
       case 'computer': return <AddAssetForm onClose={handleCloseModal} />;
       case 'printer': return <AddPrinterForm onClose={handleCloseModal} />;
-      case 'maintenance_search': 
-        return <AssetSearchForm onAssetFound={handleAssetFound} onCancel={handleCloseModal} />;
-      case 'maintenance_form':
-        return (
-          <MaintenanceAssetForm 
-            onClose={handleCloseModal} 
-            assetId={maintenanceTarget?.id} 
-            currentData={maintenanceTarget} 
-          />
-        );
+      case 'maintenance_search': return <AssetSearchForm onAssetFound={handleAssetFound} onCancel={handleCloseModal} />;
+      case 'maintenance_form': return <MaintenanceAssetForm onClose={handleCloseModal} assetId={maintenanceTarget?.id} currentData={maintenanceTarget} />;
       default: return null;
     }
   };
 
   return (
     <div className={styles.dashboard}>
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={handleCloseModal} 
-        title={getModalTitle()}
-      >
-        {renderModalContent()}
-      </Modal>
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={getModalTitle()}>{renderModalContent()}</Modal>
 
       <header className={styles.header}>
         <h1 className={styles.title}>Dashboard</h1>
         <div className={styles.quickActions}>
-          
-          {/* Botão Registrar (Protegido por Permissão) */}
-          <button 
-            className={styles.actionButton} 
-            onClick={handleOpenRegister}
-            disabled={!permissions.ativos.create}
-            title={!permissions.ativos.create ? "Sem permissão para registrar" : "Registrar Novo Ativo"}
-            style={{ opacity: !permissions.ativos.create ? 0.6 : 1, cursor: !permissions.ativos.create ? 'not-allowed' : 'pointer' }}
-          >
+          <button className={styles.actionButton} onClick={handleOpenRegister} disabled={!permissions?.ativos?.create} style={{ opacity: !permissions?.ativos?.create ? 0.6 : 1 }}>
             <Plus size={18} /> Registrar Novo Ativo
           </button>
-          
-          {/* Botão Manutenção (Protegido - assume permissão de update ou create) */}
-          <button 
-            className={styles.actionButtonSecondary} 
-            onClick={handleOpenMaintenance}
-            disabled={!permissions.ativos.update}
-            style={{ opacity: !permissions.ativos.update ? 0.6 : 1, cursor: !permissions.ativos.update ? 'not-allowed' : 'pointer' }}
-          >
+          <button className={styles.actionButtonSecondary} onClick={handleOpenMaintenance} disabled={!permissions?.ativos?.update} style={{ opacity: !permissions?.ativos?.update ? 0.6 : 1 }}>
             <Wrench size={18} /> Iniciar Manutenção
           </button>
         </div>
       </header>
 
-      {/* CARDS */}
       <div className={styles.cardGrid}>
-        <div className={styles.card}>
-          <Wrench className={styles.cardIcon} style={{ color: 'var(--color-warning)' }} />
-          <span className={styles.cardTitle}>Em Manutenção</span>
-          <span className={styles.cardValue}>
-            {maintenanceAssets ? maintenanceAssets.size : 0}
-          </span>
-        </div>
-        <div className={styles.card}>
-          <Laptop className={styles.cardIcon} style={{ color: 'var(--color-primary)' }} />
-          <span className={styles.cardTitle}>Computadores Ativos</span>
-          <span className={styles.cardValue}>
-            {getActiveCount(loadingComputers, computerAssets)}
-          </span>
-        </div>
-        <div className={styles.card}>
-          <Printer className={styles.cardIcon} style={{ color: 'var(--color-text-secondary)' }} />
-          <span className={styles.cardTitle}>Impressoras Ativas</span>
-          <span className={styles.cardValue}>
-            {getActiveCount(loadingPrinters, printerAssets)}
-          </span>
-        </div>
+        <div className={styles.card}><Wrench className={styles.cardIcon} style={{ color: 'var(--color-warning)' }} /><span className={styles.cardTitle}>Em Manutenção</span><span className={styles.cardValue}>{maintenanceAssets ? maintenanceAssets.size : 0}</span></div>
+        <div className={styles.card}><Laptop className={styles.cardIcon} style={{ color: 'var(--color-primary)' }} /><span className={styles.cardTitle}>Computadores Ativos</span><span className={styles.cardValue}>{getActiveCount(loadingComputers, computerAssets)}</span></div>
+        <div className={styles.card}><Printer className={styles.cardIcon} style={{ color: 'var(--color-text-secondary)' }} /><span className={styles.cardTitle}>Impressoras Ativas</span><span className={styles.cardValue}>{getActiveCount(loadingPrinters, printerAssets)}</span></div>
       </div>
 
       <div className={styles.contentRow}>
-        
-        {/* GRÁFICO (Dados Seguros) */}
         <div className={styles.chartContainer}>
           <h2 className={styles.sectionTitle}>Ativos por Unidade</h2>
-          {loadingUnits || authLoading ? (
-            <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>
-          ) : (
+          {loadingUnits ? <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div> : (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie
-                  data={pieChartData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  outerRadius={110}
-                  dataKey="value"
-                  label={({ name, value }) => `${name}: ${value}`}
-                >
-                  {pieChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
+                <Pie data={pieChartData} cx="50%" cy="50%" labelLine={false} outerRadius={110} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                  {pieChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.fill} />))}
                 </Pie>
-                <Tooltip />
-                <Legend />
+                <Tooltip /> <Legend />
               </PieChart>
             </ResponsiveContainer>
           )}
         </div>
 
-        {/* FEED */}
         <div className={styles.feedContainer}>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>
-              <History size={18} /> Últimas Atividades
-            </h2>
-            <Link to="/atividades" className={styles.viewAllLink}>
-              Ver Tudo <ArrowRight size={16} />
-            </Link>
+            <h2 className={styles.sectionTitle}><History size={18} /> Últimas Atividades</h2>
+            <Link to="/atividades" className={styles.viewAllLink}>Ver Tudo <ArrowRight size={16} /></Link>
           </div>
           
           {loadingHistory && <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>}
@@ -292,15 +162,12 @@ const Dashboard = () => {
           {errorHistory && (
              <div className={styles.emptyFeed}>
                <p className={styles.errorText}>Erro ao carregar histórico.</p>
-               <p className={styles.errorTextSmall}>Verifique os índices no console.</p>
+               <p className={styles.errorTextSmall}>Crie o índice composto: unitId + timestamp (desc)</p>
              </div>
           )}
           
           {!loadingHistory && history?.docs.length === 0 && (
-            <div className={styles.emptyFeed}>
-              <PackageSearch size={30} />
-              <p>Nenhuma atividade registrada.</p>
-            </div>
+            <div className={styles.emptyFeed}><PackageSearch size={30} /><p>Nenhuma atividade registrada.</p></div>
           )}
 
           <ul className={styles.feedList}>
@@ -312,9 +179,7 @@ const Dashboard = () => {
                   <History className={styles.feedIcon} />
                   <div className={styles.feedContent}>
                     <strong>{item.type}</strong>
-                    <span className={styles.feedTime}>
-                      {date ? formatDistanceToNow(date, { addSuffix: true, locale: ptBR }) : '...'}
-                    </span>
+                    <span className={styles.feedTime}>{date ? formatDistanceToNow(date, { addSuffix: true, locale: ptBR }) : '...'}</span>
                     <p>{item.details}</p>
                     <small>Usuário: {item.user}</small>
                   </div>

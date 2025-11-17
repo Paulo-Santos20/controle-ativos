@@ -120,6 +120,7 @@ const AddAssetForm = ({ onClose, onBack }) => {
         details: `Ativo registrado no sistema com status "${data.status}".`,
         timestamp: serverTimestamp(),
         user: auth.currentUser.displayName || auth.currentUser.email,
+        unitId: data.unitId,
       });
       
       // 4. Executa ambas as operações

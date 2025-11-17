@@ -1,32 +1,32 @@
 import React, { useState } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, orderBy, query, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../../lib/firebase.js';
-import { Loader2, Plus, Pencil, Trash2, PackageSearch } from 'lucide-react';
+import { db } from '/src/lib/firebase.js';
+import { Loader2, Plus, Pencil, Trash2, PackageSearch, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Reutiliza o CSS das outras páginas de cadastro (Princípio 5)
+// Importa Auth
+import { useAuth } from '/src/hooks/useAuth.js';
+import { logAudit } from '/src/utils/auditLogger';
+
 import styles from '../Cadastros/CadastroPages.module.css'; 
 import Modal from '../../components/Modal/Modal';
-// Importa o formulário de Perfil (com .jsx explícito para evitar erros de Vite)
 import AddRoleForm from '../../components/Users/AddRoleForm.jsx';
 
-// Importa o Logger de Auditoria
-import { logAudit } from '../../utils/AuditLogger.js';
-
-/**
- * Página para listar e gerenciar Perfis (Roles) do sistema.
- */
 const ProfileListPage = () => {
-  // Estado para controlar o modal
+  // --- 1. SEGURANÇA CORRIGIDA ---
+  // Pegamos 'isAdmin' do hook
+  const { permissions, isAdmin } = useAuth();
+  
+  // A permissão é verdadeira se for Admin OU se tiver a flag específica
+  const canManage = isAdmin || permissions?.perfis?.manage;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRoleDoc, setEditingRoleDoc] = useState(null); 
   
-  // Busca todos os perfis (roles) do sistema
   const q = query(collection(db, 'roles'), orderBy('name', 'asc'));
   const [roles, loading, error] = useCollection(q);
 
-  // --- Funções de Controle do Modal ---
   const handleOpenAddNew = () => {
     setEditingRoleDoc(null);
     setIsModalOpen(true);
@@ -42,8 +42,11 @@ const ProfileListPage = () => {
     setTimeout(() => setEditingRoleDoc(null), 300);
   };
   
-  // --- Ação de Deletar ---
   const handleDelete = async (roleDoc) => {
+    if (!canManage) {
+        toast.error("Acesso negado.");
+        return;
+    }
     const roleId = roleDoc.id;
     const roleName = roleDoc.data().name;
 
@@ -57,7 +60,6 @@ const ProfileListPage = () => {
       try {
         await deleteDoc(doc(db, 'roles', roleId));
         
-        // Log de Auditoria
         await logAudit(
           "Exclusão de Perfil", 
           `O perfil "${roleName}" (ID: ${roleId}) foi excluído.`, 
@@ -71,7 +73,6 @@ const ProfileListPage = () => {
     }
   };
 
-  // Renderiza a lista de perfis
   const renderList = () => {
     if (loading) {
       return (
@@ -83,7 +84,16 @@ const ProfileListPage = () => {
     }
     
     if (error) {
-      return <p className={styles.errorText}>Erro ao carregar perfis: {error.message}</p>;
+      if (error.code === 'permission-denied') {
+        return (
+          <div className={styles.loadingState} style={{color: '#ef4444'}}>
+             <ShieldAlert size={48} />
+             <h3>Acesso Negado</h3>
+             <p>Você não tem permissão para visualizar a lista de perfis.</p>
+          </div>
+        );
+      }
+      return <p className={styles.errorText}>Erro técnico: {error.message}</p>;
     }
 
     if (roles && roles.docs.length === 0) {
@@ -91,7 +101,6 @@ const ProfileListPage = () => {
         <div className={styles.emptyState}>
           <PackageSearch size={50} />
           <h3>Nenhum perfil encontrado</h3>
-          <p>Clique em "Registrar Novo Perfil" para criar um.</p>
         </div>
       );
     }
@@ -107,17 +116,24 @@ const ProfileListPage = () => {
                 <small>ID: {doc.id}</small>
               </div>
               <div className={styles.listItemActions}>
+                
+                {/* Botão Editar */}
                 <button 
                   className={styles.secondaryButton}
                   onClick={() => handleOpenEdit(doc)}
+                  disabled={!canManage}
+                  style={{ opacity: !canManage ? 0.5 : 1, cursor: !canManage ? 'not-allowed' : 'pointer' }}
                 >
                   <Pencil size={16} />
                   <span>Editar Permissões</span>
                 </button>
+
+                {/* Botão Excluir */}
                 <button 
                   className={styles.iconButton}
-                  title="Excluir Perfil"
                   onClick={() => handleDelete(doc)}
+                  disabled={!canManage}
+                  style={{ opacity: !canManage ? 0.5 : 1, cursor: !canManage ? 'not-allowed' : 'pointer' }}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -131,7 +147,6 @@ const ProfileListPage = () => {
 
   return (
     <div className={styles.page}>
-      {/* --- O Modal de Edição/Criação --- */}
       <Modal 
         isOpen={isModalOpen} 
         onClose={handleCloseModal} 
@@ -143,15 +158,20 @@ const ProfileListPage = () => {
         />
       </Modal>
 
-      {/* --- Cabeçalho da Página --- */}
       <header className={styles.header}>
         <h1 className={styles.title}>Gerenciamento de Perfis</h1>
-        <button className={styles.primaryButton} onClick={handleOpenAddNew}>
+        
+        {/* Botão Novo */}
+        <button 
+            className={styles.primaryButton} 
+            onClick={handleOpenAddNew}
+            disabled={!canManage}
+            style={{ opacity: !canManage ? 0.5 : 1, cursor: !canManage ? 'not-allowed' : 'pointer' }}
+        >
           <Plus size={18} /> Registrar Novo Perfil
         </button>
       </header>
       
-      {/* --- Conteúdo da Lista --- */}
       <div className={styles.content}>
         {renderList()}
       </div>
