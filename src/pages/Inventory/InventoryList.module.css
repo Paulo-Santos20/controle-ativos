@@ -313,3 +313,47 @@
     color: var(--color-text-secondary);
   }
 }
+
+/* Botão Carregar Mais */
+.loadMoreContainer {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+.loadMoreButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: white;
+  border: 1px solid var(--color-border);
+  color: var(--color-primary);
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.loadMoreButton:hover:not(:disabled) {
+  background-color: #f0f9ff;
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+}
+
+.loadMoreButton:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.searchHint {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  padding: 10px;
+  background-color: #fffbeb;
+  margin: 0;
+  border-top: 1px solid #fef3c7;
+}
