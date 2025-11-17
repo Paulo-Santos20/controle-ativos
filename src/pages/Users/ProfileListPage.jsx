@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 // Importa Auth
 import { useAuth } from '/src/hooks/useAuth.js';
-import { logAudit } from '/src/utils/auditLogger';
+import { logAudit } from '../../utils/AuditLogger.js';
 
 import styles from '../Cadastros/CadastroPages.module.css'; 
 import Modal from '../../components/Modal/Modal';
