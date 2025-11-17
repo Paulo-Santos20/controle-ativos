@@ -2,21 +2,28 @@ import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { db } from '/src/lib/firebase.js'; 
-import { Plus, ChevronRight, Package, Loader2, Search, Filter, Archive, ShieldAlert } from 'lucide-react'; 
+import { db } from '../../lib/firebase'; // Caminho relativo corrigido
+import { 
+  Plus, ChevronRight, Package, Loader2, Search, Filter, Archive, 
+  CheckSquare, Square, Truck, ShieldAlert
+} from 'lucide-react'; 
 
-import { useAuth } from '/src/hooks/useAuth.js';
+import { useAuth } from '../../hooks/useAuth'; // Caminho relativo corrigido
 import styles from './InventoryList.module.css';
+
 import Modal from '../../components/Modal/Modal';
 import AssetTypeSelector from '../../components/Inventory/AssetTypeSelector';
 import AddAssetForm from '../../components/Inventory/AddAssetForm';
 import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
+import BulkMoveForm from '../../components/Inventory/BulkMoveForm';
 
+// --- Constantes para os Filtros ---
 const opcoesTipo = [
   { value: 'all', label: 'Todos os Tipos' },
   { value: 'computador', label: 'Computadores' },
   { value: 'impressora', label: 'Impressoras' },
 ];
+
 const opcoesStatus = [
   { value: 'all', label: 'Todos os Status' },
   { value: 'Em uso', label: 'Em uso' },
@@ -27,24 +34,35 @@ const opcoesStatus = [
 ];
 
 const InventoryList = () => {
+  // --- 1. HOOK DE AUTH (SEGURANÇA) ---
   const { permissions, isAdmin, allowedUnits, loading: authLoading } = useAuth();
 
+  // --- 2. ESTADOS ---
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalView, setModalView] = useState('select'); 
+  const [modalView, setModalView] = useState('select'); // 'select' | 'computer' | 'printer' | 'bulk_move'
 
+  // Estados de Seleção
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  // Estados de Filtro
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterUnit, setFilterUnit] = useState("all");
   const [showReturned, setShowReturned] = useState(false); 
 
-  const [units] = useCollection(query(collection(db, 'units'), orderBy('name', 'asc')));
+  // Busca unidades para o filtro dropdown
+  const [units] = useCollection(
+    query(collection(db, 'units'), orderBy('name', 'asc'))
+  );
 
+  // --- 3. CONSULTA DINÂMICA E SEGURA (FIRESTORE) ---
   const assetsQuery = useMemo(() => {
     if (authLoading) return null;
 
     let constraints = [orderBy('createdAt', 'desc')];
 
+    // Segurança: Filtra unidades permitidas se não for Admin
     if (!isAdmin) {
       if (allowedUnits.length > 0) {
         constraints.push(where("unitId", "in", allowedUnits));
@@ -53,9 +71,12 @@ const InventoryList = () => {
       }
     }
 
+    // Filtros de Servidor
     if (filterType !== "all") constraints.push(where("type", "==", filterType));
     if (filterStatus !== "all") constraints.push(where("status", "==", filterStatus));
+    
     if (filterUnit !== "all") {
+      // Validação extra de segurança para o filtro de unidade
       if (isAdmin || allowedUnits.includes(filterUnit)) {
         constraints.push(where("unitId", "==", filterUnit));
       }
@@ -66,10 +87,18 @@ const InventoryList = () => {
 
   const [assets, loading, error] = useCollection(assetsQuery);
 
+  // --- 4. FILTRAGEM NO CLIENTE (Híbrido) ---
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
+    
     let result = assets.docs;
-    if (!showReturned) result = result.filter(doc => doc.data().status !== 'Devolvido');
+
+    // Regra de "Devolvido"
+    if (!showReturned) {
+      result = result.filter(doc => doc.data().status !== 'Devolvido');
+    }
+
+    // Filtro de Texto
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       result = result.filter(doc => {
@@ -82,9 +111,28 @@ const InventoryList = () => {
         );
       });
     }
+
     return result;
   }, [assets, searchTerm, showReturned]);
 
+  // --- 5. LÓGICA DE SELEÇÃO ---
+  const handleSelectAll = () => {
+    if (selectedIds.length === filteredAssets.length) {
+      setSelectedIds([]); 
+    } else {
+      setSelectedIds(filteredAssets.map(doc => doc.id));
+    }
+  };
+
+  const handleSelectOne = (id) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter(item => item !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  // --- 6. HELPERS DE UI ---
   const getStatusClass = (status) => {
     if (status === 'Em uso') return styles.statusUsage;
     if (status === 'Em manutenção') return styles.statusMaintenance;
@@ -94,13 +142,26 @@ const InventoryList = () => {
     return '';
   };
 
-  const handleOpenModal = () => { setModalView('select'); setIsModalOpen(true); };
-  const handleCloseModal = () => { setIsModalOpen(false); setTimeout(() => setModalView('select'), 300); };
+  const handleOpenModal = (view) => {
+    setModalView(view);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setTimeout(() => setModalView('select'), 300); 
+  };
+
+  const handleBulkSuccess = () => {
+    setSelectedIds([]);
+  };
+
   const renderModalContent = () => {
     switch (modalView) {
       case 'select': return <AssetTypeSelector onSelectType={setModalView} />;
       case 'computer': return <AddAssetForm onClose={handleCloseModal} onBack={() => setModalView('select')} />;
       case 'printer': return <AddPrinterForm onClose={handleCloseModal} onBack={() => setModalView('select')} />;
+      case 'bulk_move': return <BulkMoveForm onClose={handleCloseModal} selectedIds={selectedIds} onSuccess={handleBulkSuccess} />;
       default: return null;
     }
   };
@@ -111,32 +172,25 @@ const InventoryList = () => {
     }
     
     if (error) {
-      console.error("ERRO FIRESTORE:", error);
-
-      // --- TRADUÇÃO DE ERROS ---
       if (error.code === 'failed-precondition') {
         return (
           <div className={styles.errorState}>
-            <h3>⚠️ Configuração Necessária</h3>
-            <p>O banco de dados precisa criar um "Índice" para esta combinação de filtros.</p>
-            <p style={{fontSize: '0.9rem', marginTop: '10px'}}>
-                Como o link não apareceu, vá ao Console Firebase > Firestore > Índices e crie:
-                <br/>
-                <strong>assets: unitId (Cresc) + createdAt (Decresc)</strong>
-            </p>
+            <h3>⚠️ Índice Necessário</h3>
+            <p>O Firestore precisa de um índice para esta combinação de filtros.</p>
+            <p className={styles.smallText}>Abra o console (F12) e clique no link do Firebase.</p>
           </div>
         );
       }
       if (error.code === 'permission-denied') {
-          return (
-            <div className={styles.errorState}>
-               <ShieldAlert size={40} color="#ef4444"/>
-               <h3 style={{color: '#ef4444'}}>Acesso Negado</h3>
-               <p>Você não tem permissão para visualizar esta lista de ativos.</p>
-            </div>
-          );
+        return (
+           <div className={styles.errorState}>
+              <ShieldAlert size={40} color="#ef4444"/>
+              <h3 style={{color: '#ef4444'}}>Acesso Negado</h3>
+              <p>Verifique suas permissões de unidade.</p>
+           </div>
+        );
       }
-      return <p className={styles.errorText}>Erro desconhecido: {error.message}</p>;
+      return <p className={styles.errorText}>Erro: {error.message}</p>;
     }
     
     if (filteredAssets.length === 0) {
@@ -144,16 +198,24 @@ const InventoryList = () => {
         <div className={styles.emptyState}>
           <Package size={50} />
           <h2>Nenhum ativo encontrado</h2>
-          <p>{showReturned ? "Tente ajustar seus filtros." : "Itens devolvidos ocultos."}</p>
+          <p>{showReturned ? "Tente ajustar seus filtros." : "Itens devolvidos estão ocultos."}</p>
         </div>
       );
     }
+
+    const isAllSelected = filteredAssets.length > 0 && selectedIds.length === filteredAssets.length;
 
     return (
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead>
             <tr>
+              {/* Checkbox Header */}
+              <th style={{width: '40px'}}>
+                <button onClick={handleSelectAll} className={styles.checkboxButton}>
+                  {isAllSelected ? <CheckSquare size={20} color="#007aff" /> : <Square size={20} color="#94a3b8" />}
+                </button>
+              </th>
               <th>Tombamento</th>
               <th>Tipo</th>
               <th>Status</th>
@@ -166,16 +228,30 @@ const InventoryList = () => {
           <tbody>
             {filteredAssets.map(doc => {
               const asset = doc.data();
+              const isSelected = selectedIds.includes(doc.id);
+
               return (
-                <tr key={doc.id}>
+                <tr key={doc.id} className={isSelected ? styles.rowSelected : ''}>
+                   {/* Checkbox Row */}
+                   <td>
+                    <button onClick={() => handleSelectOne(doc.id)} className={styles.checkboxButton}>
+                      {isSelected ? <CheckSquare size={20} color="#007aff" /> : <Square size={20} color="#94a3b8" />}
+                    </button>
+                  </td>
                   <td data-label="Tombamento"><strong>{doc.id}</strong></td>
                   <td data-label="Tipo">{asset.tipoAtivo || asset.type}</td>
-                  <td data-label="Status"><span className={`${styles.statusBadge} ${getStatusClass(asset.status)}`}>{asset.status}</span></td>
+                  <td data-label="Status">
+                    <span className={`${styles.statusBadge} ${getStatusClass(asset.status)}`}>
+                      {asset.status}
+                    </span>
+                  </td>
                   <td data-label="Unidade" className={styles.hideMobile}>{asset.unitId}</td>
                   <td data-label="Setor" className={styles.hideMobile}>{asset.setor}</td>
                   <td data-label="Serial" className={styles.hideMobile}>{asset.serial}</td>
                   <td className={styles.actionCell}>
-                    <Link to={`/inventory/${doc.id}`} className={styles.detailsButton}><ChevronRight size={16} /> Ver</Link>
+                    <Link to={`/inventory/${doc.id}`} className={styles.detailsButton}>
+                      Ver <ChevronRight size={16} />
+                    </Link>
                   </td>
                 </tr>
               );
@@ -188,15 +264,34 @@ const InventoryList = () => {
 
   return (
     <div className={styles.page}>
-      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalView === 'select' ? "Registrar Novo Ativo" : modalView === 'computer' ? "Registrar Novo Computador" : "Registrar Nova Impressora"}>
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalView === 'bulk_move' ? "Movimentação em Massa" : "Registrar Novo Ativo"}>
         {renderModalContent()}
       </Modal>
+
+      {/* --- BARRA DE AÇÃO FLUTUANTE --- */}
+      {selectedIds.length > 0 && (
+        <div className={styles.bulkActionBar}>
+          <div className={styles.bulkInfo}>
+            <strong>{selectedIds.length}</strong> itens selecionados
+          </div>
+          <div className={styles.bulkActions}>
+            <button 
+              className={styles.bulkButton} 
+              onClick={() => handleOpenModal('bulk_move')}
+              disabled={!permissions?.ativos?.update}
+            >
+              <Truck size={18} /> Movimentar Selecionados
+            </button>
+          </div>
+          <button className={styles.closeBulk} onClick={() => setSelectedIds([])}>Cancelar</button>
+        </div>
+      )}
 
       <header className={styles.header}>
         <h1 className={styles.title}>Inventário de Ativos</h1>
         <button 
           className={styles.primaryButton} 
-          onClick={handleOpenModal}
+          onClick={() => handleOpenModal('select')}
           disabled={!permissions?.ativos?.create}
           style={{ opacity: !permissions?.ativos?.create ? 0.6 : 1 }}
         >
@@ -207,29 +302,52 @@ const InventoryList = () => {
       <div className={styles.toolbar}>
         <div className={styles.searchBox}>
           <Search size={18} />
-          <input type="text" placeholder="Buscar..." className={styles.searchInput} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          <input 
+            type="text" 
+            placeholder="Buscar por Tombamento, Serial, Hostname..." 
+            className={styles.searchInput} 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
         
         <div className={styles.filterRow}>
           <div className={styles.filterGroup}>
             <Filter size={16} />
-            <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={styles.filterSelect}>{opcoesTipo.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={styles.filterSelect}>{opcoesStatus.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>
+            <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={styles.filterSelect}>
+              {opcoesTipo.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
+            
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={styles.filterSelect}>
+              {opcoesStatus.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
+
             <select value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)} className={styles.filterSelect}>
               <option value="all">Todas as Unidades</option>
               {units?.docs.map(doc => {
-                if (isAdmin || allowedUnits.includes(doc.id)) return <option key={doc.id} value={doc.id}>{doc.data().sigla}</option>;
+                if (isAdmin || allowedUnits.includes(doc.id)) {
+                  return <option key={doc.id} value={doc.id}>{doc.data().sigla || doc.data().name}</option>;
+                }
                 return null;
               })}
             </select>
           </div>
+
           <label className={styles.checkboxFilter}>
-            <input type="checkbox" checked={showReturned} onChange={(e) => setShowReturned(e.target.checked)} /> <Archive size={16} /> Mostrar Devolvidos
+            <input 
+              type="checkbox" 
+              checked={showReturned} 
+              onChange={(e) => setShowReturned(e.target.checked)} 
+            />
+            <Archive size={16} />
+            Mostrar Devolvidos
           </label>
         </div>
       </div>
       
-      <div className={styles.content}>{renderContent()}</div>
+      <div className={styles.content}>
+        {renderContent()}
+      </div>
     </div>
   );
 };

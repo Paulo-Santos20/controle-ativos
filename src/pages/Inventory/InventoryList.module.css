@@ -1,321 +1,70 @@
 /* InventoryList.module.css */
-.page { display: flex; flex-direction: column; gap: var(--spacing-lg); }
-.header {
-  display: flex; flex-wrap: wrap; gap: var(--spacing-md);
-  justify-content: space-between; align-items: center;
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
 }
-.title { font-size: 2rem; font-weight: 700; }
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+}
 
 .primaryButton {
-  background-color: var(--color-primary); color: white; border: none;
-  padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--border-radius);
-  font-weight: 600; cursor: pointer; transition: background-color 0.2s;
-  display: flex; align-items: center; gap: var(--spacing-sm);
-}
-.primaryButton:hover { background-color: var(--color-primary-dark); }
-
-.toolbar {
-  background-color: var(--color-bg-component); padding: var(--spacing-md);
-  border-radius: var(--border-radius); box-shadow: var(--box-shadow);
-}
-.searchInput {
-  width: 100%; max-width: 400px;
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
   padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--color-border); border-radius: var(--border-radius);
-}
-
-.content {
-  background-color: var(--color-bg-component);
   border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  /* O padding é removido para a tabela se ajustar */
-  overflow: hidden; /* Para o border-radius funcionar com a tabela */
-}
-
-/* --- Tabela Responsiva --- */
-.tableWrapper {
-  width: 100%;
-  overflow-x: auto; /* Permite rolar a tabela horizontalmente no mobile */
-}
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.table th, .table td {
-  padding: var(--spacing-md);
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-}
-.table th {
-  background-color: var(--color-bg-page);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-}
-.table tr:last-child td { border-bottom: none; }
-.table tr:hover { background-color: var(--color-bg-page); }
-
-.actionCell { text-align: right; }
-.detailsButton {
-  display: flex; align-items: center; gap: var(--spacing-xs);
-  color: var(--color-primary); text-decoration: none; font-weight: 500;
-}
-
-/* --- Status Badges --- */
-.statusBadge {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: 12px;
   font-weight: 600;
-  font-size: var(--font-size-sm);
-}
-.statusUsage { background-color: rgba(52, 199, 89, 0.15); color: #28a745; }
-.statusMaintenance { background-color: rgba(255, 149, 0, 0.15); color: #ff9500; }
-.statusStock { background-color: rgba(110, 110, 115, 0.15); color: #6e6e73; }
-
-/* --- Mobile-First Ocultar Colunas --- */
-@media (max-width: 767px) {
-  .hideMobile { display: none; }
-  
-  /* Padrão de "cards" para tabela em mobile (Opcional, mas boa UX) */
-  .table thead { display: none; }
-  .table tr {
-    display: block;
-    border-bottom: 2px solid var(--color-bg-page);
-    margin-bottom: var(--spacing-md);
-  }
-  .table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--color-border);
-    padding: var(--spacing-sm) var(--spacing-md);
-  }
-  .table td::before {
-    content: attr(data-label);
-    font-weight: 600;
-    color: var(--color-text-secondary);
-  }
-  .actionCell { justify-content: flex-start; }
-}
-
-/* --- Empty State --- */
-.emptyState {
+  cursor: pointer;
+  transition: background-color 0.2s;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: var(--spacing-xl);
-  min-height: 300px;
-  color: var(--color-text-secondary);
+  gap: var(--spacing-sm);
 }
-.emptyState h2 {
-  font-size: 1.25rem;
-  color: var(--color-text-primary);
-  margin-top: var(--spacing-sm);
+.primaryButton:hover {
+  background-color: var(--color-primary-dark);
 }
 
-.errorText {
-  color: var(--color-danger);
-  padding: var(--spacing-lg);
-}
-
-.loadingState,
-.emptyState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-xl);
-  min-height: 300px;
-  color: var(--color-text-secondary);
-}
-.emptyState h2 {
-  font-size: 1.25rem;
-  color: var(--color-text-primary);
-  margin-top: var(--spacing-sm);
-}
-
-.errorText {
-  color: var(--color-danger);
-  padding: var(--spacing-lg);
-}
-
-.spinner {
-  animation: spin 1s linear infinite;
-  color: var(--color-primary);
-}
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* --- Tabela Responsiva (do código anterior) --- */
-.tableWrapper {
-  width: 100%;
-  overflow-x: auto;
-}
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.table th, .table td {
-  padding: var(--spacing-md);
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-}
-.table th {
-  background-color: var(--color-bg-page);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-}
-.table tr:last-child td { border-bottom: none; }
-.table tr:hover { background-color: var(--color-bg-page); }
-
-.actionCell { text-align: right; }
-.detailsButton {
-  display: flex; align-items: center; gap: var(--spacing-xs);
-  color: var(--color-primary); text-decoration: none; font-weight: 500;
-}
-
-/* --- Status Badges --- */
-.statusBadge {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: var(--font-size-sm);
-}
-.statusUsage { background-color: rgba(52, 199, 89, 0.15); color: #28a745; }
-.statusMaintenance { background-color: rgba(255, 149, 0, 0.15); color: #ff9500; }
-.statusStock { background-color: rgba(110, 110, 115, 0.15); color: #6e6e73; }
-
-/* --- Mobile-First Ocultar Colunas --- */
-.hideMobile {
-  display: none;
-}
-@media (min-width: 768px) {
-  .hideMobile {
-    display: table-cell;
-  }
-}
-
-/* Padrão de "cards" para tabela em mobile */
-@media (max-width: 767px) {
-  .table thead { display: none; }
-  .table tr {
-    display: block;
-    border-bottom: 2px solid var(--color-bg-page);
-    margin-bottom: var(--spacing-md);
-    background: #fff;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    box-shadow: var(--box-shadow);
-  }
-  .table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px dashed var(--color-border);
-    padding: var(--spacing-sm) var(--spacing-md);
-  }
-  .table td:last-child {
-    border-bottom: none;
-  }
-  .table td::before {
-    content: attr(data-label);
-    font-weight: 600;
-    color: var(--color-text-secondary);
-    padding-right: var(--spacing-md);
-  }
-  .actionCell { justify-content: flex-start; }
-}
-/* Adicione estes estilos ao final do seu 
-   src/pages/Inventory/InventoryList.module.css 
-*/
-
-/* --- Estilos do Toolbar (Melhoria) --- */
+/* --- Toolbar --- */
 .toolbar {
   display: flex;
-  flex-direction: column; /* Mobile-First: Pilha */
+  flex-direction: column;
   gap: var(--spacing-md);
   background-color: var(--color-bg-component);
   padding: var(--spacing-md);
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
 }
-.searchInput {
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background-color: var(--color-bg-page);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: 0 var(--spacing-sm);
   width: 100%;
+}
+.searchBox input {
+  width: 100%;
+  padding: var(--spacing-sm) 0;
   border: none;
   background: transparent;
   outline: none;
   font-size: var(--font-size-md);
 }
-
-/* Grupo de Filtros Dropdown */
-.filterGroup {
-  display: flex;
-  flex-wrap: wrap; /* Quebra linha se não couber */
-  gap: var(--spacing-sm);
-  align-items: center;
-}
-.filterGroup svg {
-  color: var(--color-text-secondary);
-  margin-right: var(--spacing-xs);
-}
-.filterSelect {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  background-color: var(--color-bg-page);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  flex-grow: 1; /* Fazem os selects crescerem no mobile */
-}
-
-/* --- Desktop (Sobrescrita) --- */
-@media (min-width: 768px) {
-  .toolbar {
-    flex-direction: row; /* Desktop: Lado a lado */
-    justify-content: space-between;
-  }
-  .filterGroup {
-    flex-wrap: nowrap; /* Não quebra linha */
-  }
-  .filterSelect {
-    flex-grow: 0; /* Tamanho automático */
-  }
-  .searchInput {
-    width: 300px;
-  }
-}
-
-/* --- Status (Adicionado Inativo) --- */
-.statusInactive {
-  background-color: rgba(110, 110, 115, 0.15); 
-  color: #6e6e73;
-}/* Adicione este estilo ao final do seu InventoryList.module.css */
-
-.errorState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-xl);
-  color: var(--color-text-secondary);
-  text-align: center;
-  background-color: #fffbe6; /* Fundo amarelo de alerta */
-  border: 1px solid #ffe58f;
-  border-radius: var(--border-radius);
-}
-.errorState h3 {
-  font-size: 1.25rem;
-  color: #d46b08; /* Laranja escuro */
-  margin-top: var(--spacing-sm);
-}
-.errorState p {
-  font-size: var(--font-size-md);
-}
-/* Adicione ao InventoryList.module.css */
 
 .filterRow {
   display: flex;
@@ -325,11 +74,29 @@
   width: 100%;
 }
 
+.filterGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-grow: 1;
+}
+
+.filterSelect {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  background-color: var(--color-bg-page);
+  font-size: 0.85rem;
+  font-weight: 500;
+  flex-grow: 1;
+}
+
 .checkboxFilter {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: var(--font-size-sm);
+  font-size: 0.85rem;
   color: var(--color-text-secondary);
   cursor: pointer;
   user-select: none;
@@ -338,30 +105,211 @@
   border-radius: var(--border-radius);
   background-color: var(--color-bg-page);
 }
-
 .checkboxFilter:hover {
   background-color: #fff;
-  border-color: var(--color-primary);
 }
 
-.checkboxFilter input {
-  cursor: pointer;
-}
-
-/* Estilo para o Badge "Devolvido" */
-.statusReturned {
-  background-color: #fee2e2; /* Vermelho claro */
-  color: #991b1b; /* Vermelho escuro */
-  text-decoration: line-through; /* Risco para indicar inativo */
-}
-
-/* Ajuste no desktop para alinhar o checkbox à direita se quiser */
+/* --- Desktop Adjustments --- */
 @media (min-width: 768px) {
-  .filterRow {
+  .toolbar {
+    flex-direction: row;
     justify-content: space-between;
   }
-  /* O grupo de selects fica na esquerda, o checkbox na direita */
-  .filterGroup {
-    flex-grow: 1;
+  .searchBox {
+    width: 300px;
+  }
+  .filterSelect {
+    flex-grow: 0;
+    min-width: 140px;
+  }
+}
+
+/* --- Content & Table --- */
+.content {
+  background-color: var(--color-bg-component);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  overflow: hidden;
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th, .table td {
+  padding: var(--spacing-md);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.table th {
+  background-color: var(--color-bg-page);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+.table tr:hover {
+  background-color: #f9fafb;
+}
+
+/* --- Checkbox Styles --- */
+.checkboxButton {
+  background: transparent;
+  border: none;
+  padding: 8px; /* Aumenta a área de clique */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%; /* Botão redondo para hover */
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+.checkboxButton:hover {
+  background-color: rgba(0, 0, 0, 0.08); /* Fundo cinza ao passar o mouse */
+}
+.checkboxButton:active {
+  transform: scale(0.95); /* Leve clique */  
+}
+.checkboxButton svg {
+  display: block;
+  min-width: 20px;
+  min-height: 20px;
+}
+.rowSelected {
+  background-color: #eff6ff !important; /* Azul bem claro */
+}
+
+/* Borda lateral azul para destacar a seleção */
+.rowSelected td:first-child {
+  box-shadow: inset 4px 0 0 #2563eb; 
+}
+
+/* --- Status Badges --- */
+.statusBadge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.statusUsage { background-color: #def7ec; color: #03543f; }
+.statusMaintenance { background-color: #fdf6b2; color: #9f580a; }
+.statusStock { background-color: #e1effe; color: #1e429f; }
+.statusInactive { background-color: #f3f4f6; color: #374151; }
+.statusReturned { background-color: #fee2e2; color: #991b1b; text-decoration: line-through; }
+
+/* --- Action Link --- */
+.actionCell {
+  text-align: right;
+}
+.detailsButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+.detailsButton:hover {
+  text-decoration: underline;
+}
+
+/* --- Bulk Action Bar --- */
+.bulkActionBar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1e293b;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 50px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  z-index: 1000;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideUp {
+  from { transform: translate(-50%, 100%); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+.bulkInfo strong { color: #60a5fa; }
+.bulkButton {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.bulkButton:hover { background-color: #2563eb; }
+.closeBulk {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.8rem;
+  text-decoration: underline;
+}
+
+/* --- States --- */
+.loadingState, .emptyState, .errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+.spinner {
+  animation: spin 1s linear infinite;
+  color: var(--color-primary);
+  margin-bottom: 10px;
+}
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.errorState { color: #dc2626; }
+.smallText { font-size: 0.8rem; margin-top: 8px; color: var(--color-text-secondary); }
+
+/* Mobile Hide */
+@media (max-width: 767px) {
+  .hideMobile { display: none; }
+  /* Adaptação para cards no mobile */
+  .table thead { display: none; }
+  .table tr {
+    display: block;
+    margin-bottom: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+  }
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px dashed var(--color-bg-page);
+  }
+  .table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--color-text-secondary);
   }
 }
