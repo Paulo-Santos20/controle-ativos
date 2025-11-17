@@ -1,35 +1,48 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { 
+  collection, query, orderBy, where, getDocs, limit, startAfter, documentId 
+} from 'firebase/firestore';
 import { db } from '../../lib/firebase'; 
 import { 
-  Plus, ChevronRight, Package, Loader2, Search, Filter, Archive, 
-  CheckSquare, Square, Truck, ArrowDownCircle, X 
+  Plus, ChevronRight, Package, Search, Filter, Archive, 
+  CheckSquare, Square, Truck, ArrowDownCircle, X, Loader2
 } from 'lucide-react'; 
 
 import { useAuth } from '../../hooks/useAuth';
-// --- 1. IMPORTA O NOVO HOOK ---
-import { useInventoryQuery } from '../../hooks/useInventoryQuery'; 
-
 import styles from './InventoryList.module.css';
+
+// Componentes de UI e Formulários
 import Modal from '../../components/Modal/Modal';
 import AssetTypeSelector from '../../components/Inventory/AssetTypeSelector';
 import AddAssetForm from '../../components/Inventory/AddAssetForm';
 import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
 import BulkMoveForm from '../../components/Inventory/BulkMoveForm';
 
+// --- NOVO: Importa o Skeleton ---
+import InventoryTableSkeleton from '../../components/Skeletons/InventoryTableSkeleton';
+
 const opcoesTipo = [{ value: 'all', label: 'Todos os Tipos' }, { value: 'computador', label: 'Computadores' }, { value: 'impressora', label: 'Impressoras' }];
 const opcoesStatus = [{ value: 'all', label: 'Todos os Status' }, { value: 'Em uso', label: 'Em uso' }, { value: 'Estoque', label: 'Estoque' }, { value: 'Manutenção', label: 'Manutenção' }, { value: 'Devolvido', label: 'Devolvido' }, { value: 'Inativo', label: 'Inativo' }];
+const ITEMS_PER_PAGE = 20;
 
 const InventoryList = () => {
-  const { isAdmin, allowedUnits, permissions } = useAuth();
+  const { permissions, isAdmin, allowedUnits, loading: authLoading } = useAuth();
 
   // Estados de UI
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalView, setModalView] = useState('select'); 
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // Estados de Filtro (Controlados localmente)
+  // Estados de Dados
+  const [assets, setAssets] = useState([]);
+  const [lastDoc, setLastDoc] = useState(null);
+  const [loading, setLoading] = useState(false); // Loading inicial
+  const [loadingMore, setLoadingMore] = useState(false); // Loading paginação
+  const [hasMore, setHasMore] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -38,13 +51,13 @@ const InventoryList = () => {
   const [showReturned, setShowReturned] = useState(false); 
   const [unitsList, setUnitsList] = useState([]);
 
-  // Debounce da busca (0.5s)
+  // Debounce
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Busca lista de unidades para o filtro (apenas uma vez)
+  // Carregar Unidades (Filtro)
   useEffect(() => {
     const fetchUnits = async () => {
       const q = query(collection(db, 'units'), orderBy('name', 'asc'));
@@ -54,53 +67,102 @@ const InventoryList = () => {
     fetchUnits();
   }, []);
 
-  // --- 2. USA O REACT QUERY ---
-  const {
-    data,            // Os dados cacheados
-    fetchNextPage,   // Função para carregar mais
-    hasNextPage,     // Tem mais páginas?
-    isFetchingNextPage, // Está carregando a próxima?
-    isLoading,       // Está carregando a primeira?
-    isError,
-    error,
-    refetch          // Força recarregamento
-  } = useInventoryQuery({
-    filters: { 
-      searchTerm: debouncedSearch, 
-      type: filterType, 
-      status: filterStatus, 
-      unit: filterUnit 
-    },
-    isAdmin,
-    allowedUnits
+  // Função Principal de Busca (Manual para controle de paginação)
+  const fetchAssets = useCallback(async (isLoadMore = false, specificTerm = "") => {
+    if (authLoading) return;
+    
+    if (isLoadMore) setLoadingMore(true);
+    else setLoading(true);
+    
+    setError(null);
+
+    try {
+      let q;
+      const collectionRef = collection(db, 'assets');
+      
+      // MODO BUSCA ESPECÍFICA
+      if (specificTerm) {
+        const constraints = [
+          orderBy(documentId()), 
+          where(documentId(), '>=', specificTerm),
+          where(documentId(), '<=', specificTerm + '\uf8ff'),
+          limit(50)
+        ];
+        q = query(collectionRef, ...constraints);
+
+      } else {
+        // MODO LISTAGEM NORMAL
+        let constraints = [orderBy('createdAt', 'desc')];
+
+        // Segurança
+        if (!isAdmin) {
+          if (allowedUnits.length > 0) constraints.push(where("unitId", "in", allowedUnits));
+          else constraints.push(where("unitId", "==", "SEM_PERMISSAO"));
+        }
+
+        // Filtros
+        if (filterType !== "all") constraints.push(where("type", "==", filterType));
+        if (filterStatus !== "all") constraints.push(where("status", "==", filterStatus));
+        if (filterUnit !== "all") {
+          if (isAdmin || allowedUnits.includes(filterUnit)) {
+            constraints.push(where("unitId", "==", filterUnit));
+          }
+        }
+
+        // Paginação
+        constraints.push(limit(ITEMS_PER_PAGE));
+        if (isLoadMore && lastDoc) {
+          constraints.push(startAfter(lastDoc));
+        }
+
+        q = query(collectionRef, ...constraints);
+      }
+
+      const snapshot = await getDocs(q);
+      
+      let newAssets = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Filtro de Segurança Pós-Busca (Apenas se buscou por ID)
+      if (specificTerm && !isAdmin) {
+        newAssets = newAssets.filter(asset => allowedUnits.includes(asset.unitId));
+      }
+
+      if (isLoadMore) {
+        setAssets(prev => [...prev, ...newAssets]);
+      } else {
+        setAssets(newAssets);
+      }
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      setLastDoc(lastVisible);
+      setHasMore(snapshot.docs.length === ITEMS_PER_PAGE && !specificTerm);
+
+    } catch (err) {
+      console.error("Erro:", err);
+      setError(err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [authLoading, isAdmin, allowedUnits, filterType, filterStatus, filterUnit, lastDoc]);
+
+  // Trigger de Busca
+  useEffect(() => {
+    setLastDoc(null);
+    fetchAssets(false, debouncedSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterType, filterStatus, filterUnit, isAdmin, allowedUnits, debouncedSearch]);
+
+  // Filtro Visual (Devolvidos)
+  const displayedAssets = assets.filter(asset => {
+    if (!showReturned && asset.status === 'Devolvido') return false;
+    return true;
   });
 
-  // --- 3. PROCESSA OS DADOS (Flat) ---
-  // O React Query retorna páginas, precisamos "achatar" em uma lista única
-  const assets = useMemo(() => {
-    if (!data) return [];
-    return data.pages.flatMap(page => page.data);
-  }, [data]);
-
-  // Filtro Visual (Devolvidos) e Segurança Extra (Busca)
-  const filteredAssetsDisplay = useMemo(() => {
-    let result = assets;
-    
-    // Regra de Devolvido
-    if (!showReturned) {
-      result = result.filter(asset => asset.status !== 'Devolvido');
-    }
-
-    // Filtro extra de segurança para a Busca Textual (já que a query por ID não filtra unidade)
-    if (debouncedSearch && !isAdmin) {
-      result = result.filter(asset => allowedUnits.includes(asset.unitId));
-    }
-
-    return result;
-  }, [assets, showReturned, debouncedSearch, isAdmin, allowedUnits]);
-
-
-  // --- UI Helpers e Handlers ---
+  // UI Helpers
   const getStatusClass = (status) => {
     if (status === 'Em uso') return styles.statusUsage;
     if (status === 'Em manutenção') return styles.statusMaintenance;
@@ -111,8 +173,8 @@ const InventoryList = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.length === filteredAssetsDisplay.length) setSelectedIds([]); 
-    else setSelectedIds(filteredAssetsDisplay.map(a => a.id));
+    if (selectedIds.length === displayedAssets.length) setSelectedIds([]); 
+    else setSelectedIds(displayedAssets.map(a => a.id));
   };
 
   const handleSelectOne = (id) => {
@@ -121,12 +183,8 @@ const InventoryList = () => {
   };
 
   const handleOpenModal = (view) => { setModalView(view); setIsModalOpen(true); };
-  const handleCloseModal = () => { 
-    setIsModalOpen(false); 
-    setTimeout(() => setModalView('select'), 300); 
-    refetch(); // Atualiza a lista ao fechar o modal para ver o novo item
-  };
-  const handleBulkSuccess = () => { setSelectedIds([]); refetch(); };
+  const handleCloseModal = () => { setIsModalOpen(false); setTimeout(() => setModalView('select'), 300); fetchAssets(false, debouncedSearch); };
+  const handleBulkSuccess = () => { setSelectedIds([]); fetchAssets(false, debouncedSearch); };
 
   const renderModalContent = () => {
     switch (modalView) {
@@ -139,16 +197,19 @@ const InventoryList = () => {
   };
 
   const renderContent = () => {
-    if (isLoading) return <div className={styles.loadingState}><Loader2 className={styles.spinner} /><p>Carregando inventário...</p></div>;
+    // --- USO DO SKELETON ---
+    if (loading || authLoading) {
+      return <InventoryTableSkeleton />;
+    }
     
-    if (isError) {
-      if (error?.code === 'failed-precondition') {
-        return <div className={styles.errorState}><h3>⚠️ Índice Necessário</h3><p>Abra o console (F12) para criar o índice.</p></div>;
+    if (error) {
+      if (error.code === 'failed-precondition') {
+        return <div className={styles.errorState}><h3>⚠️ Índice Necessário</h3><p>Abra o console (F12) e clique no link do Firebase.</p></div>;
       }
-      return <p className={styles.errorText}>Erro: {error.message}</p>;
+      return <div className={styles.errorState}><p>Erro: {error.message}</p></div>;
     }
 
-    if (filteredAssetsDisplay.length === 0) {
+    if (displayedAssets.length === 0) {
       return (
         <div className={styles.emptyState}>
           <Package size={50} />
@@ -158,7 +219,7 @@ const InventoryList = () => {
       );
     }
 
-    const isAllSelected = filteredAssetsDisplay.length > 0 && selectedIds.length === filteredAssetsDisplay.length;
+    const isAllSelected = displayedAssets.length > 0 && selectedIds.length === displayedAssets.length;
 
     return (
       <>
@@ -181,7 +242,7 @@ const InventoryList = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredAssetsDisplay.map(asset => {
+              {displayedAssets.map(asset => {
                 const isSelected = selectedIds.includes(asset.id);
                 return (
                   <tr key={asset.id} className={isSelected ? styles.rowSelected : ''}>
@@ -206,15 +267,11 @@ const InventoryList = () => {
           </table>
         </div>
 
-        {/* --- BOTÃO CARREGAR MAIS (PAGINAÇÃO) --- */}
-        {hasNextPage && !searchTerm && (
+        {/* Paginação */}
+        {hasMore && !debouncedSearch && (
           <div className={styles.loadMoreContainer}>
-            <button 
-              className={styles.loadMoreButton} 
-              onClick={() => fetchNextPage()}
-              disabled={isFetchingNextPage}
-            >
-              {isFetchingNextPage ? <Loader2 className={styles.spinner} size={18} /> : <ArrowDownCircle size={18} />}
+            <button className={styles.loadMoreButton} onClick={() => fetchAssets(true, "")} disabled={loadingMore}>
+              {loadingMore ? <Loader2 className={styles.spinner} size={18} /> : <ArrowDownCircle size={18} />}
               Carregar Mais
             </button>
           </div>

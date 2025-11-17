@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { db } from '../../lib/firebase.js';
+import { db } from '../../lib/firebase.js'; 
 import { 
   collection, query, orderBy, limit, where, collectionGroup, documentId 
 } from 'firebase/firestore';
@@ -13,8 +13,10 @@ import {
   Laptop, Printer, Wrench, History, Plus, PackageSearch, Loader2, ArrowRight
 } from 'lucide-react';
 
-import { useAuth } from '/src/hooks/useAuth.js'; // Hook de Auth
+import { useAuth } from '../../hooks/useAuth.js';
 import styles from './Dashboard.module.css';
+
+// Componentes
 import Modal from '../../components/Modal/Modal';
 import AssetTypeSelector from '../../components/Inventory/AssetTypeSelector';
 import AddAssetForm from '../../components/Inventory/AddAssetForm';
@@ -22,32 +24,50 @@ import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
 import AssetSearchForm from '../../components/Inventory/AssetSearchForm';
 import MaintenanceAssetForm from '../../components/Inventory/MaintenanceAssetForm';
 
+import DashboardSkeleton from '../../components/Skeletons/DashboardSkeleton';
+
 const COLORS = ['#007aff', '#5ac8fa', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
 
 const Dashboard = () => {
+  // --- 1. TODOS OS HOOKS DEVEM FICAR NO TOPO ---
+  
   const { isAdmin, allowedUnits, permissions, loading: authLoading } = useAuth();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalView, setModalView] = useState('select'); 
   const [maintenanceTarget, setMaintenanceTarget] = useState(null);
 
-  // Helper para constraints de segurança
+  // Helper para constraints
   const getPermissionConstraints = () => {
     if (isAdmin) return []; 
     if (allowedUnits.length > 0) return [where('unitId', 'in', allowedUnits)]; 
     return [where('unitId', '==', 'BLOQUEADO')];
   };
 
-  // Queries dos Cards (Computadores, Impressoras, Manutenção)
-  const maintenanceQuery = useMemo(() => authLoading ? null : query(collection(db, 'assets'), where('status', '==', 'Em manutenção'), ...getPermissionConstraints()), [authLoading, isAdmin, allowedUnits]);
+  // --- Queries (Sempre são chamadas, mesmo que retornem null) ---
+
+  // Query 1: Em Manutenção
+  const maintenanceQuery = useMemo(() => {
+    if (authLoading) return null;
+    return query(collection(db, 'assets'), where('status', '==', 'Em manutenção'), ...getPermissionConstraints());
+  }, [authLoading, isAdmin, allowedUnits]);
   const [maintenanceAssets] = useCollection(maintenanceQuery);
 
-  const computersQuery = useMemo(() => authLoading ? null : query(collection(db, 'assets'), where('type', '==', 'computador'), ...getPermissionConstraints()), [authLoading, isAdmin, allowedUnits]);
+  // Query 2: Computadores
+  const computersQuery = useMemo(() => {
+    if (authLoading) return null;
+    return query(collection(db, 'assets'), where('type', '==', 'computador'), ...getPermissionConstraints());
+  }, [authLoading, isAdmin, allowedUnits]);
   const [computerAssets, loadingComputers] = useCollection(computersQuery);
 
-  const printersQuery = useMemo(() => authLoading ? null : query(collection(db, 'assets'), where('type', '==', 'impressora'), ...getPermissionConstraints()), [authLoading, isAdmin, allowedUnits]);
+  // Query 3: Impressoras
+  const printersQuery = useMemo(() => {
+    if (authLoading) return null;
+    return query(collection(db, 'assets'), where('type', '==', 'impressora'), ...getPermissionConstraints());
+  }, [authLoading, isAdmin, allowedUnits]);
   const [printerAssets, loadingPrinters] = useCollection(printersQuery);
 
-  // Query do Gráfico (Unidades)
+  // Query 4: Unidades
   const unitsQuery = useMemo(() => {
     if (authLoading) return null;
     if (isAdmin) return query(collection(db, 'units'), orderBy('name', 'asc'));
@@ -56,27 +76,25 @@ const Dashboard = () => {
   }, [authLoading, isAdmin, allowedUnits]);
   const [units, loadingUnits] = useCollection(unitsQuery);
 
-  // --- 5. FEED DE ATIVIDADE (ATUALIZADO COM FILTRO) ---
+  // Query 5: Histórico
   const historyQuery = useMemo(() => {
     if (authLoading) return null;
-    
     let constraints = [orderBy('timestamp', 'desc'), limit(5)];
-
-    // Se NÃO for admin, filtra o histórico pela unidade
     if (!isAdmin) {
-      if (allowedUnits.length > 0) {
-        constraints.push(where('unitId', 'in', allowedUnits));
-      } else {
-        return null; // Não busca nada
-      }
+      if (allowedUnits.length > 0) constraints.push(where('unitId', 'in', allowedUnits));
+      else return null;
     }
-    
     return query(collectionGroup(db, 'history'), ...constraints);
   }, [authLoading, isAdmin, allowedUnits]);
-
   const [history, loadingHistory, errorHistory] = useCollection(historyQuery);
 
-  // Processamento de dados
+  // --- 2. AGORA SIM PODEMOS FAZER O RETORNO CONDICIONAL ---
+  if (authLoading) {
+    return <DashboardSkeleton />;
+  }
+  // -------------------------------------------------------
+
+  // Processamento de Dados
   const pieChartData = units?.docs.map((doc, index) => ({
     name: doc.data().sigla || doc.data().name, 
     value: doc.data().assetCount || 0, 
@@ -84,17 +102,17 @@ const Dashboard = () => {
   })) || [];
 
   const getActiveCount = (loading, snapshot) => {
-    if (loading || authLoading) return <Loader2 size={16} className={styles.spinnerSmall} />;
+    if (loading) return <Loader2 size={16} className={styles.spinnerSmall} />;
     if (!snapshot) return 0;
     return snapshot.docs.filter(doc => doc.data().status !== 'Devolvido').length;
   };
 
-  // Funções de Modal (sem alteração)
+  // Handlers
   const handleOpenRegister = () => { setModalView('select'); setIsModalOpen(true); };
   const handleOpenMaintenance = () => { setMaintenanceTarget(null); setModalView('maintenance_search'); setIsModalOpen(true); };
   const handleAssetFound = (assetData) => { setMaintenanceTarget(assetData); setModalView('maintenance_form'); };
   const handleCloseModal = () => { setIsModalOpen(false); setTimeout(() => { setModalView('select'); setMaintenanceTarget(null); }, 300); };
-  
+
   const getModalTitle = () => {
     if (modalView === 'maintenance_search') return "Buscar Ativo para Manutenção";
     if (modalView === 'maintenance_form') return `Manutenção: ${maintenanceTarget?.id}`;
@@ -116,15 +134,17 @@ const Dashboard = () => {
 
   return (
     <div className={styles.dashboard}>
-      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={getModalTitle()}>{renderModalContent()}</Modal>
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={getModalTitle()}>
+        {renderModalContent()}
+      </Modal>
 
       <header className={styles.header}>
         <h1 className={styles.title}>Dashboard</h1>
         <div className={styles.quickActions}>
-          <button className={styles.actionButton} onClick={handleOpenRegister} disabled={!permissions?.ativos?.create} style={{ opacity: !permissions?.ativos?.create ? 0.6 : 1 }}>
+          <button className={styles.actionButton} onClick={handleOpenRegister} disabled={!permissions?.ativos?.create} style={{ opacity: !permissions?.ativos?.create ? 0.6 : 1, cursor: !permissions?.ativos?.create ? 'not-allowed' : 'pointer' }}>
             <Plus size={18} /> Registrar Novo Ativo
           </button>
-          <button className={styles.actionButtonSecondary} onClick={handleOpenMaintenance} disabled={!permissions?.ativos?.update} style={{ opacity: !permissions?.ativos?.update ? 0.6 : 1 }}>
+          <button className={styles.actionButtonSecondary} onClick={handleOpenMaintenance} disabled={!permissions?.ativos?.update} style={{ opacity: !permissions?.ativos?.update ? 0.6 : 1, cursor: !permissions?.ativos?.update ? 'not-allowed' : 'pointer' }}>
             <Wrench size={18} /> Iniciar Manutenção
           </button>
         </div>
@@ -158,13 +178,7 @@ const Dashboard = () => {
           </div>
           
           {loadingHistory && <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>}
-          
-          {errorHistory && (
-             <div className={styles.emptyFeed}>
-               <p className={styles.errorText}>Erro ao carregar histórico.</p>
-               <p className={styles.errorTextSmall}>Crie o índice composto: unitId + timestamp (desc)</p>
-             </div>
-          )}
+          {errorHistory && <div className={styles.emptyFeed}><p className={styles.errorText}>Erro ao carregar histórico.</p><p className={styles.errorTextSmall}>Verifique índices no console.</p></div>}
           
           {!loadingHistory && history?.docs.length === 0 && (
             <div className={styles.emptyFeed}><PackageSearch size={30} /><p>Nenhuma atividade registrada.</p></div>
