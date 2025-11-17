@@ -15,8 +15,9 @@ import {
 
 import { useAuth } from '../../hooks/useAuth.js';
 import styles from './Dashboard.module.css';
+import DashboardSkeleton from '../../components/Skeletons/DashboardSkeleton';
 
-// Componentes
+// Componentes do Fluxo de Registro e Manutenção
 import Modal from '../../components/Modal/Modal';
 import AssetTypeSelector from '../../components/Inventory/AssetTypeSelector';
 import AddAssetForm from '../../components/Inventory/AddAssetForm';
@@ -24,50 +25,62 @@ import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
 import AssetSearchForm from '../../components/Inventory/AssetSearchForm';
 import MaintenanceAssetForm from '../../components/Inventory/MaintenanceAssetForm';
 
-import DashboardSkeleton from '../../components/Skeletons/DashboardSkeleton';
-
 const COLORS = ['#007aff', '#5ac8fa', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
 
 const Dashboard = () => {
-  // --- 1. TODOS OS HOOKS DEVEM FICAR NO TOPO ---
-  
   const { isAdmin, allowedUnits, permissions, loading: authLoading } = useAuth();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalView, setModalView] = useState('select'); 
   const [maintenanceTarget, setMaintenanceTarget] = useState(null);
 
-  // Helper para constraints
+  // --- HELPER DE SEGURANÇA PARA QUERIES ---
   const getPermissionConstraints = () => {
     if (isAdmin) return []; 
+    // Se tiver unidades permitidas, filtra por elas
     if (allowedUnits.length > 0) return [where('unitId', 'in', allowedUnits)]; 
+    // Se não tiver permissão nenhuma, bloqueia
     return [where('unitId', '==', 'BLOQUEADO')];
   };
 
-  // --- Queries (Sempre são chamadas, mesmo que retornem null) ---
+  // --- 1. QUERIES DOS CARDS (CORRIGIDAS) ---
 
-  // Query 1: Em Manutenção
+  // Card 1: Em Manutenção
   const maintenanceQuery = useMemo(() => {
     if (authLoading) return null;
-    return query(collection(db, 'assets'), where('status', '==', 'Em manutenção'), ...getPermissionConstraints());
+    return query(
+      collection(db, 'assets'), 
+      where('status', '==', 'Em manutenção'),
+      ...getPermissionConstraints()
+    );
   }, [authLoading, isAdmin, allowedUnits]);
-  const [maintenanceAssets] = useCollection(maintenanceQuery);
+  const [maintenanceAssets, loadingMaintenance] = useCollection(maintenanceQuery);
 
-  // Query 2: Computadores
+  // Card 2: Computadores (Todos, filtraremos visualmente)
   const computersQuery = useMemo(() => {
     if (authLoading) return null;
-    return query(collection(db, 'assets'), where('type', '==', 'computador'), ...getPermissionConstraints());
+    return query(
+      collection(db, 'assets'), 
+      where('type', '==', 'computador'),
+      ...getPermissionConstraints()
+    );
   }, [authLoading, isAdmin, allowedUnits]);
   const [computerAssets, loadingComputers] = useCollection(computersQuery);
 
-  // Query 3: Impressoras
+  // Card 3: Impressoras (Todas, filtraremos visualmente)
   const printersQuery = useMemo(() => {
     if (authLoading) return null;
-    return query(collection(db, 'assets'), where('type', '==', 'impressora'), ...getPermissionConstraints());
+    return query(
+      collection(db, 'assets'), 
+      where('type', '==', 'impressora'),
+      ...getPermissionConstraints()
+    );
   }, [authLoading, isAdmin, allowedUnits]);
   const [printerAssets, loadingPrinters] = useCollection(printersQuery);
 
-  // Query 4: Unidades
+  // --- OUTRAS QUERIES (Gráfico e Feed) ---
+  
+  // Unidades
   const unitsQuery = useMemo(() => {
     if (authLoading) return null;
     if (isAdmin) return query(collection(db, 'units'), orderBy('name', 'asc'));
@@ -76,7 +89,7 @@ const Dashboard = () => {
   }, [authLoading, isAdmin, allowedUnits]);
   const [units, loadingUnits] = useCollection(unitsQuery);
 
-  // Query 5: Histórico
+  // Histórico
   const historyQuery = useMemo(() => {
     if (authLoading) return null;
     let constraints = [orderBy('timestamp', 'desc'), limit(5)];
@@ -88,26 +101,37 @@ const Dashboard = () => {
   }, [authLoading, isAdmin, allowedUnits]);
   const [history, loadingHistory, errorHistory] = useCollection(historyQuery);
 
-  // --- 2. AGORA SIM PODEMOS FAZER O RETORNO CONDICIONAL ---
+
+  // --- RENDERIZAÇÃO CONDICIONAL DE LOADING ---
   if (authLoading) {
     return <DashboardSkeleton />;
   }
-  // -------------------------------------------------------
 
-  // Processamento de Dados
+  // --- LÓGICA DE CONTAGEM (CORRIGIDA) ---
+  // Filtra: Devolvido, Descartado e Inativo para contar como "Ativo"
+  const getActiveCount = (loading, snapshot) => {
+    if (loading) return <Loader2 size={20} className={styles.spinnerSmall} />;
+    if (!snapshot) return 0;
+    
+    return snapshot.docs.filter(doc => {
+      const s = doc.data().status;
+      return s !== 'Devolvido' && s !== 'Descartado' && s !== 'Inativo';
+    }).length;
+  };
+
+  const getMaintenanceCount = (loading, snapshot) => {
+    if (loading) return <Loader2 size={20} className={styles.spinnerSmall} />;
+    return snapshot ? snapshot.size : 0;
+  };
+
+  // Dados do Gráfico
   const pieChartData = units?.docs.map((doc, index) => ({
     name: doc.data().sigla || doc.data().name, 
     value: doc.data().assetCount || 0, 
     fill: COLORS[index % COLORS.length] 
   })) || [];
 
-  const getActiveCount = (loading, snapshot) => {
-    if (loading) return <Loader2 size={16} className={styles.spinnerSmall} />;
-    if (!snapshot) return 0;
-    return snapshot.docs.filter(doc => doc.data().status !== 'Devolvido').length;
-  };
-
-  // Handlers
+  // Handlers de Modal
   const handleOpenRegister = () => { setModalView('select'); setIsModalOpen(true); };
   const handleOpenMaintenance = () => { setMaintenanceTarget(null); setModalView('maintenance_search'); setIsModalOpen(true); };
   const handleAssetFound = (assetData) => { setMaintenanceTarget(assetData); setModalView('maintenance_form'); };
@@ -150,10 +174,34 @@ const Dashboard = () => {
         </div>
       </header>
 
+      {/* --- CARDS CORRIGIDOS --- */}
       <div className={styles.cardGrid}>
-        <div className={styles.card}><Wrench className={styles.cardIcon} style={{ color: 'var(--color-warning)' }} /><span className={styles.cardTitle}>Em Manutenção</span><span className={styles.cardValue}>{maintenanceAssets ? maintenanceAssets.size : 0}</span></div>
-        <div className={styles.card}><Laptop className={styles.cardIcon} style={{ color: 'var(--color-primary)' }} /><span className={styles.cardTitle}>Computadores Ativos</span><span className={styles.cardValue}>{getActiveCount(loadingComputers, computerAssets)}</span></div>
-        <div className={styles.card}><Printer className={styles.cardIcon} style={{ color: 'var(--color-text-secondary)' }} /><span className={styles.cardTitle}>Impressoras Ativas</span><span className={styles.cardValue}>{getActiveCount(loadingPrinters, printerAssets)}</span></div>
+        {/* Card 1: Em Manutenção */}
+        <div className={styles.card}>
+          <Wrench className={styles.cardIcon} style={{ color: 'var(--color-warning)' }} />
+          <span className={styles.cardTitle}>Em Manutenção</span>
+          <span className={styles.cardValue}>
+            {getMaintenanceCount(loadingMaintenance, maintenanceAssets)}
+          </span>
+        </div>
+
+        {/* Card 2: Computadores Ativos (Sem devolvidos) */}
+        <div className={styles.card}>
+          <Laptop className={styles.cardIcon} style={{ color: 'var(--color-primary)' }} />
+          <span className={styles.cardTitle}>Computadores Ativos</span>
+          <span className={styles.cardValue}>
+            {getActiveCount(loadingComputers, computerAssets)}
+          </span>
+        </div>
+
+        {/* Card 3: Impressoras Ativas (Sem devolvidos) */}
+        <div className={styles.card}>
+          <Printer className={styles.cardIcon} style={{ color: 'var(--color-text-secondary)' }} />
+          <span className={styles.cardTitle}>Impressoras Ativas</span>
+          <span className={styles.cardValue}>
+            {getActiveCount(loadingPrinters, printerAssets)}
+          </span>
+        </div>
       </div>
 
       <div className={styles.contentRow}>
@@ -178,7 +226,7 @@ const Dashboard = () => {
           </div>
           
           {loadingHistory && <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>}
-          {errorHistory && <div className={styles.emptyFeed}><p className={styles.errorText}>Erro ao carregar histórico.</p><p className={styles.errorTextSmall}>Verifique índices no console.</p></div>}
+          {errorHistory && <div className={styles.emptyFeed}><p className={styles.errorText}>Erro no histórico.</p></div>}
           
           {!loadingHistory && history?.docs.length === 0 && (
             <div className={styles.emptyFeed}><PackageSearch size={30} /><p>Nenhuma atividade registrada.</p></div>

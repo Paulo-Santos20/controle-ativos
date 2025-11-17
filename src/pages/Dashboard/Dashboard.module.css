@@ -281,3 +281,72 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+/* --- Grid de Cards (Resumo) --- */
+.cardGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+@media (min-width: 640px) {
+  .cardGrid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1024px) {
+  .cardGrid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.card {
+  display: grid;
+  grid-template-areas: 
+    "icon title" 
+    "icon value";
+  grid-template-columns: auto 1fr; /* Auto para o ícone, resto para texto */
+  gap: 4px var(--spacing-md);
+  background-color: var(--color-bg-component);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  border: 1px solid var(--color-border);
+  align-items: center; /* Centraliza verticalmente */
+}
+
+/* --- CORREÇÃO AQUI: Estilo do Container do Ícone --- */
+.cardIcon {
+  grid-area: icon;
+  display: flex;           /* Garante centralização */
+  align-items: center;
+  justify-content: center;
+  width: 56px;             /* Largura fixa do círculo */
+  height: 56px;            /* Altura fixa do círculo */
+  background-color: var(--color-bg-page); /* Fundo cinza claro */
+  border-radius: 50%;      /* Torna redondo */
+  margin-right: var(--spacing-sm);
+}
+
+/* --- CORREÇÃO AQUI: Estilo do Ícone SVG em si --- */
+.cardIcon svg {
+  width: 28px;  /* Tamanho do ícone */
+  height: 28px;
+  stroke-width: 2px; /* Espessura da linha */
+}
+
+.cardTitle {
+  grid-area: title;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  align-self: end; /* Alinha o texto na parte de baixo da sua célula */
+  line-height: 1;
+}
+
+.cardValue {
+  grid-area: value;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.2;
+  align-self: start; /* Alinha o valor na parte de cima */
+  display: flex;
+  align-items: center;
+}

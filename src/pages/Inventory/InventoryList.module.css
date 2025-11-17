@@ -35,6 +35,10 @@
 .primaryButton:hover {
   background-color: var(--color-primary-dark);
 }
+.primaryButton:disabled {
+  background-color: var(--color-border);
+  cursor: not-allowed;
+}
 
 /* --- Toolbar --- */
 .toolbar {
@@ -164,29 +168,31 @@
   background-color: #f9fafb;
 }
 
-/* --- Checkbox Styles --- */
+/* --- Checkbox Styles (Reforçado) --- */
 .checkboxButton {
   background: transparent;
   border: none;
-  padding: 8px; /* Aumenta a área de clique */
+  padding: 8px; /* Área de clique maior */
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%; /* Botão redondo para hover */
-  transition: background-color 0.2s ease, transform 0.1s ease;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
 }
 .checkboxButton:hover {
-  background-color: rgba(0, 0, 0, 0.08); /* Fundo cinza ao passar o mouse */
+  background-color: rgba(0, 0, 0, 0.05);
 }
-.checkboxButton:active {
-  transform: scale(0.95); /* Leve clique */  
-}
+
+/* Garante que o ícone tenha tamanho e seja visível */
 .checkboxButton svg {
   display: block;
   min-width: 20px;
   min-height: 20px;
+  width: 20px;
+  height: 20px;
 }
+
 .rowSelected {
   background-color: #eff6ff !important; /* Azul bem claro */
 }
@@ -356,4 +362,85 @@
   background-color: #fffbeb;
   margin: 0;
   border-top: 1px solid #fef3c7;
+}
+
+/* InventoryList.module.css */
+
+/* ... estilos anteriores ... */
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Container para os botões ficarem lado a lado */
+.headerActions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+/* Botão Primário (Azul) */
+.primaryButton {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  text-decoration: none; /* Caso seja usado em Links */
+}
+.primaryButton:hover {
+  background-color: var(--color-primary-dark);
+}
+.primaryButton:disabled {
+  background-color: var(--color-border);
+  cursor: not-allowed;
+}
+
+/* --- A CORREÇÃO DO BOTÃO IMPORTAR --- */
+/* Botão Secundário (Branco com Borda) */
+.secondaryButton {
+  background-color: white;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border); /* Borda cinza */
+  padding: 10px 16px;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  text-decoration: none; /* Remove o sublinhado do link */
+}
+
+.secondaryButton:hover {
+  background-color: var(--color-bg-page); /* Cinza claro no hover */
+  border-color: var(--color-text-secondary);
+}
+
+.secondaryButton svg {
+  color: var(--color-text-secondary);
+}
+
+/* Responsividade: Em telas muito pequenas, esconde o texto e deixa só o ícone */
+@media (max-width: 480px) {
+  .primaryButton span, 
+  .secondaryButton span {
+    display: none;
+  }
+  .primaryButton, .secondaryButton {
+    padding: 10px; /* Botão quadrado */
+  }
 }

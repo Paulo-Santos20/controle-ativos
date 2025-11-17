@@ -5,14 +5,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase'; 
 import { 
-  Plus, ChevronRight, Package, Search, Filter, Archive, 
-  CheckSquare, Square, Truck, ArrowDownCircle, X, Loader2
+  Plus, ChevronRight, Package, Loader2, Search, Filter, Archive, 
+  CheckSquare, Square, Truck, ArrowDownCircle, X, Import // <-- CORREÇÃO: 'Import' adicionado
 } from 'lucide-react'; 
 
 import { useAuth } from '../../hooks/useAuth';
 import styles from './InventoryList.module.css';
 
-// Componentes de UI e Formulários
 import Modal from '../../components/Modal/Modal';
 import AssetTypeSelector from '../../components/Inventory/AssetTypeSelector';
 import AddAssetForm from '../../components/Inventory/AddAssetForm';
@@ -34,11 +33,11 @@ const InventoryList = () => {
   const [modalView, setModalView] = useState('select'); 
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // Estados de Dados
+  // Estados de Dados (Paginação)
   const [assets, setAssets] = useState([]);
   const [lastDoc, setLastDoc] = useState(null);
-  const [loading, setLoading] = useState(false); // Loading inicial
-  const [loadingMore, setLoadingMore] = useState(false); // Loading paginação
+  const [loading, setLoading] = useState(false); 
+  const [loadingMore, setLoadingMore] = useState(false); 
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState(null);
 
@@ -57,7 +56,7 @@ const InventoryList = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Carregar Unidades (Filtro)
+  // Carregar Unidades
   useEffect(() => {
     const fetchUnits = async () => {
       const q = query(collection(db, 'units'), orderBy('name', 'asc'));
@@ -67,7 +66,7 @@ const InventoryList = () => {
     fetchUnits();
   }, []);
 
-  // Função Principal de Busca (Manual para controle de paginação)
+  // Busca Principal
   const fetchAssets = useCallback(async (isLoadMore = false, specificTerm = "") => {
     if (authLoading) return;
     
@@ -80,27 +79,24 @@ const InventoryList = () => {
       let q;
       const collectionRef = collection(db, 'assets');
       
-      // MODO BUSCA ESPECÍFICA
       if (specificTerm) {
+        const termUpper = specificTerm.toUpperCase(); // Normaliza para maiúsculo
         const constraints = [
           orderBy(documentId()), 
-          where(documentId(), '>=', specificTerm),
-          where(documentId(), '<=', specificTerm + '\uf8ff'),
+          where(documentId(), '>=', termUpper),
+          where(documentId(), '<=', termUpper + '\uf8ff'),
           limit(50)
         ];
         q = query(collectionRef, ...constraints);
 
       } else {
-        // MODO LISTAGEM NORMAL
         let constraints = [orderBy('createdAt', 'desc')];
 
-        // Segurança
         if (!isAdmin) {
           if (allowedUnits.length > 0) constraints.push(where("unitId", "in", allowedUnits));
           else constraints.push(where("unitId", "==", "SEM_PERMISSAO"));
         }
 
-        // Filtros
         if (filterType !== "all") constraints.push(where("type", "==", filterType));
         if (filterStatus !== "all") constraints.push(where("status", "==", filterStatus));
         if (filterUnit !== "all") {
@@ -109,7 +105,6 @@ const InventoryList = () => {
           }
         }
 
-        // Paginação
         constraints.push(limit(ITEMS_PER_PAGE));
         if (isLoadMore && lastDoc) {
           constraints.push(startAfter(lastDoc));
@@ -125,7 +120,6 @@ const InventoryList = () => {
         ...doc.data()
       }));
 
-      // Filtro de Segurança Pós-Busca (Apenas se buscou por ID)
       if (specificTerm && !isAdmin) {
         newAssets = newAssets.filter(asset => allowedUnits.includes(asset.unitId));
       }
@@ -149,20 +143,18 @@ const InventoryList = () => {
     }
   }, [authLoading, isAdmin, allowedUnits, filterType, filterStatus, filterUnit, lastDoc]);
 
-  // Trigger de Busca
   useEffect(() => {
     setLastDoc(null);
     fetchAssets(false, debouncedSearch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterType, filterStatus, filterUnit, isAdmin, allowedUnits, debouncedSearch]);
 
-  // Filtro Visual (Devolvidos)
   const displayedAssets = assets.filter(asset => {
     if (!showReturned && asset.status === 'Devolvido') return false;
     return true;
   });
 
-  // UI Helpers
+  // Helpers
   const getStatusClass = (status) => {
     if (status === 'Em uso') return styles.statusUsage;
     if (status === 'Em manutenção') return styles.statusMaintenance;
@@ -197,7 +189,7 @@ const InventoryList = () => {
   };
 
   const renderContent = () => {
-    // --- USO DO SKELETON ---
+    // --- CORREÇÃO: Renderiza o Skeleton corretamente ---
     if (loading || authLoading) {
       return <InventoryTableSkeleton />;
     }
@@ -229,7 +221,7 @@ const InventoryList = () => {
               <tr>
                 <th style={{width: '50px', textAlign: 'center'}}>
                   <button onClick={handleSelectAll} className={styles.checkboxButton}>
-                    {isAllSelected ? <CheckSquare size={22} color="#2563eb" strokeWidth={2.5} /> : <Square size={22} color="#64748b" strokeWidth={2} />}
+                    {isAllSelected ? <CheckSquare size={22} color="#007aff" /> : <Square size={22} color="#94a3b8" />}
                   </button>
                 </th>
                 <th>Tombamento</th>
@@ -248,7 +240,7 @@ const InventoryList = () => {
                   <tr key={asset.id} className={isSelected ? styles.rowSelected : ''}>
                     <td style={{textAlign: 'center'}}>
                       <button onClick={() => handleSelectOne(asset.id)} className={styles.checkboxButton}>
-                        {isSelected ? <CheckSquare size={22} color="#2563eb" strokeWidth={2.5} /> : <Square size={22} color="#94a3b8" strokeWidth={2} />}
+                        {isSelected ? <CheckSquare size={22} color="#007aff" /> : <Square size={22} color="#94a3b8" />}
                       </button>
                     </td>
                     <td data-label="Tombamento"><strong>{asset.id}</strong></td>
@@ -267,7 +259,6 @@ const InventoryList = () => {
           </table>
         </div>
 
-        {/* Paginação */}
         {hasMore && !debouncedSearch && (
           <div className={styles.loadMoreContainer}>
             <button className={styles.loadMoreButton} onClick={() => fetchAssets(true, "")} disabled={loadingMore}>
@@ -298,19 +289,43 @@ const InventoryList = () => {
         </div>
       )}
 
-      <header className={styles.header}>
+     <header className={styles.header}>
         <h1 className={styles.title}>Inventário de Ativos</h1>
-        <button className={styles.primaryButton} onClick={() => handleOpenModal('select')} disabled={!permissions?.ativos?.create}>
-          <Plus size={18} /> Registrar Novo Ativo
-        </button>
+        
+        {/* Agrupamos os botões para alinhamento perfeito */}
+        <div className={styles.headerActions}>
+          
+          {/* Botão Importar (Estilo Secundário) */}
+          <Link to="/inventory/importar" className={styles.secondaryButton}>
+            <Import size={18} /> 
+            <span>Importar Excel</span>
+          </Link>
+
+          {/* Botão Novo (Estilo Primário) */}
+          <button 
+            className={styles.primaryButton} 
+            onClick={() => handleOpenModal('select')}
+            disabled={!permissions?.ativos?.create}
+            style={{ opacity: !permissions?.ativos?.create ? 0.6 : 1 }}
+          >
+            <Plus size={18} /> 
+            <span>Novo Ativo</span>
+          </button>
+          
+        </div>
       </header>
 
       <div className={styles.toolbar}>
         <div className={styles.searchBox}>
           <Search size={18} />
-          <input type="text" placeholder="Buscar Tombamento (ID)..." className={styles.searchInput} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          <input 
+            type="text" 
+            placeholder="Buscar Tombamento (ID)..." 
+            className={styles.searchInput} 
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value.toUpperCase())} // CORREÇÃO: Corrigido o onChange duplo
+          />
           {searchTerm && (<button onClick={() => setSearchTerm("")} style={{background:'none', border:'none', cursor:'pointer', color:'#999'}}><X size={16} /></button>)}
-       onChange={(e) => setSearchTerm(e.target.value.toUpperCase())}
         </div>
         
         <div className={styles.filterRow}>

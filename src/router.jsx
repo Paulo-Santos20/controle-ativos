@@ -29,6 +29,8 @@ import ProfileListPage from "./pages/Users/ProfileListPage";
 // Página Pública
 import AssetScanPage from "./pages/Public/AssetScanPage";
 
+import BulkImportPage from "./pages/Inventory/BulkImportPage";
+
 export const router = createBrowserRouter([
   {
     path: "/login",
@@ -62,6 +64,7 @@ export const router = createBrowserRouter([
       { path: "atividades", element: <ActivityLogPage /> },
       { path: "reports", element: <Reports /> },
       { path: "profile", element: <UserProfile /> },
+      { path: "inventory/importar", element: <BulkImportPage /> },
       
       // Rotas de Cadastros
       { path: "cadastros/unidades", element: <UnidadesPage /> },

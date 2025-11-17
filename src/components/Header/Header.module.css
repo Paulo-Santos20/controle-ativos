@@ -1,79 +1,25 @@
 /* Header.module.css */
+
 .header {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* Padrão mobile: botão | logo | (espaço) */
+  justify-content: space-between; /* Garante que esquerda fica na esquerda e direita na direita */
   background-color: var(--color-bg-component);
   border-bottom: 1px solid var(--color-border);
-  padding: var(--spacing-md);
-  height: 65px; /* Altura fixa para o header */
+  padding: 0 var(--spacing-md); /* Padding lateral */
+  height: 64px; /* Altura fixa padrão */
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 40; /* Alto o suficiente para ficar sobre o conteúdo, mas baixo de modais */
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-.iconButton {
+/* --- Seções --- */
+
+.leftSection {
   display: flex;
   align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  padding: var(--spacing-xs);
-  border-radius: var(--border-radius);
-  transition: background-color 0.2s;
-}
-.iconButton:hover {
-  background-color: var(--color-bg-page);
-  color: var(--color-text-primary);
-}
-
-.logoMobile {
-  font-weight: 700;
-  color: var(--color-primary);
-  font-size: 1.1rem;
-  /* Espaçador para centralizar o logo no mobile */
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-/* Esconde ações de desktop no mobile */
-.desktopActions {
-  display: none;
-}
-
-/* --- Media Query para Desktop (768px) --- */
-@media (min-width: 768px) {
-  .header {
-    justify-content: flex-end; /* Alinha tudo à direita no desktop */
-    padding-left: var(--spacing-lg);
-    padding-right: var(--spacing-lg);
-  }
-
-  /* Esconde os controles mobile */
-  .mobileOnly {
-    display: none;
-  }
-
-  /* Mostra os controles desktop */
-  .desktopActions {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-  }
-}
-
-/* Header.module.css */
-/* ... seus estilos existentes ... */
-
-.header {
-  /* Garanta que é flex e espaçado */
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  /* ... */
+  gap: var(--spacing-md);
 }
 
 .rightSection {
@@ -82,9 +28,66 @@
   gap: var(--spacing-sm);
 }
 
+/* --- Botões de Ícone (Menu, Tema, etc) --- */
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 8px; /* Área de clique confortável */
+  border-radius: 50%; /* Botões redondos ficam mais modernos no header */
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.iconButton:hover {
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
+}
+
+/* --- Separador Vertical --- */
 .separator {
   width: 1px;
   height: 24px;
   background-color: var(--color-border);
-  margin: 0 var(--spacing-xs);
+  margin: 0 4px;
+}
+
+/* --- Título Mobile (Opcional, caso queira usar) --- */
+.logoMobile {
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 1.1rem;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none; /* Deixa clicar através dele se necessário */
+}
+
+/* --- Responsividade --- */
+
+/* Mobile (Padrão) */
+.mobileOnly {
+  display: flex;
+}
+
+/* Desktop (min-width: 768px) */
+@media (min-width: 768px) {
+  .header {
+    /* No desktop, a sidebar já ocupa a esquerda. 
+       Podemos dar um padding maior se necessário. */
+    padding: 0 var(--spacing-lg);
+  }
+
+  /* Esconde o botão de abrir menu (hambúrguer) no desktop */
+  .mobileOnly {
+    display: none;
+  }
+  
+  /* A logo mobile também some no desktop */
+  .logoMobile {
+    display: none;
+  }
 }

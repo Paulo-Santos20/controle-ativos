@@ -1,70 +1,82 @@
 /* ---------------------------------- */
 /* 1. RESET E BASE (Mobile-First)     */
 /* ---------------------------------- */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
-  font-size: 100%; /* 16px */
+  font-size: 100%; 
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  line-height: 1.5;
-  background-color: var(--color-bg-page);
-  color: var(--color-text-primary);
-  min-height: 100vh;
-}
-
-img, picture, video, canvas, svg {
-  display: block;
-  max-width: 100%;
-}
-
-input, button, textarea, select {
-  font: inherit;
-}
-
 /* ---------------------------------- */
-/* 2. VARIÁVEIS GLOBAIS (Seu Tema)    */
+/* 2. VARIÁVEIS DE TEMA (Light/Dark)  */
 /* ---------------------------------- */
 :root {
-  /* Cores (Exemplo de tema hospitalar) */
+  /* --- TEMA CLARO (Padrão) --- */
   --color-primary: #007aff;
   --color-primary-dark: #005ec4;
   --color-secondary: #5ac8fa;
+  
   --color-success: #34c759;
   --color-warning: #ff9500;
   --color-danger: #ff3b30;
 
-  /* Níveis de Cinza (UI Limpa) */
   --color-text-primary: #1c1c1e;
   --color-text-secondary: #6e6e73;
-  --color-bg-page: #f2f2f7;      /* Fundo da página (antigo gray-100) */
-  --color-bg-component: #ffffff; /* Fundo de cards, sidebar */
-  --color-border: #d1d1d6;
-
-  /* Tipografia e Espaçamento */
-  --font-size-sm: 0.875rem; /* 14px */
-  --font-size-md: 1rem;     /* 16px */
-  --font-size-lg: 1.25rem;  /* 20px */
   
+  --color-bg-page: #f2f2f7;      /* Fundo da página (cinza claro) */
+  --color-bg-component: #ffffff; /* Fundo de cards (branco) */
+  --color-border: #d1d1d6;
+  
+  --shadow-color: rgba(0, 0, 0, 0.05);
+
+  /* Espaçamento */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 32px;
-
-  /* Outros */
   --border-radius: 8px;
-  --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+/* --- TEMA ESCURO --- */
+[data-theme="dark"] {
+  --color-primary: #0a84ff; /* Azul mais vibrante para fundo escuro */
+  --color-primary-dark: #409cff;
+  
+  --color-text-primary: #f5f5f7; /* Quase branco */
+  --color-text-secondary: #86868b; /* Cinza médio */
+  
+  --color-bg-page: #000000;      /* Fundo da página (preto real) */
+  --color-bg-component: #1c1c1e; /* Fundo de cards (cinza escuro) */
+  --color-border: #38383a;       /* Bordas sutis */
+  
+  --shadow-color: rgba(0, 0, 0, 0.5); /* Sombra mais forte */
+}
+
+/* ---------------------------------- */
+/* 3. APLICAÇÃO GERAL                 */
+/* ---------------------------------- */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
+  min-height: 100vh;
+  /* Transição suave ao trocar de tema */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+img, picture, video, canvas, svg { display: block; max-width: 100%; }
+input, button, textarea, select { font: inherit; }
+
+/* Ajuste para inputs no modo escuro */
+[data-theme="dark"] input, 
+[data-theme="dark"] select, 
+[data-theme="dark"] textarea {
+  background-color: #2c2c2e;
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
 }
