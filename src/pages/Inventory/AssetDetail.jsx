@@ -19,12 +19,12 @@ import {
   HardDrive, Printer, Laptop, ShieldAlert, Trash2, QrCode, Tag
 } from 'lucide-react';
 
-// --- 1. IMPORTA AUTH E UTILS ---
+// --- IMPORTA AUTH E UTILS ---
 import { useAuth } from '/src/hooks/useAuth.js';
-import { generateQrCodePdf } from '/src/utils/qrCodeGenerator.jsx';
-import { logAudit } from '/src/utils/auditLogger';
+import { generateQrCodePdf } from '/src/utils/qrCodeGenerator.jsx'; // Corrigido para .jsx
+import { logAudit } from '../../utils/AuditLogger';
 
-// --- 2. IMPORTA ESTILOS E COMPONENTES ---
+// --- IMPORTA ESTILOS E COMPONENTES ---
 import styles from './AssetDetail.module.css'; 
 import Modal from '../../components/Modal/Modal';
 import EditAssetForm from '../../components/Inventory/EditAssetForm'; 
@@ -92,6 +92,7 @@ const AssetDetail = () => {
   }
 
   // --- BLOQUEIO DE SEGURANÇA ---
+  // Se não for admin E a unidade do ativo não estiver na lista permitida
   if (!isAdmin && !allowedUnits.includes(asset.unitId)) {
     return (
       <div className={styles.loadingState}>
@@ -142,7 +143,7 @@ const AssetDetail = () => {
       
       await batch.commit();
 
-      // 3. Log de Auditoria
+      // 3. Log de Auditoria Global
       await logAudit(
         "Exclusão de Ativo",
         `Ativo "${asset.tombamento}" excluído permanentemente.`,

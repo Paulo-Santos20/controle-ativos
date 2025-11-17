@@ -10,7 +10,7 @@ import {
   Trash2, ShieldAlert, Settings, UserX 
 } from 'lucide-react';
 
-import { useAuth } from '/src/hooks/useAuth.js';
+import { useAuth } from '../../hooks/useAuth';
 import styles from './ActivityLogPage.module.css';
 
 // Filtros Atualizados

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { UserCircle, LogOut, ChevronDown, User, Loader2 } from 'lucide-react';
 import styles from './UserMenu.module.css';
 // --- 1. IMPORTA O HOOK DE AUTENTICAÇÃO ---
-import { useAuth } from '/src/hooks/useAuth.js'; 
+import { useAuth } from '../../hooks/useAuth'; 
 
 /**
  * Componente do menu de usuário no Header.

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, orderBy, query, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '/src/lib/firebase.js';
+import { db } from '../../lib/firebase.js';
 import { Loader2, Plus, Pencil, Trash2, PackageSearch } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -12,7 +12,7 @@ import Modal from '../../components/Modal/Modal';
 import AddRoleForm from '../../components/Users/AddRoleForm.jsx';
 
 // Importa o Logger de Auditoria
-import { logAudit } from '/src/utils/auditLogger';
+import { logAudit } from '../../utils/AuditLogger.js';
 
 /**
  * Página para listar e gerenciar Perfis (Roles) do sistema.

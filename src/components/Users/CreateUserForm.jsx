@@ -12,7 +12,7 @@ import styles from '../Settings/AddUnitForm.module.css';
 import { Loader2 } from 'lucide-react';
 
 // --- 1. IMPORTA O LOGGER ---
-import { logAudit } from '/src/utils/auditLogger';
+import { logAudit } from '../../utils/AuditLogger';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
