@@ -1,8 +1,7 @@
-import React, { useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom'; // Importar useLocation
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '../lib/firebase.js';
-// Importamos onSnapshot para ouvir mudanças em TEMPO REAL
 import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore'; 
 import { signOut } from 'firebase/auth';
 import { toast } from 'sonner';
@@ -10,62 +9,79 @@ import Loading from './Loading/Loading';
 
 const ProtectedRoute = ({ children }) => {
   const [user, loading, error] = useAuthState(auth);
+  const [isCheckingDb, setIsCheckingDb] = useState(true);
+  const [mustChangePassword, setMustChangePassword] = useState(false); // Estado local da flag
+  const location = useLocation(); // Para saber onde estamos
 
-  // --- LÓGICA DE SINCRONIZAÇÃO E SEGURANÇA ---
   useEffect(() => {
     let unsubscribe = () => {};
 
     if (user) {
       const userRef = doc(db, 'users', user.uid);
       
-      // 1. Cria o usuário se não existir (Lógica anterior)
-      const checkAndCreateUser = async () => {
-        try {
-          const docSnap = await getDoc(userRef);
-          if (!docSnap.exists()) {
-            await setDoc(userRef, {
-              email: user.email,
-              displayName: user.displayName || user.email.split('@')[0],
-              role: 'guest',
-              isActive: true, // <--- NOVO: Padrão é ativo
-              assignedUnits: [],
-              createdAt: serverTimestamp()
-            });
-          }
-        } catch (err) {
-          console.error("Erro sync:", err);
-        }
-      };
-      checkAndCreateUser();
-
-      // 2. VIGILÂNCIA EM TEMPO REAL (O "Expulsor")
-      // Escuta mudanças no documento do usuário. Se 'isActive' virar false, desloga.
-      unsubscribe = onSnapshot(userRef, (docSnap) => {
+      // 1. Listener em Tempo Real (Vigia Status e Senha)
+      unsubscribe = onSnapshot(userRef, async (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
-          // Se isActive for explicitamente false (e não undefined)
+          
+          // Checagem de Bloqueio
           if (data.isActive === false) {
-            toast.error("Sua conta foi desativada pelo administrador.");
-            signOut(auth); // <-- TCHAU! Força o logout
+            toast.error("Conta desativada.");
+            await signOut(auth);
+            return;
           }
+
+          // Checagem de Senha Obrigatória
+          if (data.mustChangePassword === true) {
+            setMustChangePassword(true);
+          } else {
+            setMustChangePassword(false);
+          }
+          
+          setIsCheckingDb(false); // Terminou de checar
+        } else {
+          // Se o doc não existe, cria (Auto-Create)
+          await setDoc(userRef, {
+            email: user.email,
+            displayName: user.displayName || user.email.split('@')[0],
+            role: 'guest',
+            isActive: true,
+            assignedUnits: [],
+            createdAt: serverTimestamp()
+          });
+          // Não seta isCheckingDb aqui, vai rodar o snapshot de novo
         }
+      }, (error) => {
+        console.error("Erro ao monitorar usuário:", error);
+        setIsCheckingDb(false); // Libera para não travar em loading
       });
+    } else {
+      setIsCheckingDb(false);
     }
 
-    return () => unsubscribe(); // Limpa o ouvinte ao desmontar
+    return () => unsubscribe();
   }, [user]);
 
-  if (loading) return <Loading />;
-
-  if (error) {
-    console.error("Erro auth:", error);
-    return <Navigate to="/login" replace />;
-  }
+  if (loading || (user && isCheckingDb)) return <Loading />;
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
+  // --- LÓGICA DE REDIRECIONAMENTO DE SENHA ---
+  
+  // Se precisa trocar a senha E não está na página de troca
+  if (mustChangePassword && location.pathname !== '/force-password') {
+    return <Navigate to="/force-password" replace />;
+  }
+
+  // Se NÃO precisa trocar a senha MAS está na página de troca (evita acesso manual)
+  if (!mustChangePassword && location.pathname === '/force-password') {
+    return <Navigate to="/" replace />;
+  }
+
+  // Se precisa trocar E já está na página correta, renderiza a página (children)
+  // Caso contrário, renderiza o app normal.
   return children;
 };
 

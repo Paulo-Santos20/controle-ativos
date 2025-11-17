@@ -4,16 +4,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, query, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
+// Importamos initializeApp para criar a instancia secundária (Workaround para não deslogar Admin)
 import { initializeApp } from 'firebase/app'; 
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db } from '/src/lib/firebase.js'; 
 import { toast } from 'sonner';
-import styles from '../Settings/AddUnitForm.module.css'; 
-import { Loader2 } from 'lucide-react';
+import styles from '../Settings/AddUnitForm.module.css'; // Reutiliza CSS de formulários
+import { Loader2, AlertTriangle } from 'lucide-react';
 
-// --- 1. IMPORTA O LOGGER ---
-import { logAudit } from '../../utils/AuditLogger';
+// Importa o Logger de Auditoria
+import { logAudit } from '/src/utils/auditLogger';
 
+// Precisamos da config pura para criar a app secundária
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -31,6 +33,7 @@ const createUserSchema = z.object({
 });
 
 const CreateUserForm = ({ onClose }) => {
+  // Busca os perfis para o dropdown
   const [roles, loadingRoles] = useCollection(
     query(collection(db, 'roles'), orderBy('name', 'asc'))
   );
@@ -49,11 +52,12 @@ const CreateUserForm = ({ onClose }) => {
     let secondaryApp = null;
 
     try {
-      // 1. Cria instância secundária para não deslogar o admin
+      // 1. Cria instância secundária do Firebase
+      // Isso permite criar um usuário novo sem derrubar a sessão do Admin atual
       secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
       const secondaryAuth = getAuth(secondaryApp);
 
-      // 2. Cria no Auth
+      // 2. Cria o usuário na autenticação (Auth)
       const userCredential = await createUserWithEmailAndPassword(
         secondaryAuth, 
         data.email, 
@@ -61,28 +65,29 @@ const CreateUserForm = ({ onClose }) => {
       );
       const newUser = userCredential.user;
 
-      // 3. Cria no Firestore
+      // 3. Cria o perfil no Firestore (Database)
+      // Usamos o 'db' principal aqui, pois já estamos autenticados nele como Admin
       await setDoc(doc(db, "users", newUser.uid), {
         displayName: data.displayName,
         email: data.email,
         role: data.role,
-        assignedUnits: [],
-        isActive: true, // Importante: Já nasce ativo
+        assignedUnits: [], // Começa sem unidades, deve ser editado depois
+        isActive: true, // Já nasce ativo
+        mustChangePassword: true, // <--- FORÇA A TROCA DE SENHA
         createdAt: serverTimestamp(),
       });
 
-      // 4. Desloga a secundária
+      // 4. Desloga a instância secundária para limpar a memória
       await signOut(secondaryAuth);
 
-      // --- 5. REGISTRA O LOG DE AUDITORIA (CORREÇÃO) ---
+      // 5. Registra no Log de Auditoria
       await logAudit(
         "Criação de Usuário",
-        `O usuário "${data.displayName}" (${data.email}) foi criado com o perfil "${data.role}".`,
+        `Usuário "${data.displayName}" (${data.email}) criado com perfil "${data.role}".`,
         `Usuário: ${data.email}`
       );
-      // ------------------------------------------------
 
-      toast.success(`Usuário ${data.displayName} criado com sucesso!`, { id: toastId });
+      toast.success(`Usuário criado com sucesso!`, { id: toastId });
       reset();
       onClose();
 
@@ -90,11 +95,10 @@ const CreateUserForm = ({ onClose }) => {
       console.error(error);
       let msg = error.message;
       if (error.code === 'auth/email-already-in-use') msg = "Este e-mail já está cadastrado.";
+      if (error.code === 'auth/weak-password') msg = "A senha é muito fraca.";
       toast.error(`Erro: ${msg}`, { id: toastId });
     } finally {
-      if (secondaryApp) {
-        // Limpeza (opcional, garbage collector cuida)
-      }
+      // Opcional: Limpeza da app secundária (garbage collector geralmente resolve)
     }
   };
 
@@ -107,15 +111,21 @@ const CreateUserForm = ({ onClose }) => {
         </div>
       ) : (
         <>
+          <div className={styles.alertBox} style={{backgroundColor: '#fffbeb', padding: '10px', borderRadius: '8px', border: '1px solid #fcd34d', color: '#92400e', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px'}}>
+            <AlertTriangle size={16} />
+            <span>O usuário será obrigado a redefinir a senha no primeiro acesso.</span>
+          </div>
+
           <fieldset className={styles.fieldset}>
             <legend className={styles.subtitle}>Novo Usuário</legend>
             
             <div className={styles.formGroup}>
-              <label htmlFor="displayName">Nome</label>
+              <label htmlFor="displayName">Nome Completo</label>
               <input 
                 id="displayName" 
                 {...register("displayName")} 
                 className={errors.displayName ? styles.inputError : ''}
+                placeholder="Ex: João Silva"
               />
               {errors.displayName && <p className={styles.errorMessage}>{errors.displayName.message}</p>}
             </div>
@@ -127,25 +137,28 @@ const CreateUserForm = ({ onClose }) => {
                 type="email"
                 {...register("email")} 
                 className={errors.email ? styles.inputError : ''}
+                placeholder="usuario@hospital.com.br"
               />
               {errors.email && <p className={styles.errorMessage}>{errors.email.message}</p>}
             </div>
 
             <div className={styles.formGroup}>
-              <label htmlFor="password">Senha Inicial</label>
+              <label htmlFor="password">Senha Temporária</label>
               <input 
                 id="password" 
-                type="text" 
-                placeholder="Defina uma senha (min 6 chars)"
+                type="text" // Texto visível para o admin copiar e enviar
                 {...register("password")} 
                 className={errors.password ? styles.inputError : ''}
+                placeholder="Defina uma senha inicial"
               />
               {errors.password && <p className={styles.errorMessage}>{errors.password.message}</p>}
-              <small style={{color: '#666'}}>Anote esta senha e passe para o usuário.</small>
+              <small style={{color: '#666', fontSize: '0.8rem', marginTop: '4px'}}>
+                Copie e envie esta senha para o usuário.
+              </small>
             </div>
             
             <div className={styles.formGroup}>
-              <label htmlFor="role">Role (Permissão)</label>
+              <label htmlFor="role">Perfil de Acesso (Role)</label>
               <select 
                 id="role" 
                 {...register("role")} 
