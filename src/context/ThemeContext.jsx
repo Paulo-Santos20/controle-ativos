@@ -3,19 +3,24 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  // 1. Verifica preferência salva ou do sistema
+  
+  // --- LÓGICA DE INICIALIZAÇÃO ---
   const getInitialTheme = () => {
+    // 1. Verifica se o usuário já clicou no botão antes
     const savedTheme = localStorage.getItem('app_theme');
-    if (savedTheme) return savedTheme;
     
-    // Se não tiver salvo, usa a preferência do sistema operacional
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    return systemPrefersDark ? 'dark' : 'light';
+    if (savedTheme) {
+      return savedTheme; // Respeita a escolha anterior (mesmo que seja dark)
+    }
+    
+    // 2. Se não tiver nada salvo, o PADRÃO é CLARO (Light)
+    // Removemos a verificação do sistema operacional (window.matchMedia)
+    return 'light';
   };
 
   const [theme, setTheme] = useState(getInitialTheme);
 
-  // 2. Aplica o tema ao HTML sempre que mudar
+  // Aplica a classe ao HTML sempre que o tema mudar
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('app_theme', theme);
@@ -32,5 +37,5 @@ export const ThemeProvider = ({ children }) => {
   );
 };
 
-// Hook customizado para facilitar o uso
+// Hook para usar o tema em qualquer lugar
 export const useTheme = () => useContext(ThemeContext);

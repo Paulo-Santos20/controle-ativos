@@ -14,7 +14,7 @@ import {
   onSnapshot, 
   writeBatch 
 } from 'firebase/firestore';
-import { db, auth } from '/src/lib/firebase.js'; // Caminho absoluto
+import { db, auth } from '../../lib/firebase'; 
 import { toast } from 'sonner';
 import { UAParser } from 'ua-parser-js'; 
 import { formatDistanceToNow, format } from 'date-fns';
@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 
 // Importa os utilitários e componentes
-import { getLocalIP } from '/src/utils/getInternalIP.js';
+import { getLocalIP } from '../../utils/getInternalIp';
 import Modal from '../../components/Modal/Modal';
 import ChangePasswordModal from '../../components/Users/ChangePasswordModal';
 
