@@ -1,0 +1,60 @@
+/* QrCodeModal.module.css */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm);
+}
+
+.instructions {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.qrWrapper {
+  background: white;
+  padding: 16px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+  margin-bottom: var(--spacing-sm);
+}
+
+.urlInput {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  font-size: 0.8rem;
+  background-color: var(--color-bg-page);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.printButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: 10px;
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: var(--spacing-sm);
+}
+.printButton:hover {
+  background-color: var(--color-primary-dark);
+}
