@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   collection, query, orderBy, where, getDocs, limit, startAfter, documentId 
@@ -6,7 +6,7 @@ import {
 import { db } from '../../lib/firebase'; 
 import { 
   Plus, ChevronRight, Package, Loader2, Search, Filter, Archive, 
-  CheckSquare, Square, Truck, ArrowDownCircle, X, Import // <-- CORREÇÃO: 'Import' adicionado
+  CheckSquare, Square, Truck, ArrowDownCircle, X, Import 
 } from 'lucide-react'; 
 
 import { useAuth } from '../../hooks/useAuth';
@@ -17,8 +17,6 @@ import AssetTypeSelector from '../../components/Inventory/AssetTypeSelector';
 import AddAssetForm from '../../components/Inventory/AddAssetForm';
 import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
 import BulkMoveForm from '../../components/Inventory/BulkMoveForm';
-
-// --- NOVO: Importa o Skeleton ---
 import InventoryTableSkeleton from '../../components/Skeletons/InventoryTableSkeleton';
 
 const opcoesTipo = [{ value: 'all', label: 'Todos os Tipos' }, { value: 'computador', label: 'Computadores' }, { value: 'impressora', label: 'Impressoras' }];
@@ -28,12 +26,10 @@ const ITEMS_PER_PAGE = 20;
 const InventoryList = () => {
   const { permissions, isAdmin, allowedUnits, loading: authLoading } = useAuth();
 
-  // Estados de UI
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalView, setModalView] = useState('select'); 
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // Estados de Dados (Paginação)
   const [assets, setAssets] = useState([]);
   const [lastDoc, setLastDoc] = useState(null);
   const [loading, setLoading] = useState(false); 
@@ -41,22 +37,20 @@ const InventoryList = () => {
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterUnit, setFilterUnit] = useState("all");
   const [showReturned, setShowReturned] = useState(false); 
   const [unitsList, setUnitsList] = useState([]);
 
-  // Debounce
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 600); // Aumentei um pouco o tempo para 600ms
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Carregar Unidades
   useEffect(() => {
     const fetchUnits = async () => {
       const q = query(collection(db, 'units'), orderBy('name', 'asc'));
@@ -66,7 +60,7 @@ const InventoryList = () => {
     fetchUnits();
   }, []);
 
-  // Busca Principal
+  // --- AQUI ESTÁ A MÁGICA DA BUSCA ---
   const fetchAssets = useCallback(async (isLoadMore = false, specificTerm = "") => {
     if (authLoading) return;
     
@@ -76,20 +70,78 @@ const InventoryList = () => {
     setError(null);
 
     try {
-      let q;
       const collectionRef = collection(db, 'assets');
       
+      // --- MODO BUSCA ESPECÍFICA (Se tiver texto digitado) ---
       if (specificTerm) {
-        const termUpper = specificTerm.toUpperCase(); // Normaliza para maiúsculo
-        const constraints = [
-          orderBy(documentId()), 
-          where(documentId(), '>=', termUpper),
-          where(documentId(), '<=', termUpper + '\uf8ff'),
-          limit(50)
-        ];
-        q = query(collectionRef, ...constraints);
+        const termRaw = specificTerm.trim();
+        
+        // Prepara variações do texto para tentar encontrar de qualquer jeito
+        const termUpper = termRaw.toUpperCase(); // ex: "DELL", "CMP-01"
+        // Primeira letra maiúscula (Capitalize) ex: "Setor", "Dell"
+        const termCap = termRaw.charAt(0).toUpperCase() + termRaw.slice(1).toLowerCase(); 
+        
+        const queries = [];
+        const limitSearch = 10; // Busca 10 de cada tipo para não pesar
+
+        // 1. Busca por ID (Tombamento) - Exato ou Prefixo (Maiúsculo)
+        queries.push(query(collectionRef, 
+          where(documentId(), '>=', termUpper), 
+          where(documentId(), '<=', termUpper + '\uf8ff'), 
+          limit(limitSearch)
+        ));
+
+        // 2. Busca por SETOR (Adicionado!) - Tenta Capitalizado (Ex: "Recepção")
+        queries.push(query(collectionRef, 
+          where('setor', '>=', termCap), 
+          where('setor', '<=', termCap + '\uf8ff'), 
+          limit(limitSearch)
+        ));
+        
+        // 3. Busca por SERIAL
+        queries.push(query(collectionRef, where('serial', '>=', termUpper), where('serial', '<=', termUpper + '\uf8ff'), limit(limitSearch)));
+
+        // 4. Busca por MODELO (Tenta Capitalizado e Maiúsculo)
+        queries.push(query(collectionRef, where('modelo', '>=', termCap), where('modelo', '<=', termCap + '\uf8ff'), limit(limitSearch)));
+        
+        // 5. Busca por HOSTNAME
+        queries.push(query(collectionRef, where('hostname', '>=', termUpper), where('hostname', '<=', termUpper + '\uf8ff'), limit(limitSearch)));
+
+        // Executa todas as buscas em paralelo
+        const snapshots = await Promise.all(queries.map(q => getDocs(q)));
+        
+        // Junta os resultados em um Map para remover duplicatas (pelo ID)
+        const uniqueAssets = new Map();
+        
+        snapshots.forEach(snap => {
+          snap.docs.forEach(doc => {
+            const data = doc.data();
+            
+            // --- FILTRO DE SEGURANÇA (Manual) ---
+            // Como não podemos filtrar por unidade na query de busca textual (índices complexos),
+            // filtramos aqui no código.
+            if (isAdmin || allowedUnits.includes(data.unitId)) {
+              
+              // --- FILTRO DE STATUS E TIPO (Manual) ---
+              // Se o usuário digitou busca, respeitamos os filtros de dropdown também?
+              // Geralmente, busca textual "vence" tudo, mas vamos respeitar o básico:
+              const typeMatch = filterType === 'all' || data.type === filterType;
+              // Ocultar devolvidos se não estiver marcado
+              const statusMatch = showReturned || data.status !== 'Devolvido';
+
+              if (typeMatch && statusMatch) {
+                 uniqueAssets.set(doc.id, { id: doc.id, ...data });
+              }
+            }
+          });
+        });
+
+        const mergedResults = Array.from(uniqueAssets.values());
+        setAssets(mergedResults);
+        setHasMore(false); // Busca textual desativa o "Carregar Mais" infinito
 
       } else {
+        // --- MODO LISTAGEM NORMAL (Sem busca, apenas paginação) ---
         let constraints = [orderBy('createdAt', 'desc')];
 
         if (!isAdmin) {
@@ -110,51 +162,39 @@ const InventoryList = () => {
           constraints.push(startAfter(lastDoc));
         }
 
-        q = query(collectionRef, ...constraints);
+        const q = query(collectionRef, ...constraints);
+        const snapshot = await getDocs(q);
+        let newAssets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        if (isLoadMore) {
+          setAssets(prev => [...prev, ...newAssets]);
+        } else {
+          setAssets(newAssets);
+        }
+
+        const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        setLastDoc(lastVisible);
+        setHasMore(snapshot.docs.length === ITEMS_PER_PAGE);
       }
-
-      const snapshot = await getDocs(q);
-      
-      let newAssets = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      if (specificTerm && !isAdmin) {
-        newAssets = newAssets.filter(asset => allowedUnits.includes(asset.unitId));
-      }
-
-      if (isLoadMore) {
-        setAssets(prev => [...prev, ...newAssets]);
-      } else {
-        setAssets(newAssets);
-      }
-
-      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
-      setLastDoc(lastVisible);
-      setHasMore(snapshot.docs.length === ITEMS_PER_PAGE && !specificTerm);
 
     } catch (err) {
-      console.error("Erro:", err);
+      console.error("Erro na busca:", err);
       setError(err);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [authLoading, isAdmin, allowedUnits, filterType, filterStatus, filterUnit, lastDoc]);
+  }, [authLoading, isAdmin, allowedUnits, filterType, filterStatus, filterUnit, lastDoc, showReturned]);
 
   useEffect(() => {
     setLastDoc(null);
     fetchAssets(false, debouncedSearch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterType, filterStatus, filterUnit, isAdmin, allowedUnits, debouncedSearch]);
+  }, [filterType, filterStatus, filterUnit, isAdmin, allowedUnits, debouncedSearch, showReturned]); // showReturned adicionado aqui
 
-  const displayedAssets = assets.filter(asset => {
-    if (!showReturned && asset.status === 'Devolvido') return false;
-    return true;
-  });
+  // Filtro visual final (apenas segurança, pois a busca já filtrou)
+  const displayedAssets = assets; 
 
-  // Helpers
   const getStatusClass = (status) => {
     if (status === 'Em uso') return styles.statusUsage;
     if (status === 'Em manutenção') return styles.statusMaintenance;
@@ -189,7 +229,6 @@ const InventoryList = () => {
   };
 
   const renderContent = () => {
-    // --- CORREÇÃO: Renderiza o Skeleton corretamente ---
     if (loading || authLoading) {
       return <InventoryTableSkeleton />;
     }
@@ -206,7 +245,7 @@ const InventoryList = () => {
         <div className={styles.emptyState}>
           <Package size={50} />
           <h2>Nenhum ativo encontrado</h2>
-          <p>{searchTerm ? "Tente outro termo." : "Ajuste os filtros."}</p>
+          <p>{debouncedSearch ? `Nada encontrado para "${debouncedSearch}"` : "Tente ajustar os filtros."}</p>
         </div>
       );
     }
@@ -221,7 +260,7 @@ const InventoryList = () => {
               <tr>
                 <th style={{width: '50px', textAlign: 'center'}}>
                   <button onClick={handleSelectAll} className={styles.checkboxButton}>
-                    {isAllSelected ? <CheckSquare size={22} color="#007aff" /> : <Square size={22} color="#94a3b8" />}
+                    {isAllSelected ? <CheckSquare size={22} color="#007aff" strokeWidth={2.5} /> : <Square size={22} color="#64748b" strokeWidth={2} />}
                   </button>
                 </th>
                 <th>Tombamento</th>
@@ -240,7 +279,7 @@ const InventoryList = () => {
                   <tr key={asset.id} className={isSelected ? styles.rowSelected : ''}>
                     <td style={{textAlign: 'center'}}>
                       <button onClick={() => handleSelectOne(asset.id)} className={styles.checkboxButton}>
-                        {isSelected ? <CheckSquare size={22} color="#007aff" /> : <Square size={22} color="#94a3b8" />}
+                        {isSelected ? <CheckSquare size={22} color="#007aff" strokeWidth={2.5} /> : <Square size={22} color="#94a3b8" strokeWidth={2} />}
                       </button>
                     </td>
                     <td data-label="Tombamento"><strong>{asset.id}</strong></td>
@@ -289,30 +328,17 @@ const InventoryList = () => {
         </div>
       )}
 
-     <header className={styles.header}>
-        <h1 className={styles.title}>Inventário de Ativos</h1>
-        
-        {/* Agrupamos os botões para alinhamento perfeito */}
-        <div className={styles.headerActions}>
-          
-          {/* Botão Importar (Estilo Secundário) */}
-          <Link to="/inventory/importar" className={styles.secondaryButton}>
-            <Import size={18} /> 
-            <span>Importar Excel</span>
-          </Link>
-
-          {/* Botão Novo (Estilo Primário) */}
-          <button 
-            className={styles.primaryButton} 
-            onClick={() => handleOpenModal('select')}
-            disabled={!permissions?.ativos?.create}
-            style={{ opacity: !permissions?.ativos?.create ? 0.6 : 1 }}
-          >
-            <Plus size={18} /> 
-            <span>Novo Ativo</span>
-          </button>
-          
+      <header className={styles.header}>
+        <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+             <h1 className={styles.title}>Inventário de Ativos</h1>
+             <Link to="/inventory/importar" className={styles.secondaryButton} style={{textDecoration: 'none'}}>
+                <Import size={18} /> Importar Excel
+             </Link>
         </div>
+
+        <button className={styles.primaryButton} onClick={() => handleOpenModal('select')} disabled={!permissions?.ativos?.create}>
+          <Plus size={18} /> Registrar Novo Ativo
+        </button>
       </header>
 
       <div className={styles.toolbar}>
@@ -320,10 +346,10 @@ const InventoryList = () => {
           <Search size={18} />
           <input 
             type="text" 
-            placeholder="Buscar Tombamento (ID)..." 
+            placeholder="Buscar Tombamento, Serial, Setor..." 
             className={styles.searchInput} 
             value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value.toUpperCase())} // CORREÇÃO: Corrigido o onChange duplo
+            onChange={(e) => setSearchTerm(e.target.value)} 
           />
           {searchTerm && (<button onClick={() => setSearchTerm("")} style={{background:'none', border:'none', cursor:'pointer', color:'#999'}}><X size={16} /></button>)}
         </div>
