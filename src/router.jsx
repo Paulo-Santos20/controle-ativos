@@ -58,7 +58,7 @@ export const router = createBrowserRouter([
       { path: "atividades", element: <ActivityLogPage /> },
       { path: "reports", element: <Reports /> },
       { path: "profile", element: <UserProfile /> },
-      {path: "monitoramento",element: <MonitoringPage />     },
+      { path: "monitoramento",element: <MonitoringPage />     },
       { path: "cadastros/unidades", element: <UnidadesPage /> },
       { path: "cadastros/computadores", element: <AssetModelPage type="computador" title="Computadores" /> },
       { path: "cadastros/impressoras", element: <AssetModelPage type="impressora" title="Impressoras" /> },
