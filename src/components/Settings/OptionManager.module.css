@@ -1,4 +1,5 @@
 /* OptionManager.module.css */
+/* Princípios: Mobile-First, UI/UX de Excelência, Dark Mode Ready */
 
 .container {
   background-color: var(--color-bg-component);
@@ -7,6 +8,7 @@
   padding: var(--spacing-lg);
   box-shadow: var(--box-shadow);
   max-width: 800px;
+  width: 100%;
 }
 
 .title {
@@ -18,7 +20,7 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-/* Formulário */
+/* --- Formulário de Adição --- */
 .form {
   display: flex;
   gap: var(--spacing-sm);
@@ -27,15 +29,21 @@
 
 .input {
   flex: 1;
-  padding: 10px;
+  padding: 10px 12px;
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   font-size: var(--font-size-md);
+  
+  /* CORREÇÃO DARK MODE: Fundo e texto adaptáveis */
+  background-color: var(--color-bg-page); 
+  color: var(--color-text-primary);
+  transition: all 0.2s;
 }
+
 .input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.1);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
 }
 
 .addButton {
@@ -51,16 +59,20 @@
   cursor: pointer;
   transition: background-color 0.2s;
 }
+
 .addButton:hover {
   background-color: var(--color-primary-dark);
 }
+
 .addButton:disabled {
-  background-color: var(--color-border);
+  opacity: 0.6;
   cursor: not-allowed;
+  background-color: var(--color-border); /* Visualmente desabilitado */
 }
 
-/* Lista */
+/* --- Lista de Itens --- */
 .listContainer {
+  /* Fundo da caixa da lista (Cinza claro no Light, Preto no Dark) */
   background-color: var(--color-bg-page);
   border-radius: var(--border-radius);
   border: 1px solid var(--color-border);
@@ -70,6 +82,8 @@
 
 .list {
   list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .listItem {
@@ -78,31 +92,50 @@
   align-items: center;
   padding: 10px 16px;
   border-bottom: 1px solid var(--color-border);
-  background-color: #fff;
+  
+  /* CORREÇÃO DARK MODE:
+     Usa a cor do componente (Branco no Light, Cinza Escuro no Dark).
+     Isso garante contraste com o texto que será preto ou branco. */
+  background-color: var(--color-bg-component);
+  color: var(--color-text-primary);
+  
   transition: background-color 0.2s;
 }
+
+.listItem span {
+  font-weight: 500;
+}
+
 .listItem:last-child {
   border-bottom: none;
 }
+
 .listItem:hover {
-  background-color: #f9fafb;
+  /* Hover sutil adaptável */
+  background-color: var(--color-bg-page);
 }
 
+/* Botão de Excluir */
 .deleteButton {
-  background: none;
+  background: transparent;
   border: none;
   color: var(--color-text-secondary);
   cursor: pointer;
   padding: 6px;
   border-radius: 4px;
   transition: all 0.2s;
-}
-.deleteButton:hover {
-  background-color: #fee2e2;
-  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Estados */
+.deleteButton:hover {
+  /* Vermelho com transparência (fica bom em qualquer fundo) */
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--color-danger);
+}
+
+/* --- Estados (Loading/Vazio) --- */
 .loading, .error, .emptyState {
   display: flex;
   flex-direction: column;
@@ -111,11 +144,14 @@
   padding: 40px;
   color: var(--color-text-secondary);
   gap: 10px;
+  text-align: center;
 }
+
 .spinner {
   animation: spin 1s linear infinite;
   color: var(--color-primary);
 }
+
 .footerInfo {
   margin-top: var(--spacing-md);
   font-size: 0.8rem;
@@ -123,4 +159,19 @@
   text-align: right;
 }
 
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes spin { 
+  from { transform: rotate(0deg); } 
+  to { transform: rotate(360deg); } 
+}
+
+/* Responsividade para telas muito pequenas */
+@media (max-width: 480px) {
+  .form {
+    flex-direction: column;
+  }
+  .addButton {
+    width: 100%;
+    justify-content: center;
+    padding: 10px;
+  }
+}

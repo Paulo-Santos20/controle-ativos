@@ -1,23 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, orderBy, query } from 'firebase/firestore';
-import { db } from '/src/lib/firebase.js';
+import { db } from '../../lib/firebase';
 import { Plus, Loader2, Search, Briefcase, Phone, Mail, Pencil, Package, Lock } from 'lucide-react';
 
-// --- 1. IMPORTA AUTH ---
-import { useAuth } from '/src/hooks/useAuth.js';
-
+import { useAuth } from '../../hooks/useAuth';
 import styles from './CadastroPages.module.css'; 
 import Modal from '../../components/Modal/Modal';
 import AddSupplierForm from '../../components/Settings/AddSupplierForm';
 
 const SuppliersPage = () => {
-  // --- 2. VERIFICAÇÃO DE PERMISSÕES CORRIGIDA ---
   const { isAdmin, permissions } = useAuth(); 
-
+  
   // Permissão é verdadeira se for Admin OU se tiver a permissão específica no perfil
-  const canCreate = isAdmin || permissions?.cadastros_empresas?.create;
-  const canEdit = isAdmin || permissions?.cadastros_empresas?.update;
+  const canManage = isAdmin || permissions?.cadastros_empresas?.create;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState(null);
@@ -50,14 +46,11 @@ const SuppliersPage = () => {
 
       <header className={styles.header}>
         <h1 className={styles.title}>Empresas de Suporte</h1>
-        
-        {/* --- BOTÃO PROTEGIDO (CORRIGIDO) --- */}
         <button 
           className={styles.primaryButton} 
           onClick={handleOpenAddNew}
-          disabled={!canCreate}
-          style={{ opacity: !canCreate ? 0.5 : 1, cursor: !canCreate ? 'not-allowed' : 'pointer' }}
-          title={!canCreate ? "Você não tem permissão para adicionar empresas" : ""}
+          disabled={!canManage}
+          style={{ opacity: !canManage ? 0.5 : 1, cursor: !canManage ? 'not-allowed' : 'pointer' }}
         >
           <Plus size={18} /> Registrar Empresa
         </button>
@@ -72,15 +65,9 @@ const SuppliersPage = () => {
 
       <div className={styles.content}>
         {loading && <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>}
-        
         {error && <p className={styles.errorText}>Erro: {error.message}</p>}
-
         {!loading && filteredSuppliers.length === 0 && (
-           <div className={styles.emptyState}>
-            <Package size={40} />
-            <h3>Nenhuma empresa encontrada.</h3>
-            <p>Cadastre seus fornecedores de manutenção aqui.</p>
-          </div>
+           <div className={styles.emptyState}><Package size={40} /><h3>Nenhuma empresa encontrada.</h3></div>
         )}
 
         <div className={styles.list}>
@@ -95,26 +82,19 @@ const SuppliersPage = () => {
                   <strong>{item.name}</strong>
                   <small>{item.serviceType}</small>
                   <div style={{display:'flex', gap:'12px', marginTop:'4px', fontSize:'0.85rem', color:'var(--color-text-secondary)'}}>
-                    <span style={{display:'flex', alignItems:'center', gap:'4px'}}>
-                        <Phone size={12}/> {item.phone} ({item.contactName})
-                    </span>
-                    <span style={{display:'flex', alignItems:'center', gap:'4px'}}>
-                        <Mail size={12}/> {item.email}
-                    </span>
+                    <span style={{display:'flex', alignItems:'center', gap:'4px'}}><Phone size={12}/> {item.phone} ({item.contactName})</span>
+                    <span style={{display:'flex', alignItems:'center', gap:'4px'}}><Mail size={12}/> {item.email}</span>
                   </div>
                 </div>
                 <div className={styles.listItemActions}>
-                  
-                  {/* --- BOTÃO EDITAR PROTEGIDO (CORRIGIDO) --- */}
                   <button 
                     className={styles.secondaryButton} 
                     onClick={() => handleOpenEdit(doc)}
-                    disabled={!canEdit}
-                    style={{ opacity: !canEdit ? 0.5 : 1, cursor: !canEdit ? 'not-allowed' : 'pointer' }}
+                    disabled={!canManage}
+                    style={{ opacity: !canManage ? 0.5 : 1, cursor: !canManage ? 'not-allowed' : 'pointer' }}
                   >
-                    {canEdit ? <Pencil size={16} /> : <Lock size={16} />}
+                    {canManage ? <Pencil size={16} /> : <Lock size={16} />}
                   </button>
-
                 </div>
               </div>
             );

@@ -1,0 +1,149 @@
+/* OptionsPage.module.css */
+/* Princípios: Mobile-First, UI/UX de Excelência, Dark Mode Ready */
+
+/* --- Layout da Página --- */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  width: 100%;
+  max-width: 1000px; /* Evita que fique muito largo em monitores grandes */
+  margin: 0 auto;    /* Centraliza */
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.title {
+  font-size: 1.75rem; /* ~28px */
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+
+.header p {
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* --- Botões --- */
+.secondaryButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background-color: var(--color-bg-component); /* Adapta ao Dark Mode */
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.secondaryButton:hover {
+  background-color: var(--color-bg-page);
+  border-color: var(--color-text-secondary);
+}
+
+.secondaryButton:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* --- Container de Tabs (Abas) --- */
+.tabsContainer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  
+  /* Scroll Horizontal para Mobile */
+  overflow-x: auto; 
+  padding-bottom: 8px; /* Espaço para scrollbar nativa não colar */
+  margin-top: 10px;
+  margin-bottom: 20px;
+  
+  /* Esconde a barra de rolagem no Chrome/Safari para visual limpo */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE 10+ */
+  
+  /* Garante que o primeiro item não cole na borda esquerda */
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+.tabsContainer::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Webkit */
+}
+
+/* Botão da Aba Individual */
+.tabButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px; /* Mais arredondado para parecer "Chip" */
+  background-color: var(--color-bg-component);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  
+  /* Sombra sutil */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.tabButton:hover {
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
+  border-color: var(--color-text-secondary);
+  transform: translateY(-1px);
+}
+
+.tabButton svg {
+  color: var(--color-text-secondary);
+  transition: color 0.2s;
+}
+
+/* --- Estado Ativo da Aba --- */
+.active {
+  background-color: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25); /* Glow azul */
+}
+
+.active:hover {
+  background-color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+  color: white;
+}
+
+.active svg {
+  color: white; /* Força ícone branco quando ativo */
+}
+
+/* --- Responsividade --- */
+@media (min-width: 768px) {
+  .header {
+    align-items: center; /* Alinha verticalmente no desktop */
+  }
+  
+  .tabsContainer {
+    flex-wrap: wrap; /* No desktop, quebra linha se necessário em vez de scrollar */
+    overflow-x: visible;
+  }
+}

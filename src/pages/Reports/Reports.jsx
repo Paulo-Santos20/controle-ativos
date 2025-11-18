@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy, where, documentId } from 'firebase/firestore';
-import { db } from '/src/lib/firebase.js';
+import { db } from '../../lib/firebase';
 import { 
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
@@ -12,25 +12,21 @@ import { toast } from 'sonner';
 import jsPDF from 'jspdf'; 
 import 'jspdf-autotable'; 
 
-// --- 1. IMPORTA AUTH ---
-import { useAuth } from '/src/hooks/useAuth.js';
-
+import { useAuth } from '../../hooks/useAuth';
 import styles from './Reports.module.css';
 
 const COLORS = ['#007aff', '#5ac8fa', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
 const opcoesStatus = ["Em uso", "Manutenção", "Inativo", "Estoque", "Manutenção agendada", "Devolução agendada", "Devolvido", "Reativação agendada"];
 
 const Reports = () => {
-  // --- 2. SEGURANÇA E PERMISSÕES ---
   const { isAdmin, allowedUnits, loading: authLoading } = useAuth();
 
   const [filterUnit, setFilterUnit] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // --- 3. QUERIES SEGURAS ---
+  // --- QUERIES SEGURAS ---
   
-  // Query de Ativos: Traz TUDO se Admin, ou só das unidades permitidas
   const assetsQuery = useMemo(() => {
     if (authLoading) return null;
     const constraints = [];
@@ -42,7 +38,6 @@ const Reports = () => {
     return query(collection(db, 'assets'), ...constraints);
   }, [authLoading, isAdmin, allowedUnits]);
 
-  // Query de Unidades: Traz todas ou só as permitidas
   const unitsQuery = useMemo(() => {
     if (authLoading) return null;
     if (isAdmin) return query(collection(db, 'units'), orderBy('name', 'asc'));
@@ -53,23 +48,18 @@ const Reports = () => {
   const [assets, loadingAssets, errorAssets] = useCollection(assetsQuery);
   const [units, loadingUnits] = useCollection(unitsQuery);
 
-  // --- 4. PROCESSAMENTO (Filtragem Adicional) ---
-  // O filtro de 'filterUnit' da UI é aplicado aqui, em cima dos dados já seguros
+  // --- PROCESSAMENTO ---
   const filteredData = useMemo(() => {
     if (!assets) return [];
     return assets.docs
       .map(doc => doc.data())
       .filter(item => {
-        // Se filterUnit for 'all', mostra todas as permitidas (já filtradas pela query)
         const unitMatch = filterUnit === 'all' || item.unitId === filterUnit;
         const typeMatch = filterType === 'all' || item.type === filterType || item.tipoAtivo === filterType;
         const statusMatch = filterStatus === 'all' || item.status === filterStatus;
         return unitMatch && typeMatch && statusMatch;
       });
   }, [assets, filterUnit, filterType, filterStatus]);
-
-  // (O resto do código de gráficos, KPIs e Exportação permanece idêntico...)
-  // ... apenas copiei a lógica de visualização para manter o arquivo completo e seguro.
 
   const statusData = useMemo(() => {
     const counts = {};
@@ -93,6 +83,7 @@ const Reports = () => {
   const totalMaintenance = filteredData.filter(i => i.status && i.status.toLowerCase().includes('manutenção')).length;
   const totalActive = filteredData.filter(i => i.status === 'Em uso').length;
 
+  // --- EXPORTAÇÃO ---
   const handleExportCSV = () => {
     if (filteredData.length === 0) { toast.error("Não há dados para exportar."); return; }
     try {
@@ -119,6 +110,7 @@ const Reports = () => {
       doc.setFontSize(18); doc.text("Relatório de Ativos de TI", 14, 22);
       doc.setFontSize(11); doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 14, 30);
       if (filterUnit !== 'all') doc.text(`Unidade Filtrada: ${filterUnit}`, 14, 36);
+      
       const tableColumn = ["Tombamento", "Tipo", "Modelo", "Serial", "Status", "Setor", "Usuário"];
       const tableRows = [];
       filteredData.forEach(item => {
@@ -127,7 +119,15 @@ const Reports = () => {
           item.serial || "N/A", item.status || "N/A", item.setor || "N/A", item.funcionario || ""
         ]);
       });
-      doc.autoTable({ head: [tableColumn], body: tableRows, startY: 40, styles: { fontSize: 8 }, headStyles: { fillColor: [0, 122, 255] }, });
+      
+      doc.autoTable({ 
+        head: [tableColumn], 
+        body: tableRows, 
+        startY: 40, 
+        styles: { fontSize: 8 }, 
+        headStyles: { fillColor: [0, 122, 255] }, 
+      });
+      
       doc.save(`relatorio_ativos_${new Date().toISOString().split('T')[0]}.pdf`);
       toast.success("PDF gerado com sucesso!");
     } catch (error) { console.error("Erro PDF:", error); toast.error("Erro ao gerar PDF."); }

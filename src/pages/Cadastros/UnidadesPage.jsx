@@ -1,23 +1,26 @@
 import React, { useState } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, orderBy, query } from 'firebase/firestore';
-import { db } from '/src/lib/firebase.js';
-import { Plus, Building, Loader2, Search, MapPin, Pencil, Lock } from 'lucide-react'; // Lock icon
+import { db } from '../../lib/firebase'; // Caminho relativo corrigido
+import { Plus, Building, Loader2, Search, MapPin, Pencil, Lock } from 'lucide-react';
 
-// --- 1. IMPORTA AUTH ---
-import { useAuth } from '/src/hooks/useAuth.js';
+import { useAuth } from '../../hooks/useAuth'; // Caminho relativo corrigido
 
 import styles from './CadastroPages.module.css';
 import Modal from '../../components/Modal/Modal';
 import AddUnitForm from '../../components/Settings/AddUnitForm';
 
 const UnidadesPage = () => {
-  // --- 2. VERIFICA PERMISSÕES ---
-  const { permissions } = useAuth();
-  const canManageUnits = permissions?.cadastros_unidades?.update; // Ou create
+  const { permissions, isAdmin } = useAuth();
+  const canManage = isAdmin || permissions?.cadastros_unidades?.create;
 
+  // Estados
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUnitDoc, setEditingUnitDoc] = useState(null); 
+  
+  // --- NOVO ESTADO PARA O MAPA ---
+  const [mapUrl, setMapUrl] = useState(null); // Se tiver valor, o modal do mapa abre
+  
   const [searchTerm, setSearchTerm] = useState("");
 
   const q = query(collection(db, 'units'), orderBy('name', 'asc'));
@@ -48,6 +51,20 @@ const UnidadesPage = () => {
     setIsModalOpen(false);
     setTimeout(() => setEditingUnitDoc(null), 300); 
   };
+
+  // --- NOVA FUNÇÃO INTELIGENTE DE MAPA ---
+  const handleOpenMap = (e, url) => {
+    e.preventDefault(); // Impede abrir link padrão
+    if (!url) return;
+
+    // Verifica se é um link de Embed (que contém '/embed')
+    if (url.includes('/embed')) {
+      setMapUrl(url); // Abre no Modal interno
+    } else {
+      // Se for link normal (compartilhar), abre nova aba
+      window.open(url, '_blank');
+    }
+  };
   
   const renderList = () => {
     if (loading) return <div className={styles.loadingState}><Loader2 className={styles.spinner} /><p>Carregando unidades...</p></div>;
@@ -67,21 +84,25 @@ const UnidadesPage = () => {
                 <small>CNPJ: {doc.id} | {unit.cidade}-{unit.estado}</small>
               </div>
               <div className={styles.listItemActions}>
+                
+                {/* --- BOTÃO DE MAPA CORRIGIDO --- */}
                 {unit.geolocalizacao && (
-                  <a href={unit.geolocalizacao} target="_blank" rel="noopener noreferrer" className={styles.iconButton}>
+                  <button 
+                    className={styles.iconButton} 
+                    onClick={(e) => handleOpenMap(e, unit.geolocalizacao)}
+                    title="Ver Localização"
+                  >
                     <MapPin size={18} />
-                  </a>
+                  </button>
                 )}
                 
-                {/* --- BOTÃO PROTEGIDO --- */}
                 <button 
                   className={styles.secondaryButton}
                   onClick={() => handleOpenEdit(doc)}
-                  disabled={!canManageUnits}
-                  title={!canManageUnits ? "Sem permissão para editar" : "Editar"}
-                  style={{ opacity: !canManageUnits ? 0.5 : 1, cursor: !canManageUnits ? 'not-allowed' : 'pointer' }}
+                  disabled={!canManage}
+                  style={{ opacity: !canManage ? 0.5 : 1, cursor: !canManage ? 'not-allowed' : 'pointer' }}
                 >
-                  {canManageUnits ? <Pencil size={16} /> : <Lock size={16} />}
+                  {canManage ? <Pencil size={16} /> : <Lock size={16} />}
                   <span>Editar</span>
                 </button>
               </div>
@@ -94,19 +115,42 @@ const UnidadesPage = () => {
 
   return (
     <div className={styles.page}>
+      {/* --- MODAL PRINCIPAL (CADASTRO) --- */}
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingUnitDoc ? "Editar Unidade" : "Registrar Nova Unidade"}>
         <AddUnitForm onClose={handleCloseModal} existingUnitDoc={editingUnitDoc} />
       </Modal>
 
+      {/* --- NOVO: MODAL DE MAPA (IFRAME) --- */}
+      {/* Só aparece se mapUrl tiver valor */}
+      <Modal 
+        isOpen={!!mapUrl} 
+        onClose={() => setMapUrl(null)} 
+        title="Localização da Unidade"
+      >
+        <div style={{ width: '100%', height: '400px', overflow: 'hidden', borderRadius: '8px' }}>
+          <iframe 
+            src={mapUrl} 
+            width="100%" 
+            height="100%" 
+            style={{ border: 0 }} 
+            allowFullScreen="" 
+            loading="lazy" 
+            referrerPolicy="no-referrer-when-downgrade"
+            title="Mapa da Unidade"
+          ></iframe>
+        </div>
+        <div style={{textAlign: 'center', marginTop: '10px'}}>
+            <button className={styles.secondaryButton} onClick={() => setMapUrl(null)}>Fechar Mapa</button>
+        </div>
+      </Modal>
+
       <header className={styles.header}>
         <h1 className={styles.title}>Cadastro de Unidades</h1>
-        
-        {/* --- BOTÃO NOVO PROTEGIDO --- */}
         <button 
           className={styles.primaryButton} 
           onClick={handleOpenAddNew}
-          disabled={!canManageUnits}
-          style={{ opacity: !canManageUnits ? 0.5 : 1, cursor: !canManageUnits ? 'not-allowed' : 'pointer' }}
+          disabled={!canManage}
+          style={{ opacity: !canManage ? 0.5 : 1, cursor: !canManage ? 'not-allowed' : 'pointer' }}
         >
           <Plus size={18} /> Registrar Nova Unidade
         </button>

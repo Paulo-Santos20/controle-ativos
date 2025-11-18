@@ -1,9 +1,11 @@
 /* NotificationMenu.module.css */
+/* Princípios: Mobile-First, UI/UX de Excelência, Dark Mode Ready */
 
 .container {
   position: relative;
 }
 
+/* --- Botão do Sino --- */
 .trigger {
   position: relative;
   display: flex;
@@ -15,22 +17,22 @@
   border-radius: 50%;
   cursor: pointer;
   color: var(--color-text-secondary);
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .trigger:hover, .trigger.active {
-  background-color: var(--color-bg-page);
+  background-color: var(--color-bg-page); /* Adapta ao tema */
   color: var(--color-primary);
 }
 
 /* Bolinha Vermelha (Badge) */
 .badge {
   position: absolute;
-  top: 0;
-  right: 0;
-  background-color: #ef4444; /* Vermelho */
+  top: 2px;
+  right: 2px;
+  background-color: var(--color-danger); /* Usa a variável de erro/perigo */
   color: white;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
   min-width: 16px;
   height: 16px;
@@ -38,22 +40,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 2px;
-  border: 2px solid #fff; /* Borda branca para separar do ícone */
+  padding: 0 3px;
+  /* Borda da cor do componente para criar "recorte" visual */
+  border: 2px solid var(--color-bg-component); 
+  box-sizing: content-box;
 }
 
-/* Dropdown */
+/* --- Dropdown --- */
 .dropdown {
   position: absolute;
-  top: calc(100% + 8px);
-  right: -60px; /* Centraliza melhor em relação ao sino */
-  width: 320px;
-  background-color: var(--color-bg-component);
+  top: calc(100% + 10px);
+  right: -70px; /* Centraliza melhor em relação ao ícone */
+  width: 360px;
+  background-color: var(--color-bg-component); /* Fundo adaptável */
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
   z-index: 50;
   animation: fadeIn 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -61,7 +67,7 @@
 @media (max-width: 480px) {
   .dropdown {
     position: fixed;
-    top: 60px;
+    top: 64px; /* Altura do Header */
     left: 10px;
     right: 10px;
     width: auto;
@@ -73,19 +79,21 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* --- Cabeçalho do Dropdown --- */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-md);
   border-bottom: 1px solid var(--color-border);
-  background-color: #f9fafb;
+  background-color: var(--color-bg-page); /* Levemente diferente do fundo do card */
 }
 
 .header h3 {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
   margin: 0;
+  color: var(--color-text-primary);
 }
 
 .markReadButton {
@@ -95,70 +103,117 @@
   background: none;
   border: none;
   color: var(--color-primary);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
+  transition: opacity 0.2s;
 }
 .markReadButton:hover {
   text-decoration: underline;
+  opacity: 0.8;
 }
 
+/* --- Lista de Notificações --- */
 .list {
-  max-height: 300px;
+  max-height: 350px;
   overflow-y: auto;
+  /* Scrollbar bonita */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
 }
 
+.list::-webkit-scrollbar {
+  width: 6px;
+}
+.list::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 3px;
+}
+
+/* --- Estado Vazio --- */
 .emptyState {
-  padding: var(--spacing-lg);
+  padding: var(--spacing-xl);
   text-align: center;
   color: var(--color-text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
-/* Item da Lista */
+/* --- Item da Lista --- */
 .item {
   display: flex;
   align-items: flex-start;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid var(--color-bg-page);
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
   transition: background-color 0.2s;
+  position: relative;
+  background-color: var(--color-bg-component);
 }
+
+.item:last-child {
+  border-bottom: none;
+}
+
 .item:hover {
-  background-color: #f9fafb;
+  background-color: var(--color-bg-page); /* Feedback de hover sutil */
 }
 
-.itemIcon {
-  margin-top: 2px;
-  flex-shrink: 0;
-}
-.iconDelay { color: #f59e0b; } /* Amarelo */
-.iconUser { color: #ef4444; } /* Vermelho */
-
-.itemContent {
-  flex: 1;
-}
-.itemContent strong {
-  display: block;
-  font-size: 0.85rem;
-  color: var(--color-text-primary);
-  margin-bottom: 2px;
-}
-.itemContent p {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  margin: 0;
-  line-height: 1.4;
-}
-
-/* Indicador de Não Lido (Ponto Azul) */
+/* Item Não Lido */
 .unread {
-  background-color: #eff6ff; /* Fundo azulado muito sutil */
+  /* CORREÇÃO: Usar rgba com a cor primária. Funciona bem no Light e no Dark */
+  background-color: rgba(0, 122, 255, 0.08); 
 }
+.unread:hover {
+  background-color: rgba(0, 122, 255, 0.12);
+}
+
 .unreadDot {
   width: 8px;
   height: 8px;
   background-color: var(--color-primary);
   border-radius: 50%;
-  margin-top: 6px;
+  position: absolute;
+  top: 16px;
+  right: 16px;
 }
+
+/* Ícones e Conteúdo */
+.itemIcon {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+/* Usamos variáveis para garantir que fiquem legíveis no modo escuro */
+.iconDelay { color: var(--color-warning); } 
+.iconUser { color: var(--color-danger); }
+.iconAlert { color: var(--color-text-secondary); }
+
+.itemContent {
+  flex: 1;
+  padding-right: 16px; /* Espaço para o ponto de unread */
+}
+
+.itemContent strong {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+.itemContent p {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Spinner */
+.spinner {
+  animation: spin 1s linear infinite;
+  color: var(--color-primary);
+}
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

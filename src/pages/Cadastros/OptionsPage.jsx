@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
-import { Settings, Layers, Monitor, Server, Map, Box, Database } from 'lucide-react';
-import { doc, setDoc, writeBatch } from 'firebase/firestore';
-import { db } from '/src/lib/firebase.js';
+import { Layers, Monitor, Server, Map, Box, Database } from 'lucide-react';
+import { doc, writeBatch } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import { toast } from 'sonner';
 
-import styles from './CadastroPages.module.css'; // Reutiliza layout
+import styles from './OptionsPage.module.css';
 import OptionManager from '../../components/Settings/OptionManager';
 
-// Configuração das Categorias e SEUS PADRÕES
 const CATEGORIES = [
   { 
     id: 'setores', 
@@ -60,29 +59,19 @@ const OptionsPage = () => {
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
   const [isSeeding, setIsSeeding] = useState(false);
 
-  // --- FUNÇÃO MÁGICA: Popula o banco com os padrões ---
   const handlePopulateDefaults = async () => {
     if (!window.confirm("Isso irá sobrescrever/criar as listas padrão no banco de dados. Continuar?")) return;
-    
     setIsSeeding(true);
     const toastId = toast.loading("Criando opções padrão...");
-
     try {
       const batch = writeBatch(db);
-
       CATEGORIES.forEach(cat => {
         const docRef = doc(db, 'systemOptions', cat.id);
-        // Usa 'arrayUnion' se quiser apenas adicionar, ou 'set' para resetar.
-        // Aqui usamos set com merge para garantir que a lista exista.
         batch.set(docRef, { values: cat.defaults }, { merge: true });
       });
-
       await batch.commit();
       toast.success("Todas as opções foram criadas!", { id: toastId });
-      
-      // Força uma atualização visual simples recarregando a página (opcional)
       setTimeout(() => window.location.reload(), 1000);
-
     } catch (error) {
       console.error(error);
       toast.error("Erro ao criar opções: " + error.message, { id: toastId });
@@ -100,48 +89,25 @@ const OptionsPage = () => {
             Cadastre as opções padrão (Setores, Locais, etc) usadas nos formulários.
           </p>
         </div>
-        
-        {/* Botão de Inicialização */}
-        <button 
-          className={styles.secondaryButton} 
-          onClick={handlePopulateDefaults}
-          disabled={isSeeding}
-        >
+        <button className={styles.secondaryButton} onClick={handlePopulateDefaults} disabled={isSeeding}>
           <Database size={16} />
           {isSeeding ? "Criando..." : "Carregar Padrões do Sistema"}
         </button>
       </header>
 
       <div style={{ display: 'flex', gap: '24px', flexDirection: 'column', marginTop: '20px' }}>
-        
-        {/* Menu de Abas */}
-        <div className={styles.toolbar} style={{ justifyContent: 'flex-start', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
+        <div className={styles.tabsContainer}>
           {CATEGORIES.map(cat => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 16px',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                backgroundColor: activeCategory.id === cat.id ? 'var(--color-primary)' : 'white',
-                color: activeCategory.id === cat.id ? 'white' : 'var(--color-text-secondary)',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                fontWeight: 500,
-                transition: 'all 0.2s'
-              }}
+              className={`${styles.tabButton} ${activeCategory.id === cat.id ? styles.active : ''}`}
             >
               {cat.icon}
               {cat.label}
             </button>
           ))}
         </div>
-
-        {/* Gerenciador */}
         <div>
           <OptionManager 
             key={activeCategory.id} 
@@ -150,7 +116,6 @@ const OptionsPage = () => {
             placeholder={activeCategory.placeholder}
           />
         </div>
-
       </div>
     </div>
   );
