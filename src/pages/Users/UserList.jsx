@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, orderBy, query } from 'firebase/firestore';
+import { collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '/src/lib/firebase.js';
 import { 
   Loader2, Search, User, UserCheck, Pencil, PackageSearch, 
@@ -14,29 +14,30 @@ import Modal from '../../components/Modal/Modal';
 import EditUserForm from '/src/components/Users/EditUserForm.jsx';
 import CreateUserForm from '/src/components/Users/CreateUserForm.jsx'; 
 
+/**
+ * Página para listar e gerenciar usuários do sistema.
+ */
 const UserList = () => {
+  // --- 1. HOOK DE AUTH ---
   const { permissions, loading: authLoading } = useAuth();
-  const [modalView, setModalView] = useState(null); 
+  
+  // --- 2. ESTADOS ---
+  const [modalView, setModalView] = useState(null); // 'edit' | 'create'
   const [editingUserDoc, setEditingUserDoc] = useState(null); 
   
-  // --- ESTADOS DOS FILTROS ---
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("active"); // Padrão: Mostrar só ativos
+  const [filterStatus, setFilterStatus] = useState("active"); // Padrão: Ativos
   const [filterRole, setFilterRole] = useState("all");
   const [filterUnit, setFilterUnit] = useState("all");
 
-  // --- BUSCA DE DADOS ---
-  // Usuários
+  // --- 3. QUERIES ---
   const qUsers = query(collection(db, 'users'), orderBy('displayName', 'asc'));
   const [users, loadingUsers, error] = useCollection(qUsers);
 
-  // Roles (para o filtro)
   const [roles] = useCollection(query(collection(db, 'roles'), orderBy('name', 'asc')));
-  
-  // Unidades (para o filtro)
   const [units] = useCollection(query(collection(db, 'units'), orderBy('name', 'asc')));
 
-  // --- LÓGICA DE FILTRAGEM AVANÇADA ---
+  // --- 4. FILTRAGEM ---
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     
@@ -44,20 +45,19 @@ const UserList = () => {
       const data = doc.data();
       const isActive = data.isActive !== false; // Se undefined, é true
 
-      // 1. Filtro de Status
+      // Filtro de Status
       if (filterStatus === 'active' && !isActive) return false;
       if (filterStatus === 'inactive' && isActive) return false;
 
-      // 2. Filtro de Role (Perfil)
+      // Filtro de Role
       if (filterRole !== 'all' && data.role !== filterRole) return false;
 
-      // 3. Filtro de Unidade
-      // Verifica se a unidade selecionada está no array de unidades do usuário
+      // Filtro de Unidade
       if (filterUnit !== 'all') {
         if (!data.assignedUnits || !data.assignedUnits.includes(filterUnit)) return false;
       }
 
-      // 4. Filtro de Texto (Nome ou Email)
+      // Filtro de Texto
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         const nameMatch = data.displayName && data.displayName.toLowerCase().includes(search);
@@ -69,7 +69,8 @@ const UserList = () => {
     });
   }, [users, searchTerm, filterStatus, filterRole, filterUnit]);
 
-  // --- AÇÕES ---
+  // --- 5. AÇÕES ---
+
   const handleOpenEdit = (userDoc) => {
     setEditingUserDoc(userDoc);
     setModalView('edit');
@@ -78,7 +79,7 @@ const UserList = () => {
   const handleOpenAddNew = () => {
     setEditingUserDoc(null);
     setModalView('create');
-  }
+  };
 
   const handleCloseModal = () => {
     setModalView(null);
@@ -86,6 +87,11 @@ const UserList = () => {
   };
 
   const handleToggleStatus = async (userDoc) => {
+    if (!permissions?.usuarios?.update) {
+        toast.error("Sem permissão.");
+        return;
+    }
+
     const currentStatus = userDoc.data().isActive !== false;
     const newStatus = !currentStatus;
     
@@ -110,12 +116,29 @@ const UserList = () => {
     }
   };
 
+  // --- 6. RENDERIZAÇÃO ---
+  
   const isLoading = authLoading || loadingUsers;
 
   const renderList = () => {
-    if (isLoading) return <div className={styles.loadingState}><Loader2 className={styles.spinner} /><p>Carregando usuários...</p></div>;
+    if (isLoading) {
+      return (
+        <div className={styles.loadingState}>
+          <Loader2 className={styles.spinner} />
+          <p>Carregando usuários...</p>
+        </div>
+      );
+    }
     
-    if (error) return <div className={styles.errorState}><h3>Erro</h3><p>{error.message}</p></div>;
+    if (error) {
+      return (
+        <div className={styles.errorState}>
+           <h3>⚠️ Erro</h3>
+           <p>{error.message}</p>
+           {error.code === 'permission-denied' && <p style={{fontSize: '0.8rem'}}>Verifique se você é Admin ou se as regras do Firestore permitem leitura.</p>}
+        </div>
+      );
+    }
 
     if (filteredUsers.length === 0) {
       return (
@@ -147,6 +170,7 @@ const UserList = () => {
                 {!isActive && <span className={styles.badgeInactive}>DESATIVADO</span>}
                 
                 <small>{user.email}</small>
+                
                 <div style={{marginTop: '4px'}}>
                    <span className={styles.userRole}>Role: <strong>{user.role || 'N/A'}</strong></span>
                    <span style={{fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginLeft: '8px'}}>
@@ -156,20 +180,22 @@ const UserList = () => {
               </div>
 
               <div className={styles.listItemActions}>
+                {/* Botão de Status */}
                 <button 
                   className={styles.iconButton}
                   onClick={() => handleToggleStatus(doc)}
-                  disabled={!permissions.usuarios.update}
+                  disabled={!permissions?.usuarios?.update}
                   title={isActive ? "Desativar Usuário" : "Reativar Usuário"}
                   style={{ color: isActive ? '#ef4444' : '#22c55e' }} 
                 >
                   {isActive ? <Ban size={18} /> : <CheckCircle size={18} />}
                 </button>
 
+                {/* Botão de Editar */}
                 <button 
                   className={styles.secondaryButton}
                   onClick={() => handleOpenEdit(doc)}
-                  disabled={!permissions.usuarios.update}
+                  disabled={!permissions?.usuarios?.update} // Usa a permissão correta
                 >
                   <Pencil size={16} />
                   <span>Gerenciar</span>
@@ -184,52 +210,65 @@ const UserList = () => {
 
   return (
     <div className={styles.page}>
-      <Modal isOpen={!!modalView} onClose={handleCloseModal} title={modalView === 'edit' ? "Gerenciar Usuário" : "Criar Novo Usuário"}>
-        {modalView === 'edit' && editingUserDoc && <EditUserForm userDoc={editingUserDoc} onClose={handleCloseModal} />}
-        {modalView === 'create' && <CreateUserForm onClose={handleCloseModal} />}
+      {/* --- Modal --- */}
+      <Modal 
+        isOpen={!!modalView} 
+        onClose={handleCloseModal} 
+        title={modalView === 'edit' ? "Gerenciar Usuário" : "Criar Novo Usuário"}
+      >
+        {modalView === 'edit' && editingUserDoc && (
+          <EditUserForm 
+            userDoc={editingUserDoc} 
+            onClose={handleCloseModal} 
+          />
+        )}
+        {modalView === 'create' && (
+          <CreateUserForm 
+            onClose={handleCloseModal} 
+          />
+        )}
       </Modal>
 
+      {/* --- Cabeçalho --- */}
       <header className={styles.header}>
         <h1 className={styles.title}>Gestão de Usuários</h1>
         <button 
           className={styles.primaryButton} 
           onClick={handleOpenAddNew}
-          disabled={!permissions.usuarios.create} 
-          title={permissions.usuarios.create ? "" : "Sem permissão"}
+          disabled={!permissions?.usuarios?.create} 
+          title={permissions?.usuarios?.create ? "" : "Sem permissão"}
         >
           <Plus size={18} /> Novo Usuário
         </button>
       </header>
 
+      {/* --- Filtros --- */}
       <div className={styles.toolbar}>
-        {/* Barra de Busca */}
         <div className={styles.searchBox}>
           <Search size={18} />
           <input 
             type="text" 
             placeholder="Buscar por nome ou e-mail..." 
+            className={styles.searchInput}
             value={searchTerm} 
             onChange={(e) => setSearchTerm(e.target.value)} 
           />
         </div>
 
-        {/* Filtros Dropdown */}
         <div className={styles.filterRow}>
           <div className={styles.filterGroup}>
             <Filter size={16} />
             
-            {/* Filtro Status */}
             <select 
               value={filterStatus} 
               onChange={(e) => setFilterStatus(e.target.value)} 
               className={styles.filterSelect}
             >
               <option value="active">Ativos</option>
-              <option value="inactive">Inativos (Desativados)</option>
+              <option value="inactive">Inativos</option>
               <option value="all">Todos</option>
             </select>
 
-            {/* Filtro Perfil */}
             <select 
               value={filterRole} 
               onChange={(e) => setFilterRole(e.target.value)} 
@@ -241,7 +280,6 @@ const UserList = () => {
               ))}
             </select>
 
-            {/* Filtro Unidade */}
             <select 
               value={filterUnit} 
               onChange={(e) => setFilterUnit(e.target.value)} 
@@ -256,6 +294,7 @@ const UserList = () => {
         </div>
       </div>
 
+      {/* --- Lista --- */}
       <div className={styles.content}>
         {renderList()}
       </div>
