@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import styles from './Sidebar.module.css';
 
-// --- A CORREÇÃO ESTÁ AQUI ---
-// Adicionei 'Settings' e 'Briefcase' à lista de importações
+
 import {
     LayoutDashboard,
     HardDrive,
@@ -24,7 +23,7 @@ import {
     Timer
 } from 'lucide-react';
 
-import { auth } from '/src/lib/firebase.js'; // Caminho absoluto
+import { auth } from '/src/lib/firebase.js'; 
 import { signOut } from 'firebase/auth';
 import { toast } from 'sonner';
 

@@ -15,10 +15,11 @@ import UserProfile from "./pages/Users/UserProfile";
 import NotFound from "./pages/NotFound/NotFound";
 
 import UnidadesPage from "./pages/Cadastros/UnidadesPage";
-import AssetModelPage from "./pages/Cadastros/AssetModelPage"; 
+import AssetModelPage from "./pages/Cadastros/AssetModelPage";
 import SuppliersPage from "./pages/Cadastros/SuppliersPage";
 import OptionsPage from "./pages/Cadastros/OptionsPage";
 import ActivityLogPage from "./pages/ActivityLog/ActivityLogPage";
+import MonitoringPage from "./pages/Monitoring/MonitoringPage";
 import ProfileListPage from "./pages/Users/ProfileListPage";
 import AssetScanPage from "./pages/Public/AssetScanPage";
 
@@ -29,7 +30,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/scan/:assetId",
-    element: <AssetScanPage />, 
+    element: <AssetScanPage />,
   },
 
   // --- ROTA PROTEGIDA DE TROCA DE SENHA ---
@@ -49,7 +50,7 @@ export const router = createBrowserRouter([
         <App />
       </ProtectedRoute>
     ),
-    errorElement: <NotFound />, 
+    errorElement: <NotFound />,
     children: [
       { index: true, element: <Dashboard /> },
       { path: "inventory", element: <InventoryList /> },
@@ -57,6 +58,7 @@ export const router = createBrowserRouter([
       { path: "atividades", element: <ActivityLogPage /> },
       { path: "reports", element: <Reports /> },
       { path: "profile", element: <UserProfile /> },
+      {path: "monitoramento",element: <MonitoringPage />     },
       { path: "cadastros/unidades", element: <UnidadesPage /> },
       { path: "cadastros/computadores", element: <AssetModelPage type="computador" title="Computadores" /> },
       { path: "cadastros/impressoras", element: <AssetModelPage type="impressora" title="Impressoras" /> },
