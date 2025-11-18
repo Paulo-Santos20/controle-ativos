@@ -1,9 +1,12 @@
 /* Reports.module.css */
+/* Princípios: Mobile-First, UI/UX de Excelência, Dark Mode Ready */
 
+/* --- Layout --- */
 .page {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  width: 100%;
 }
 
 /* --- Cabeçalho --- */
@@ -20,6 +23,7 @@
   font-weight: 700;
   color: var(--color-text-primary);
   margin-bottom: 4px;
+  line-height: 1.2;
 }
 
 .subtitle {
@@ -27,12 +31,18 @@
   font-size: var(--font-size-md);
 }
 
+/* --- Botões de Ação --- */
+.headerActions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
 .primaryButton {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
   padding: 10px 16px;
-  background-color: #34c759; /* Verde para exportação */
+  background-color: #34c759; /* Verde padrão (CSV) */
   color: white;
   border: none;
   border-radius: var(--border-radius);
@@ -44,15 +54,24 @@
   background-color: #28a745;
 }
 
+/* Variação para PDF (Vermelho) */
+.pdfButton {
+  background-color: #e02424;
+}
+.pdfButton:hover {
+  background-color: #c81e1e;
+}
+
 /* --- Toolbar de Filtros --- */
 .toolbar {
   display: flex;
-  flex-direction: column; /* Mobile: Pilha */
+  flex-direction: column;
   gap: var(--spacing-md);
   background-color: var(--color-bg-component);
   padding: var(--spacing-md);
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
+  border: 1px solid var(--color-border);
 }
 
 .filterGroup {
@@ -67,25 +86,26 @@
   padding: 8px 12px;
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
-  background-color: var(--color-bg-page);
+  background-color: var(--color-bg-page); /* Adaptável */
+  color: var(--color-text-primary);       /* Adaptável */
   font-size: var(--font-size-sm);
+  cursor: pointer;
 }
 
-/* Desktop: Filtros lado a lado */
 @media (min-width: 768px) {
   .toolbar {
     flex-direction: row;
     align-items: center;
   }
   .filterSelect {
-    min-width: 200px;
+    min-width: 180px;
   }
 }
 
-/* --- Grid de KPIs (Cards) --- */
+/* --- Grid de KPIs --- */
 .kpiGrid {
   display: grid;
-  grid-template-columns: 1fr; /* Mobile */
+  grid-template-columns: 1fr;
   gap: var(--spacing-md);
 }
 
@@ -110,16 +130,18 @@
 .kpiIcon {
   padding: 12px;
   border-radius: 50%;
-  background-color: #f0f7ff;
+  /* CORREÇÃO: Usar rgba para funcionar no Dark Mode */
+  background-color: rgba(0, 122, 255, 0.1);
   color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
 }
-/* Variações de Cor */
-.kpiIcon.success { background-color: #def7ec; color: #03543f; }
-.kpiIcon.warning { background-color: #fdf6b2; color: #9f580a; }
-.kpiIcon.info { background-color: #e1effe; color: #3f83f8; }
+
+/* Variações de Cor (Translúcidas) */
+.kpiIcon.success { background-color: rgba(52, 199, 89, 0.15); color: #28a745; }
+.kpiIcon.warning { background-color: rgba(255, 149, 0, 0.15); color: #ff9500; }
+.kpiIcon.info { background-color: rgba(63, 131, 248, 0.15); color: #3f83f8; }
 
 .kpiLabel {
   display: block;
@@ -159,6 +181,76 @@
   color: var(--color-text-primary);
 }
 
+/* --- NOVA SEÇÃO: Tabela Detalhada --- */
+.detailsSection {
+  background-color: var(--color-bg-component);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  border: 1px solid var(--color-border);
+  margin-bottom: 40px;
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tableContainer {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.detailsTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px; /* Garante largura mínima no mobile */
+}
+
+.detailsTable th,
+.detailsTable td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.detailsTable th {
+  background-color: var(--color-bg-page);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.detailsTable tr:last-child td {
+  border-bottom: none;
+}
+
+/* Tags de Status na Tabela */
+.statusTag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background-color: var(--color-bg-page); /* Fallback */
+  color: var(--color-text-secondary);
+}
+
+/* Cores Específicas para Status */
+.statusTag[data-status="Em uso"] { background-color: rgba(52, 199, 89, 0.15); color: #28a745; }
+.statusTag[data-status="Em manutenção"] { background-color: rgba(255, 149, 0, 0.15); color: #ff9500; }
+.statusTag[data-status="Estoque"] { background-color: rgba(0, 122, 255, 0.15); color: #007aff; }
+.statusTag[data-status="Devolvido"] { background-color: rgba(239, 68, 68, 0.15); color: #ff3b30; text-decoration: line-through; }
+.statusTag[data-status="Inativo"] { background-color: var(--color-bg-page); border: 1px dashed var(--color-border); }
+
 /* --- Estados --- */
 .loadingState {
   display: flex;
@@ -177,22 +269,11 @@
   color: var(--color-danger);
   text-align: center;
   padding: var(--spacing-xl);
+  background-color: rgba(255, 59, 48, 0.1);
+  border-radius: var(--border-radius);
 }
 
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
-}
-
-
-.headerActions {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-.pdfButton {
-  background-color: #e02424; /* Vermelho para PDF */
-}
-.pdfButton:hover {
-  background-color: #c81e1e;
 }

@@ -10,13 +10,24 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf'; 
-import 'jspdf-autotable'; 
+import autoTable from 'jspdf-autotable'; 
 
 import { useAuth } from '../../hooks/useAuth';
 import styles from './Reports.module.css';
 
 const COLORS = ['#007aff', '#5ac8fa', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
-const opcoesStatus = ["Em uso", "Manutenção", "Inativo", "Estoque", "Manutenção agendada", "Devolução agendada", "Devolvido", "Reativação agendada"];
+
+// --- CORREÇÃO 1: Lista exata de status usada no cadastro ---
+const opcoesStatus = [
+  "Em uso", 
+  "Em manutenção", // Era "Manutenção" antes, corrigido para "Em manutenção"
+  "Manutenção agendada", 
+  "Estoque", 
+  "Inativo",
+  "Devolução agendada", 
+  "Devolvido", 
+  "Reativação agendada"
+];
 
 const Reports = () => {
   const { isAdmin, allowedUnits, loading: authLoading } = useAuth();
@@ -26,11 +37,9 @@ const Reports = () => {
   const [filterStatus, setFilterStatus] = useState('all');
 
   // --- QUERIES SEGURAS ---
-  
   const assetsQuery = useMemo(() => {
     if (authLoading) return null;
     const constraints = [];
-    
     if (!isAdmin) {
         if (allowedUnits.length > 0) constraints.push(where('unitId', 'in', allowedUnits));
         else constraints.push(where('unitId', '==', 'BLOQUEADO'));
@@ -54,9 +63,19 @@ const Reports = () => {
     return assets.docs
       .map(doc => doc.data())
       .filter(item => {
+        // Filtros de Unidade e Tipo
         const unitMatch = filterUnit === 'all' || item.unitId === filterUnit;
         const typeMatch = filterType === 'all' || item.type === filterType || item.tipoAtivo === filterType;
-        const statusMatch = filterStatus === 'all' || item.status === filterStatus;
+        
+        // --- CORREÇÃO 2: Filtro de Status Robusto ---
+        // Converte tudo para minúsculo para garantir que "Em manutenção" bata com "Em Manutenção"
+        let statusMatch = true;
+        if (filterStatus !== 'all') {
+            const itemStatus = (item.status || '').toLowerCase().trim();
+            const filterVal = filterStatus.toLowerCase().trim();
+            statusMatch = itemStatus === filterVal;
+        }
+        
         return unitMatch && typeMatch && statusMatch;
       });
   }, [assets, filterUnit, filterType, filterStatus]);
@@ -80,6 +99,7 @@ const Reports = () => {
   }, [filteredData]);
 
   const totalAssets = filteredData.length;
+  // Contagem inteligente: Inclui qualquer status que contenha a palavra "manutenção"
   const totalMaintenance = filteredData.filter(i => i.status && i.status.toLowerCase().includes('manutenção')).length;
   const totalActive = filteredData.filter(i => i.status === 'Em uso').length;
 
@@ -120,7 +140,7 @@ const Reports = () => {
         ]);
       });
       
-      doc.autoTable({ 
+      autoTable(doc, { 
         head: [tableColumn], 
         body: tableRows, 
         startY: 40, 
@@ -130,7 +150,20 @@ const Reports = () => {
       
       doc.save(`relatorio_ativos_${new Date().toISOString().split('T')[0]}.pdf`);
       toast.success("PDF gerado com sucesso!");
-    } catch (error) { console.error("Erro PDF:", error); toast.error("Erro ao gerar PDF."); }
+    } catch (error) { console.error("Erro PDF:", error); toast.error("Erro ao gerar PDF: " + error.message); }
+  };
+
+  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, value }) => {
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  
+    return percent > 0.05 ? ( 
+      <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>
+        {`${value}`}
+      </text>
+    ) : null;
   };
 
   if (loadingAssets || loadingUnits || authLoading) {
@@ -189,10 +222,26 @@ const Reports = () => {
           <h3 className={styles.chartTitle}>Distribuição por Status</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie data={statusData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value">
+              <Pie 
+                data={statusData} 
+                cx="50%" 
+                cy="50%" 
+                labelLine={false}
+                label={renderCustomLabel} 
+                outerRadius={100} 
+                dataKey="value"
+              >
                 {statusData.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
               </Pie>
-              <Tooltip /> <Legend />
+              <Tooltip formatter={(value, name) => [`${value} itens`, name]} /> 
+              
+              {/* LEGENDA MELHORADA COM QUANTIDADES */}
+              <Legend 
+                formatter={(value, entry) => {
+                    const item = statusData.find(s => s.name === value);
+                    return `${value} (${item ? item.value : 0})`;
+                }} 
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -204,11 +253,48 @@ const Reports = () => {
               <XAxis dataKey="name" tick={{fontSize: 12}} />
               <YAxis allowDecimals={false} />
               <Tooltip cursor={{fill: 'transparent'}} />
-              <Bar dataKey="value" fill="#007aff" radius={[4, 4, 0, 0]} />
+              {/* BARRAS COM QUANTIDADES */}
+              <Bar dataKey="value" fill="#007aff" radius={[4, 4, 0, 0]} label={{ position: 'top' }} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
+
+      <div className={styles.detailsSection}>
+        <h3 className={styles.sectionTitle}>Detalhamento dos Dados Filtrados</h3>
+        <div className={styles.tableContainer}>
+          <table className={styles.detailsTable}>
+            <thead>
+              <tr>
+                <th>Tombamento</th>
+                <th>Tipo</th>
+                <th>Modelo</th>
+                <th>Status</th>
+                <th>Unidade/Setor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.slice(0, 50).map((item, idx) => ( 
+                <tr key={idx}>
+                  <td><strong>{item.tombamento}</strong></td>
+                  <td>{item.tipoAtivo || item.type}</td>
+                  <td>{item.modelo}</td>
+                  <td><span className={styles.statusTag} data-status={item.status}>{item.status}</span></td>
+                  <td>{item.unitId} - {item.setor}</td>
+                </tr>
+              ))}
+              {filteredData.length > 50 && (
+                <tr>
+                  <td colSpan="5" style={{textAlign: 'center', color: '#666', fontStyle: 'italic'}}>
+                    ... e mais {filteredData.length - 50} itens. Use "Exportar" para ver todos.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   );
 };
