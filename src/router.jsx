@@ -23,7 +23,7 @@ import OptionsPage from "./pages/Cadastros/OptionsPage";
 // Página de Atividades
 import ActivityLogPage from "./pages/ActivityLog/ActivityLogPage";
 
-// --- CORREÇÃO: Importação da Página de Importação ---
+// Importação da Página de Importação
 import BulkImportPage from "./pages/Inventory/BulkImportPage";
 
 // Página de Monitoramento
@@ -40,13 +40,13 @@ export const router = createBrowserRouter([
     element: <Login />,
   },
   
-  // Rota Pública (Scan QR Code)
+  // Rota Pública
   {
     path: "/scan/:assetId",
     element: <AssetScanPage />, 
   },
 
-  // Rota de Troca de Senha Obrigatória
+  // Troca de Senha
   {
     path: "/force-password",
     element: (
@@ -56,7 +56,7 @@ export const router = createBrowserRouter([
     ),
   },
 
-  // Área Logada (Layout Principal)
+  // Área Logada
   {
     path: "/",
     element: (
@@ -68,21 +68,21 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Dashboard /> },
       
-      // --- INVENTÁRIO ---
+      // --- INVENTÁRIO (ORDEM CRÍTICA) ---
       { path: "inventory", element: <InventoryList /> },
       
-      // Rota específica ANTES da dinâmica (:assetId)
+      // 1º: Rotas específicas (como importar)
       { path: "inventory/importar", element: <BulkImportPage /> }, 
       
+      // 2º: Rota dinâmica (qualquer outra coisa é considerada ID)
       { path: "inventory/:assetId", element: <AssetDetail /> },
-      // -------------------
-      
-      // Relatórios e Atividades
+      // -----------------------------------
+
       { path: "atividades", element: <ActivityLogPage /> },
       { path: "reports", element: <Reports /> },
       { path: "profile", element: <UserProfile /> },
       { path: "monitoramento", element: <MonitoringPage /> },
-
+      
       // Cadastros
       { path: "cadastros/unidades", element: <UnidadesPage /> },
       { path: "cadastros/computadores", element: <AssetModelPage type="computador" title="Computadores" /> },
@@ -90,11 +90,10 @@ export const router = createBrowserRouter([
       { path: "cadastros/empresas", element: <SuppliersPage /> },
       { path: "cadastros/opcoes", element: <OptionsPage /> },
       
-      // Gestão de Usuários
+      // Usuários
       { path: "usuarios/lista", element: <UserList /> },
       { path: "usuarios/perfis", element: <ProfileListPage /> },
       
-      // Compatibilidade com rotas antigas
       { path: "users", element: <Navigate to="/usuarios/lista" replace /> },
     ],
   },
