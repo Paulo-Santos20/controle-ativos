@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore"; // Usando a importação padrão para estabilidade
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
 
@@ -21,12 +21,10 @@ if (!getApps().length) {
   app = getApp();
 }
 
-// Configuração de Cache Offline Robusta (Evita conflitos de abas)
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-});
+// --- CORREÇÃO DE ESTABILIDADE ---
+// Alterado de 'initializeFirestore' com cache persistente complexo para 'getFirestore' padrão.
+// Isso resolve o erro "INTERNAL ASSERTION FAILED" limpando a dependência do IndexedDB corrompido.
+const db = getFirestore(app);
 
 const auth = getAuth(app);
 const storage = getStorage(app);
