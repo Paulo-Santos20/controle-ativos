@@ -1,8 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx'; // Apenas para leitura
+import ExcelJS from 'exceljs'; // Para gerar o arquivo colorido
+import { saveAs } from 'file-saver'; // Para baixar
 import { writeBatch, doc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '/src/lib/firebase.js';
+import { db, auth } from '../../lib/firebase'; 
 import { toast } from 'sonner';
 import { Loader2, UploadCloud, AlertTriangle, CheckCircle, FileSpreadsheet, Download, RefreshCw } from 'lucide-react';
 import styles from './BulkImportPage.module.css';
@@ -13,19 +15,15 @@ const BulkImportPage = () => {
   const [validationErrors, setValidationErrors] = useState([]);
   const [importStats, setImportStats] = useState({ computers: 0, printers: 0 });
 
-  // --- 1. LÓGICA INTELIGENTE DE PROCESSAMENTO ---
   const processRow = (row) => {
-    // Normaliza chaves (remove espaços e coloca em minúsculo para evitar erros de digitação no header)
     const normalizedRow = {};
     Object.keys(row).forEach(key => {
       normalizedRow[key.trim().toLowerCase()] = row[key];
     });
 
-    // Detecta o tipo (padroniza para minúsculo)
     const rawType = normalizedRow['tipo'] || '';
     const type = rawType.toLowerCase().includes('impressora') ? 'impressora' : 'computador';
 
-    // Campos Comuns
     const baseData = {
       tombamento: String(normalizedRow['tombamento'] || '').trim(),
       type: type,
@@ -33,20 +31,18 @@ const BulkImportPage = () => {
       modelo: normalizedRow['modelo'] || 'Desconhecido',
       serial: normalizedRow['serial'] || 'N/A',
       status: normalizedRow['status'] || 'Estoque',
-      unitId: normalizedRow['unidade'] || '', // IMPORTANTE: Tem que ser o ID ou Sigla exata
+      unitId: normalizedRow['unidade'] || '', 
       setor: normalizedRow['setor'] || 'Geral',
       sala: normalizedRow['sala'] || '',
       pavimento: normalizedRow['pavimento'] || '',
       funcionario: normalizedRow['funcionario'] || '',
       observacao: normalizedRow['observacao'] || '',
-      // Metadata
       createdAt: serverTimestamp(),
       lastSeen: serverTimestamp(),
       importedBy: auth.currentUser?.email,
       isImported: true
     };
 
-    // Campos Específicos
     if (type === 'computador') {
       return {
         ...baseData,
@@ -60,7 +56,6 @@ const BulkImportPage = () => {
         serviceTag: normalizedRow['service_tag'] || ''
       };
     } else {
-      // Impressora
       return {
         ...baseData,
         ip: normalizedRow['ip'] || '',
@@ -72,7 +67,6 @@ const BulkImportPage = () => {
     }
   };
 
-  // --- 2. FUNÇÃO DE LEITURA DO EXCEL ---
   const onDrop = useCallback((acceptedFiles) => {
     const file = acceptedFiles[0];
     const reader = new FileReader();
@@ -83,8 +77,6 @@ const BulkImportPage = () => {
         const workbook = XLSX.read(data, { type: 'array' });
         
         let allRows = [];
-
-        // Lê TODAS as abas (Sheets) do arquivo
         workbook.SheetNames.forEach(sheetName => {
           const worksheet = workbook.Sheets[sheetName];
           const json = XLSX.utils.sheet_to_json(worksheet);
@@ -96,11 +88,9 @@ const BulkImportPage = () => {
           return;
         }
 
-        // Processa e valida
         const processedData = allRows.map(processRow);
         validateData(processedData);
         
-        // Conta estatísticas para mostrar ao usuário
         const comps = processedData.filter(d => d.type === 'computador').length;
         const prints = processedData.filter(d => d.type === 'impressora').length;
         setImportStats({ computers: comps, printers: prints });
@@ -126,7 +116,6 @@ const BulkImportPage = () => {
     maxFiles: 1
   });
 
-  // --- 3. VALIDAÇÃO ---
   const validateData = (data) => {
     const errors = [];
     data.forEach((row, index) => {
@@ -136,13 +125,12 @@ const BulkImportPage = () => {
     });
     setValidationErrors(errors);
     if (errors.length > 0) {
-      toast.warning(`${errors.length} erros encontrados. Verifique a lista.`);
+      toast.warning(`${errors.length} erros encontrados.`);
     } else {
-      toast.success(`${data.length} itens carregados e válidos!`);
+      toast.success(`${data.length} itens válidos!`);
     }
   };
 
-  // --- 4. ENVIO (BATCH) ---
   const handleImport = async () => {
     if (validationErrors.length > 0) {
       toast.error("Corrija os erros antes de importar.");
@@ -153,7 +141,7 @@ const BulkImportPage = () => {
     const toastId = toast.loading("Iniciando importação...");
 
     try {
-      const chunkSize = 400; // Limite do Firestore é 500
+      const chunkSize = 400;
       const chunks = [];
       for (let i = 0; i < fileData.length; i += chunkSize) {
         chunks.push(fileData.slice(i, i + chunkSize));
@@ -164,7 +152,6 @@ const BulkImportPage = () => {
       for (const chunk of chunks) {
         const batch = writeBatch(db);
         chunk.forEach((item) => {
-          // O ID do documento é o Tombamento
           const assetRef = doc(db, 'assets', item.tombamento);
           batch.set(assetRef, item); 
         });
@@ -184,32 +171,58 @@ const BulkImportPage = () => {
     }
   };
 
-  // --- 5. GERAR MODELO INTELIGENTE (2 Abas) ---
-  const downloadTemplate = () => {
-    const wb = XLSX.utils.book_new();
+  // --- 5. GERAR MODELO COM CORES (USANDO EXCELJS) ---
+  const downloadTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    
+    // Estilos
+    const mandatoryFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } }; // Vermelho Claro
+    const mandatoryFont = { color: { argb: 'FF9C0006' }, bold: true }; // Vermelho Escuro
+    
+    const optionalFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } }; // Verde Claro
+    const optionalFont = { color: { argb: 'FF006100' }, bold: true }; // Verde Escuro
+
+    const mandatoryCols = ["Tombamento", "Tipo", "Status", "Unidade"];
+
+    // Helper
+    const createSheet = (sheetName, headers, exampleRow) => {
+      const sheet = workbook.addWorksheet(sheetName);
+      const headerRow = sheet.addRow(headers);
+      
+      headerRow.eachCell((cell, colNumber) => {
+        const headerName = cell.value;
+        if (mandatoryCols.includes(headerName)) {
+          cell.fill = mandatoryFill;
+          cell.font = mandatoryFont;
+        } else {
+          cell.fill = optionalFill;
+          cell.font = optionalFont;
+        }
+        cell.border = { bottom: { style: 'thin' } };
+        sheet.getColumn(colNumber).width = 18;
+      });
+
+      sheet.addRow(exampleRow);
+    };
 
     // Aba 1: Computadores
-    const headersPC = [
-      ["Tombamento", "Tipo", "Marca", "Modelo", "Serial", "Hostname", "Status", "Unidade", "Setor", "Sala", "Pavimento", "Funcionario", "Processador", "Memoria", "HD_SSD", "SO", "Antivirus", "MAC", "Service_Tag", "Observacao"]
-    ];
-    const examplePC = [
-      ["CMP-001", "computador", "Dell", "Optiplex 3080", "123456", "HMR-TI-01", "Em uso", "HMR", "TI", "Sala TI", "Térreo", "João", "i5", "8GB", "256GB", "Windows 10", "Kaspersky", "", "", ""]
-    ];
-    const wsPC = XLSX.utils.aoa_to_sheet([...headersPC, ...examplePC]);
-    XLSX.utils.book_append_sheet(wb, wsPC, "Computadores");
+    createSheet(
+      "Computadores",
+      ["Tombamento", "Tipo", "Marca", "Modelo", "Serial", "Status", "Unidade", "Setor", "Sala", "Pavimento", "Funcionario", "Hostname", "Processador", "Memoria", "HD_SSD", "SO", "Antivirus", "MAC", "Service_Tag", "Observacao"],
+      ["CMP-001", "computador", "Dell", "Optiplex", "12345", "Em uso", "HMR", "TI", "Sala TI", "Térreo", "João", "HMR-TI-01", "i5", "8GB", "256GB", "Win10", "Kaspersky", "", "", ""]
+    );
 
     // Aba 2: Impressoras
-    const headersImp = [
-      ["Tombamento", "Tipo", "Marca", "Modelo", "Serial", "IP", "Status", "Unidade", "Setor", "Sala", "Pavimento", "Funcionario", "Conectividade", "Cartucho", "Colorido", "Frente_Verso", "Observacao"]
-    ];
-    const exampleImp = [
-      ["IMP-001", "impressora", "Brother", "8157", "987654", "192.168.0.50", "Em uso", "HMR", "Recepção", "Balcão", "Térreo", "", "Rede", "TN-3472", "Não", "Sim", ""]
-    ];
-    const wsImp = XLSX.utils.aoa_to_sheet([...headersImp, ...exampleImp]);
-    XLSX.utils.book_append_sheet(wb, wsImp, "Impressoras");
+    createSheet(
+      "Impressoras",
+      ["Tombamento", "Tipo", "Marca", "Modelo", "Serial", "Status", "Unidade", "Setor", "Sala", "Pavimento", "Funcionario", "IP", "Conectividade", "Cartucho", "Colorido", "Frente_Verso", "Observacao"],
+      ["IMP-001", "impressora", "Brother", "8157", "98765", "Em uso", "HMR", "Recepção", "Balcão", "Térreo", "", "192.168.0.50", "Rede", "TN-3472", "Não", "Sim", ""]
+    );
 
     // Baixar
-    XLSX.writeFile(wb, "modelo_importacao_ativos.xlsx");
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, "modelo_ativos_colorido.xlsx");
   };
 
   return (
@@ -217,10 +230,10 @@ const BulkImportPage = () => {
       <header className={styles.header}>
         <div>
           <h1 className={styles.title}>Importação em Massa</h1>
-          <p className={styles.subtitle}>Cadastre múltiplos ativos via Excel.</p>
+          <p className={styles.subtitle}>Use a planilha modelo para garantir os campos corretos.</p>
         </div>
         <button onClick={downloadTemplate} className={styles.secondaryButton}>
-          <Download size={18} /> Baixar Planilha Modelo (2 Abas)
+          <Download size={18} /> Baixar Modelo (Colorido)
         </button>
       </header>
 
@@ -232,34 +245,35 @@ const BulkImportPage = () => {
         ) : (
           <div className={styles.dropText}>
             <p>Arraste seu Excel aqui ou clique para selecionar.</p>
-            <small>O sistema identificará automaticamente as abas de Computadores e Impressoras.</small>
+            <div style={{display:'flex', gap: 10, justifyContent: 'center', marginTop: 8}}>
+                <span style={{color: '#991b1b', fontWeight: 'bold', fontSize: '0.8rem', background:'#fee2e2', padding:'2px 8px', borderRadius:4}}>Vermelho: Obrigatório</span>
+                <span style={{color: '#166534', fontWeight: 'bold', fontSize: '0.8rem', background:'#dcfce7', padding:'2px 8px', borderRadius:4}}>Verde: Opcional</span>
+            </div>
           </div>
         )}
       </div>
 
       {validationErrors.length > 0 && (
         <div className={styles.errorBox}>
-          <h3><AlertTriangle size={20} /> Erros Encontrados ({validationErrors.length})</h3>
+          <h3><AlertTriangle size={20} /> Erros Encontrados</h3>
           <ul>
             {validationErrors.slice(0, 10).map((err, idx) => <li key={idx}>{err}</li>)}
-            {validationErrors.length > 10 && <li>...e mais {validationErrors.length - 10}.</li>}
           </ul>
-          <button onClick={() => {setFileData([]); setValidationErrors([])}} className={styles.textButton}>Limpar e tentar novamente</button>
+          <button onClick={() => {setFileData([]); setValidationErrors([])}} className={styles.textButton}>Limpar</button>
         </div>
       )}
 
       {fileData.length > 0 && validationErrors.length === 0 && (
         <div className={styles.previewContainer}>
           <div className={styles.previewHeader}>
-            <div className={styles.statsBadge}>
+            <div className={styles.successBadge}>
               <CheckCircle size={18} />
               <span>
-                Prontos para importar: 
-                <strong> {importStats.computers} Computadores</strong> e 
+                Prontos: 
+                <strong> {importStats.computers} Computadores</strong>, 
                 <strong> {importStats.printers} Impressoras</strong>
               </span>
             </div>
-            
             <div className={styles.actionButtons}>
                 <button className={styles.tertiaryButton} onClick={() => {setFileData([]); setImportStats({computers:0, printers:0})}}>
                     <RefreshCw size={16} /> Cancelar
@@ -275,7 +289,6 @@ const BulkImportPage = () => {
             </div>
           </div>
 
-          {/* Tabela de Preview (Amostra mista) */}
           <div className={styles.tablePreview}>
             <table>
               <thead>
@@ -284,7 +297,6 @@ const BulkImportPage = () => {
                   <th>Tipo</th>
                   <th>Modelo</th>
                   <th>Unidade</th>
-                  <th>Detalhe (CPU/Cartucho)</th>
                 </tr>
               </thead>
               <tbody>
@@ -294,12 +306,6 @@ const BulkImportPage = () => {
                     <td>{row.type}</td>
                     <td>{row.marca} {row.modelo}</td>
                     <td>{row.unitId}</td>
-                    <td>
-                        {row.type === 'computador' 
-                            ? `${row.processador || '-'} / ${row.memoria || '-'}`
-                            : `${row.cartucho || '-'}`
-                        }
-                    </td>
                   </tr>
                 ))}
               </tbody>

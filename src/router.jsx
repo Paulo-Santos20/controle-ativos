@@ -23,10 +23,13 @@ import OptionsPage from "./pages/Cadastros/OptionsPage";
 // Página de Atividades
 import ActivityLogPage from "./pages/ActivityLog/ActivityLogPage";
 
-// Página de Importação
+// --- CORREÇÃO: Importação da Página de Importação ---
 import BulkImportPage from "./pages/Inventory/BulkImportPage";
 
-// Páginas Especiais
+// Página de Monitoramento
+import MonitoringPage from "./pages/Monitoring/MonitoringPage";
+
+// Páginas de Usuário e Públicas
 import ProfileListPage from "./pages/Users/ProfileListPage";
 import AssetScanPage from "./pages/Public/AssetScanPage";
 import ForceChangePasswordPage from "./pages/Auth/ForceChangePasswordPage";
@@ -37,13 +40,13 @@ export const router = createBrowserRouter([
     element: <Login />,
   },
   
-  // Rota Pública de Scan
+  // Rota Pública (Scan QR Code)
   {
     path: "/scan/:assetId",
     element: <AssetScanPage />, 
   },
 
-  // Rota de Troca de Senha
+  // Rota de Troca de Senha Obrigatória
   {
     path: "/force-password",
     element: (
@@ -53,7 +56,7 @@ export const router = createBrowserRouter([
     ),
   },
 
-  // Área Logada
+  // Área Logada (Layout Principal)
   {
     path: "/",
     element: (
@@ -68,15 +71,18 @@ export const router = createBrowserRouter([
       // --- INVENTÁRIO ---
       { path: "inventory", element: <InventoryList /> },
       
-      // CORREÇÃO: A rota específica 'importar' deve vir ANTES da dinâmica ':assetId'
+      // Rota específica ANTES da dinâmica (:assetId)
       { path: "inventory/importar", element: <BulkImportPage /> }, 
+      
       { path: "inventory/:assetId", element: <AssetDetail /> },
-      // -------------------------------------------------------
-
+      // -------------------
+      
+      // Relatórios e Atividades
       { path: "atividades", element: <ActivityLogPage /> },
       { path: "reports", element: <Reports /> },
       { path: "profile", element: <UserProfile /> },
-      
+      { path: "monitoramento", element: <MonitoringPage /> },
+
       // Cadastros
       { path: "cadastros/unidades", element: <UnidadesPage /> },
       { path: "cadastros/computadores", element: <AssetModelPage type="computador" title="Computadores" /> },
@@ -84,15 +90,12 @@ export const router = createBrowserRouter([
       { path: "cadastros/empresas", element: <SuppliersPage /> },
       { path: "cadastros/opcoes", element: <OptionsPage /> },
       
-      // Usuários
+      // Gestão de Usuários
       { path: "usuarios/lista", element: <UserList /> },
       { path: "usuarios/perfis", element: <ProfileListPage /> },
       
-      // Redirecionamento legado
+      // Compatibilidade com rotas antigas
       { path: "users", element: <Navigate to="/usuarios/lista" replace /> },
-      
-      // Nova rota de monitoramento
-      { path: "monitoramento", element: <Navigate to="/monitoramento" replace /> }, // Se tiver pagina, importe. Se nao, remove.
     ],
   },
   { path: "*", element: <NotFound /> },

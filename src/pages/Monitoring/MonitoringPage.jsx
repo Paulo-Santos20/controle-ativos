@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { db } from '/src/lib/firebase.js';
+import { db } from '../../lib/firebase'; // Caminho corrigido
 import { 
   Search, Clock, AlertTriangle, CheckCircle, Filter, ArrowRight, Loader2, ShieldAlert 
 } from 'lucide-react';
@@ -9,25 +9,23 @@ import { format, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 
-import { useAuth } from '/src/hooks/useAuth.js';
+import { useAuth } from '../../hooks/useAuth';
 import styles from './MonitoringPage.module.css';
 
-// --- ALTERAÇÃO 1: Removido "Devolvido" da lista padrão ---
-// Estes são os itens que aparecem automaticamente ao abrir a página
+// Status que requerem monitoramento (Filtro Padrão)
+// Removemos "Devolvido" daqui conforme solicitado anteriormente
 const ATTENTION_STATUSES = [
   "Manutenção agendada", 
   "Em manutenção", 
   "Devolução agendada"
-  // "Devolvido" foi removido daqui para não poluir a vista padrão
 ];
 
-// --- ALTERAÇÃO 2: Adicionada opção específica para ver Devolvidos ---
 const filterOptions = [
   { value: "attention", label: "⚠️ Em Atenção (Padrão)" },
   { value: "all", label: "Todos os Ativos" },
   { value: "Em uso", label: "Em uso" },
   { value: "Estoque", label: "Estoque" },
-  { value: "Devolvido", label: "📦 Devolvidos / Arquivados" } // <-- Nova Opção
+  { value: "Devolvido", label: "📦 Devolvidos / Arquivados" }
 ];
 
 const MonitoringPage = () => {
@@ -36,27 +34,31 @@ const MonitoringPage = () => {
   const [filterStatus, setFilterStatus] = useState("attention"); 
   const [searchTerm, setSearchTerm] = useState("");
 
-  // --- 1. QUERY INTELIGENTE ---
+  // --- 1. QUERY AO BANCO DE DADOS ---
   const assetsQuery = useMemo(() => {
     if (authLoading) return null;
     
     const collectionRef = collection(db, 'assets');
     
-    // Ordena pelos mais antigos primeiro (prioridade)
+    // Ordenação padrão (necessária índice se combinada com where)
+    // Se der erro de índice, tente remover o orderBy temporariamente para testar
     const constraints = [orderBy('lastSeen', 'asc')]; 
 
-    // Filtro de Unidade (Segurança)
+    // A. FILTRO DE SEGURANÇA (PRIORIDADE MÁXIMA)
     if (!isAdmin) {
-      if (allowedUnits.length > 0) constraints.push(where('unitId', 'in', allowedUnits));
-      else return null;
+      if (allowedUnits.length > 0) {
+        // Filtra apenas unidades permitidas
+        constraints.push(where('unitId', 'in', allowedUnits));
+      } else {
+        // Se não tem unidade, bloqueia tudo
+        return null;
+      }
     }
 
-    // Filtro de Status
-    if (filterStatus === 'attention') {
-      // Busca apenas os status críticos (sem devolvidos)
-      constraints.push(where('status', 'in', ATTENTION_STATUSES));
-    } else if (filterStatus !== 'all') {
-      // Busca um status específico (Aqui entra o "Devolvido" se selecionado)
+    // B. FILTRO DE STATUS (SIMPLES)
+    // Só aplicamos no banco se for um valor único. 
+    // Se for "attention" (lista), filtramos no Javascript para evitar erro de "double IN".
+    if (filterStatus !== 'attention' && filterStatus !== 'all') {
       constraints.push(where('status', '==', filterStatus));
     }
 
@@ -65,13 +67,14 @@ const MonitoringPage = () => {
 
   const [assets, loading, error] = useCollection(assetsQuery);
 
-  // --- 2. PROCESSAMENTO E FILTRO DE TEXTO ---
+  // --- 2. PROCESSAMENTO E FILTRAGEM LOCAL (JAVASCRIPT) ---
   const processedAssets = useMemo(() => {
     if (!assets) return [];
 
     let data = assets.docs.map(doc => {
       const asset = doc.data();
-      const lastSeenDate = asset.lastSeen?.toDate() || new Date();
+      // Garante que lastSeen seja uma data válida
+      const lastSeenDate = asset.lastSeen?.toDate ? asset.lastSeen.toDate() : new Date();
       const daysElapsed = differenceInDays(new Date(), lastSeenDate);
       
       return {
@@ -79,11 +82,18 @@ const MonitoringPage = () => {
         ...asset,
         lastSeenDate,
         daysElapsed,
-        // Flag de Alerta: Se estiver nos status de atenção E > 5 dias
+        // Flag de Alerta
         isOverdue: ATTENTION_STATUSES.includes(asset.status) && daysElapsed > 5
       };
     });
 
+    // A. FILTRO DE STATUS "EM ATENÇÃO" (LOCAL)
+    // Isso resolve o problema do Firebase não aceitar dois "IN"
+    if (filterStatus === 'attention') {
+      data = data.filter(asset => ATTENTION_STATUSES.includes(asset.status));
+    }
+
+    // B. FILTRO DE TEXTO
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       data = data.filter(asset => 
@@ -93,42 +103,44 @@ const MonitoringPage = () => {
       );
     }
 
-    // Ordenação secundária: Atrasados primeiro
+    // C. ORDENAÇÃO FINAL (Atrasados primeiro)
     return data.sort((a, b) => b.daysElapsed - a.daysElapsed);
-  }, [assets, searchTerm]);
+  }, [assets, searchTerm, filterStatus]);
 
   const alertsCount = processedAssets.filter(a => a.isOverdue).length;
 
-  // --- 3. RENDERIZAÇÃO DE ERRO ---
+  // --- 3. UI DE ESTADOS ---
+  if (authLoading || loading) {
+    return (
+      <div className={styles.loadingState}>
+        <Loader2 className={styles.spinner} size={48} />
+        <p style={{marginTop: 10}}>Analisando dados...</p>
+      </div>
+    );
+  }
+
+  // Tratamento de Erro Amigável
   if (error) {
     console.error("ERRO MONITORAMENTO:", error);
     
     if (error.code === 'failed-precondition') {
-      return (
-        <div className={styles.page}>
-          <div className={styles.emptyState} style={{color: '#b91c1c', borderColor: '#fca5a5', backgroundColor: '#fef2f2'}}>
-            <AlertTriangle size={48} />
-            <h3>Índice Necessário</h3>
-            <p>O Firestore precisa de um índice para esta combinação de filtros.</p>
-            <p style={{marginTop: 10}}><strong>Abra o Console (F12) e clique no link do Firebase para criar.</strong></p>
-          </div>
-        </div>
-      );
-    }
-    
-    if (error.code === 'permission-denied') {
        return (
-        <div className={styles.page}>
-          <div className={styles.emptyState}>
-            <ShieldAlert size={48} color="red"/>
-            <h3>Permissão Negada</h3>
-            <p>Suas regras de segurança estão bloqueando esta consulta.</p>
-          </div>
-        </div>
-      );
+         <div className={styles.errorPage}>
+            <AlertTriangle size={64} color="#ef4444" />
+            <h2>Índice Necessário</h2>
+            <p>O banco de dados precisa ser otimizado para esta consulta.</p>
+            <p className={styles.techInfo}>Abra o Console (F12) e clique no link do Firebase.</p>
+         </div>
+       );
     }
 
-    return <div className={styles.page}><p className={styles.errorText}>Erro desconhecido: {error.message}</p></div>;
+    return (
+      <div className={styles.errorPage}>
+        <ShieldAlert size={64} color="#ef4444" />
+        <h2>Erro de Acesso</h2>
+        <p>{error.message}</p>
+      </div>
+    );
   }
 
   return (
@@ -174,9 +186,7 @@ const MonitoringPage = () => {
       </div>
 
       <div className={styles.content}>
-        {loading ? (
-          <div className={styles.loadingState}><Loader2 className={styles.spinner} /><p>Calculando tempos...</p></div>
-        ) : processedAssets.length === 0 ? (
+        {processedAssets.length === 0 ? (
           <div className={styles.emptyState}>
             <CheckCircle size={48} color="#10b981" />
             <h3>Nenhum item encontrado</h3>
