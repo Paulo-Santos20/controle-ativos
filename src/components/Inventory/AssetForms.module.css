@@ -1,266 +1,185 @@
 /* AssetForms.module.css */
-/* CSS dedicado para os formulários de Computador e Impressora */
-/* Princípios: Mobile-First, UI/UX de Excelência */
+/* Otimizado para Dark Mode */
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--spacing-lg);
+  padding: var(--spacing-sm);
 }
 
-/* --- Fieldset (UI/UX) --- */
 .fieldset {
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   padding: var(--spacing-md);
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
+  background-color: transparent;
 }
-.fieldset legend {
-  padding: 0 var(--spacing-sm);
+
+.subtitle {
+  font-size: 1rem;
   font-weight: 600;
   color: var(--color-primary);
-  font-size: 1.1rem;
+  padding: 0 var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
 }
 
-/* --- Layout em Grid --- */
-.grid2, .grid3 {
+/* --- GRIDS DE LAYOUT --- */
+.grid3 {
   display: grid;
-  grid-template-columns: 1fr; /* Mobile-First: 1 coluna */
+  grid-template-columns: 1fr;
   gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
 }
 
-@media (min-width: 640px) {
-  .grid2 { grid-template-columns: 1fr 1fr; }
-  .grid3 { grid-template-columns: 1fr 1fr 1fr; }
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
 }
 
-/* --- Campos de Formulário --- */
+@media (min-width: 768px) {
+  .grid3 { grid-template-columns: repeat(3, 1fr); }
+  .grid2 { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* --- INPUTS E LABELS --- */
 .formGroup {
   display: flex;
   flex-direction: column;
-}
-.formGroup label {
-  margin-bottom: var(--spacing-xs);
-  font-weight: 500;
-  transition: color 0.2s;
-}
-.formGroup:focus-within label {
-  color: var(--color-primary);
+  gap: 6px;
+  margin-bottom: var(--spacing-sm);
 }
 
-.formGroup input, .formGroup select, .formGroup textarea {
-  padding: var(--spacing-sm) var(--spacing-md);
+.formGroup label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+/* CORREÇÃO: Inputs e Selects adaptáveis ao tema */
+.formGroup input,
+.formGroup select,
+.textarea {
+  padding: 10px 12px;
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
-  background-color: #fcfcfc;
-  font-size: var(--font-size-md);
-  transition: border-color 0.2s, box-shadow 0.2s;
-  font-family: inherit;
+  font-size: 0.95rem;
+  width: 100%;
+  transition: all 0.2s;
+  
+  /* IMPORTANTE: Usa as variáveis para mudar cor no dark mode */
+  background-color: var(--color-bg-component); 
+  color: var(--color-text-primary);
 }
-.formGroup input:focus, .formGroup select:focus, .formGroup textarea:focus {
+
+/* Correção específica para as opções do Select no Dark Mode */
+.formGroup select option {
+  background-color: var(--color-bg-component);
+  color: var(--color-text-primary);
+}
+
+.formGroup input:focus,
+.formGroup select:focus,
+.textarea:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1); /* Glow azul */
 }
-.formGroup textarea {
+
+/* Campo com Erro */
+.inputError {
+  border-color: var(--color-danger) !important;
+}
+.inputError:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.errorMessage {
+  color: var(--color-danger);
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+/* Input Desabilitado */
+.inputDisabled {
+  background-color: var(--color-bg-page) !important; /* Mais escuro que o componente */
+  color: var(--color-text-secondary) !important;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+/* Textarea */
+.textarea {
   resize: vertical;
   min-height: 80px;
 }
 
-.inputError { border-color: var(--color-danger) !important; }
-.errorMessage {
-  color: var(--color-danger);
-  font-size: var(--font-size-sm);
-  margin-top: var(--spacing-xs);
-}
-
-/* --- Botões de Ação (Mobile-First) --- */
+/* --- BOTÕES DO FORMULÁRIO --- */
 .buttonContainer {
   display: flex;
-  flex-wrap: wrap; 
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-md);
-  border-top: 1px solid var(--color-border);
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
   padding-top: var(--spacing-md);
-  justify-content: space-between;
+  border-top: 1px solid var(--color-border);
 }
 
 .primaryButton, .secondaryButton, .tertiaryButton {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: none;
+  padding: 10px 20px;
   border-radius: var(--border-radius);
   font-weight: 600;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
-
-.secondaryButton { order: 1; }
-.tertiaryButton { order: 2; }
-.primaryButton { order: 3; width: 100%; }
 
 .primaryButton {
   background-color: var(--color-primary);
   color: white;
+  border: none;
 }
-.primaryButton:hover { background-color: var(--color-primary-dark); }
-.primaryButton:disabled { background-color: var(--color-border); cursor: not-allowed; }
+.primaryButton:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+.primaryButton:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
 
 .secondaryButton {
-  background-color: var(--color-bg-component);
-  color: var(--color-text-secondary);
+  background-color: transparent;
+  color: var(--color-text-primary);
   border: 1px solid var(--color-border);
 }
-.secondaryButton:hover { background-color: var(--color-bg-page); }
+.secondaryButton:hover {
+  background-color: var(--color-bg-page);
+  border-color: var(--color-text-secondary);
+}
 
 .tertiaryButton {
-  background: none;
-  color: var(--color-text-secondary);
-}
-.tertiaryButton:hover { color: var(--color-text-primary); }
-
-/* Desktop (Sobrescrita) */
-@media (min-width: 640px) {
-  .buttonContainer {
-    justify-content: flex-end; 
-  }
-  .primaryButton {
-    width: auto; 
-    order: 3;
-  }
-  .secondaryButton {
-    order: 1;
-  }
-  .tertiaryButton {
-    margin-right: auto; 
-    order: 2;
-  }
-}
-/* --- Autocomplete e Busca Avançada --- */
-.searchGroup {
-  display: flex;
-  gap: var(--spacing-xs);
-  align-items: center;
-}
-
-.autocompleteWrapper {
-  position: relative;
-  flex-grow: 1;
-}
-
-/* Input de busca estilizado */
-.autocompleteInput {
-  width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
-  padding-left: 40px; /* Espaço para o ícone interno */
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  background-color: #fff;
-  font-size: var(--font-size-md);
-}
-.autocompleteInput:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
-}
-
-/* O ícone dentro do input */
-.inputIconInside {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-text-secondary);
-  pointer-events: none;
-}
-
-/* Botão de Lupa ao lado */
-.searchButtonSquare {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  width: 42px;
-  height: 42px; /* Mesma altura do input */
-  background-color: var(--color-primary);
-  color: white;
+  background: transparent;
   border: none;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: background-color 0.2s;
-  flex-shrink: 0;
-}
-.searchButtonSquare:hover {
-  background-color: var(--color-primary-dark);
-}
-.searchButtonSquare:disabled {
-  background-color: var(--color-border);
-  cursor: not-allowed;
-}
-
-/* Lista Suspensa (Dropdown) */
-.dropdownList {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 100%;
-  max-height: 200px;
-  overflow-y: auto;
-  background-color: white;
-  border: 1px solid var(--color-border);
-  border-radius: 0 0 var(--border-radius) var(--border-radius);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  z-index: 100;
-  list-style: none;
-  margin-top: 4px;
-}
-
-.dropdownItem {
-  padding: var(--spacing-sm) var(--spacing-md);
-  cursor: pointer;
-  border-bottom: 1px solid var(--color-bg-page);
-  font-size: 0.9rem;
-}
-.dropdownItem:last-child {
-  border-bottom: none;
-}
-.dropdownItem:hover {
-  background-color: var(--color-bg-page);
-}
-.dropdownItem strong {
-  color: var(--color-text-primary);
-  display: block;
-}
-.dropdownItem small {
   color: var(--color-text-secondary);
+  text-decoration: underline;
+  font-size: 0.85rem;
+}
+.tertiaryButton:hover {
+  color: var(--color-text-primary);
 }
 
-/* --- Tabela do Modal Avançado --- */
-.tableScroll {
-  max-height: 400px;
-  overflow-y: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-}
-.simpleTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-.simpleTable th {
-  background-color: var(--color-bg-page);
-  text-align: left;
-  padding: 8px;
-  position: sticky;
-  top: 0;
-}
-.simpleTable td {
-  padding: 8px;
-  border-bottom: 1px solid var(--color-border);
-}
-.simpleTable tr:hover {
-  background-color: #f0f7ff;
-  cursor: pointer;
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .buttonContainer {
+    flex-direction: column-reverse;
+  }
+  .primaryButton, .secondaryButton, .tertiaryButton {
+    width: 100%;
+  }
 }

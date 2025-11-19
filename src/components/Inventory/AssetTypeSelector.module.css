@@ -1,9 +1,11 @@
 /* AssetTypeSelector.module.css */
+
 .selectorContainer {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: var(--spacing-sm);
+  width: 100%;
 }
 
 .title {
@@ -34,9 +36,13 @@
   justify-content: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-xl) var(--spacing-lg);
+  
+  /* Bordas e Fundos Adaptáveis */
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
-  background-color: var(--color-bg-page);
+  background-color: var(--color-bg-component); /* Adapta ao Dark Mode */
+  
+  /* Texto e Ícone */
   color: var(--color-primary);
   font-size: 1.25rem;
   font-weight: 600;
@@ -44,18 +50,25 @@
   transition: all 0.2s ease;
   min-height: 180px;
 }
+
 .typeButton:hover {
-  background-color: #f0f6ff; /* Um azul bem claro */
+  /* --- A CORREÇÃO ESTÁ AQUI --- */
+  /* Em vez de uma cor sólida clara, usamos transparência. 
+     No Dark Mode, fica um cinza azulado. No Light Mode, um azul claro. */
+  background-color: rgba(0, 122, 255, 0.1); 
+  
   border-color: var(--color-primary);
   transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 122, 255, 0.1);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1); /* Sombra sutil */
 }
 
 .typeButton span {
-  color: var(--color-text-primary);
+  color: var(--color-text-primary); /* Garante contraste */
 }
+
 .typeButton small {
-  font-size: var(--font-size-sm);
+  font-size: 0.85rem; /* Variável não funcionava aqui em alguns browsers, fixei rem */
   font-weight: 400;
   color: var(--color-text-secondary);
+  text-align: center;
 }
