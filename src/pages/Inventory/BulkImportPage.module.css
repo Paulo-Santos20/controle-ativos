@@ -1,107 +1,292 @@
 /* BulkImportPage.module.css */
+/* Otimizado para Dark Mode e Responsividade */
 
 .page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-  max-width: 800px;
+  padding: 20px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
+/* --- Header --- */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 30px;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 15px;
 }
-.title { font-size: 2rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 4px; }
-.subtitle { color: var(--color-text-secondary); }
 
-/* Botões */
-.primaryButton, .secondaryButton {
+.title {
+  font-size: 2.2em;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  font-size: 1em;
+  color: var(--color-text-secondary);
+}
+
+/* --- Botões --- */
+.secondaryButton {
+  background-color: var(--color-button-secondary-bg);
+  color: var(--color-button-secondary-text);
+  border: 1px solid var(--color-button-secondary-border);
+  padding: 10px 18px;
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.secondaryButton:hover {
+  background-color: var(--color-button-secondary-hover-bg);
+  color: var(--color-button-secondary-hover-text);
+  border-color: var(--color-button-secondary-hover-border);
+}
+
+.primaryButton {
+  background-color: var(--color-primary);
+  color: #fff;
+  border: none;
   padding: 10px 20px;
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   font-weight: 600;
   cursor: pointer;
-  border: none;
-  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s ease;
 }
-.primaryButton { background-color: var(--color-primary); color: white; }
-.primaryButton:hover { background-color: var(--color-primary-dark); }
-.primaryButton:disabled { opacity: 0.7; cursor: not-allowed; }
 
-.secondaryButton { background-color: white; border: 1px solid var(--color-border); color: var(--color-text-primary); }
-.secondaryButton:hover { background-color: var(--color-bg-page); }
+.primaryButton:hover {
+  background-color: var(--color-primary-dark);
+}
 
-/* Dropzone */
+.primaryButton:disabled {
+  background-color: var(--color-button-disabled-bg);
+  color: var(--color-button-disabled-text);
+  cursor: not-allowed;
+}
+
+.tertiaryButton {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  padding: 9px 16px;
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.tertiaryButton:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+}
+
+.textButton {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  margin-top: 10px;
+  transition: color 0.2s ease;
+}
+
+.textButton:hover {
+  color: var(--color-primary-dark);
+}
+
+/* --- Dropzone (Área de Upload) --- */
 .dropzone {
-  border: 2px dashed var(--color-border);
-  border-radius: 16px;
-  padding: 60px;
+  border: 2px dashed var(--color-border-hover);
+  border-radius: var(--border-radius-lg);
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: var(--color-bg-component);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-bg-component);
-  cursor: pointer;
-  transition: all 0.2s;
+  gap: 15px;
+  margin-bottom: 30px;
 }
-.dropzone:hover, .dropzone.active {
+
+.dropzone.active {
   border-color: var(--color-primary);
-  background-color: #f0f9ff;
+  background-color: var(--color-primary-light-alpha);
 }
-.uploadIcon { color: var(--color-text-secondary); margin-bottom: 16px; }
-.dropText { text-align: center; }
-.dropText p { font-size: 1.1rem; font-weight: 500; color: var(--color-text-primary); }
-.dropText small { color: var(--color-text-secondary); }
 
-/* Erros */
+.uploadIcon {
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+
+.dropText {
+  color: var(--color-text-primary);
+  font-size: 1.1em;
+  font-weight: 500;
+}
+
+.dropText p {
+  margin-bottom: 5px;
+}
+
+/* --- Mensagens de Erro --- */
 .errorBox {
-  background-color: #fef2f2;
-  border: 1px solid #fca5a5;
-  border-radius: 8px;
-  padding: 16px;
-  color: #991b1b;
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--border-radius);
+  padding: 15px 20px;
+  margin-bottom: 20px;
 }
-.errorBox h3 { display: flex; align-items: center; gap: 8px; font-size: 1rem; margin-bottom: 8px; }
-.errorBox ul { padding-left: 20px; margin: 0; }
 
-/* Preview */
-.previewContainer {
-  animation: fadeIn 0.3s ease;
+.errorBox h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1em;
+  margin-bottom: 10px;
+  color: var(--color-error-text);
 }
+
+.errorBox ul {
+  list-style: disc;
+  margin-left: 20px;
+}
+
+.errorBox li {
+  margin-bottom: 5px;
+}
+
+/* --- Preview e Tabela --- */
+.previewContainer {
+  background-color: var(--color-bg-component);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+  padding: 20px;
+}
+
 .previewHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
 }
+
 .successBadge {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+  padding: 8px 15px;
+  border-radius: var(--border-radius-full);
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #059669; /* Verde */
-  font-weight: 600;
-  background-color: #d1fae5;
-  padding: 8px 12px;
-  border-radius: 20px;
+  font-weight: 500;
+}
+
+.successBadge strong {
+  font-weight: 700;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 10px;
 }
 
 .tablePreview {
-  background: white;
+  background: var(--color-bg-component);
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
 }
-.tablePreview table { width: 100%; border-collapse: collapse; }
-.tablePreview th, .tablePreview td { padding: 12px; text-align: left; border-bottom: 1px solid var(--color-bg-page); }
-.tablePreview th { background-color: var(--color-bg-page); font-size: 0.8rem; text-transform: uppercase; color: var(--color-text-secondary); }
-.moreText { text-align: center; padding: 10px; color: var(--color-text-secondary); font-size: 0.9rem; font-style: italic; }
 
-.spinner { animation: spin 1s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.tablePreview table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+
+.tablePreview th, .tablePreview td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.tablePreview th {
+  background-color: var(--color-bg-page);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+}
+
+.tablePreview tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tablePreview tbody tr:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.moreText {
+  text-align: center;
+  margin-top: 15px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+.statusTag {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: var(--color-bg-page);
+  border: 1px solid var(--color-border);
+}
+
+/* --- Spinner --- */
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* --- Responsividade --- */
+@media (max-width: 768px) {
+  .header, .previewHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .actionButtons {
+    width: 100%;
+    justify-content: stretch;
+  }
+  
+  .actionButtons button {
+    flex-grow: 1;
+  }
+}

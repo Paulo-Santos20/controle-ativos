@@ -407,12 +407,10 @@
   cursor: not-allowed;
 }
 
-/* --- A CORREÇÃO DO BOTÃO IMPORTAR --- */
-/* Botão Secundário (Branco com Borda) */
 .secondaryButton {
-  background-color: white;
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border); /* Borda cinza */
+  background-color: var(--color-button-secondary-bg); /* Adapta ao tema */
+  color: var(--color-button-secondary-text);         /* Texto claro no dark */
+  border: 1px solid var(--color-button-secondary-border);
   padding: 10px 16px;
   border-radius: var(--border-radius);
   font-weight: 600;
@@ -422,18 +420,17 @@
   align-items: center;
   gap: 8px;
   font-size: 0.9rem;
-  text-decoration: none; /* Remove o sublinhado do link */
+  text-decoration: none;
 }
 
 .secondaryButton:hover {
-  background-color: var(--color-bg-page); /* Cinza claro no hover */
-  border-color: var(--color-text-secondary);
+  background-color: var(--color-button-secondary-hover-bg);
+  border-color: var(--color-button-secondary-hover-border);
 }
 
 .secondaryButton svg {
-  color: var(--color-text-secondary);
+  color: inherit; /* O ícone segue a cor do texto do botão */
 }
-
 /* Responsividade: Em telas muito pequenas, esconde o texto e deixa só o ícone */
 @media (max-width: 480px) {
   .primaryButton span, 

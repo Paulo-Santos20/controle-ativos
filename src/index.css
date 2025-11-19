@@ -1,63 +1,129 @@
 /* ---------------------------------- */
 /* 1. RESET E BASE (Mobile-First)     */
 /* ---------------------------------- */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
 
 html {
   font-size: 100%; 
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
 }
 
 /* ---------------------------------- */
-/* 2. VARIÁVEIS DE TEMA (Light/Dark)  */
+/* 2. VARIÁVEIS GLOBAIS (TEMA CLARO)  */
 /* ---------------------------------- */
 :root {
-  /* --- TEMA CLARO (Padrão) --- */
+  /* --- Cores Principais --- */
   --color-primary: #007aff;
   --color-primary-dark: #005ec4;
+  --color-primary-light-alpha: rgba(0, 122, 255, 0.1);
   --color-secondary: #5ac8fa;
   
+  /* --- Cores de Status/Feedback --- */
   --color-success: #34c759;
   --color-warning: #ff9500;
   --color-danger: #ff3b30;
+  
+  /* Feedback Backgrounds (Alertas/Badges) */
+  --color-error-bg: #fef2f2;
+  --color-error-text: #991b1b;
+  --color-error-border: #fca5a5;
 
+  --color-success-bg: #dcfce7;
+  --color-success-text: #166534;
+  
+  /* --- Tipografia --- */
   --color-text-primary: #1c1c1e;
   --color-text-secondary: #6e6e73;
+  --color-text-header: #fff; /* Texto em cabeçalhos escuros */
   
-  --color-bg-page: #f2f2f7;      /* Fundo da página (cinza claro) */
-  --color-bg-component: #ffffff; /* Fundo de cards (branco) */
+  /* --- Fundos (Backgrounds) --- */
+  --color-bg-page: #f2f2f7;      /* Fundo da janela */
+  --color-bg-component: #ffffff; /* Cards, Modais, Sidebar */
+  --color-bg-alt: #f9fafb;       /* Fundo alternado (tabelas) */
+  --color-bg-header: #f3f4f6;    /* Cabeçalho de tabelas */
+  --color-bg-hover: #f0f0f0;     /* Hover em listas */
+  
+  /* --- Bordas --- */
   --color-border: #d1d1d6;
+  --color-border-hover: #a1a1aa;
   
+  /* --- Botões Secundários --- */
+  --color-button-secondary-bg: #ffffff;
+  --color-button-secondary-text: #1c1c1e;
+  --color-button-secondary-border: #d1d1d6;
+  --color-button-secondary-hover-bg: #f2f2f7;
+  
+  /* Botões Desabilitados */
+  --color-button-disabled-bg: #e5e7eb;
+  --color-button-disabled-text: #9ca3af;
+  
+  /* --- Diversos --- */
   --shadow-color: rgba(0, 0, 0, 0.05);
-
-  /* Espaçamento */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 32px;
   --border-radius: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-full: 9999px;
   --box-shadow: 0 4px 12px var(--shadow-color);
 }
 
-/* --- TEMA ESCURO --- */
+/* ---------------------------------- */
+/* 3. TEMA ESCURO (Overrides)         */
+/* ---------------------------------- */
 [data-theme="dark"] {
-  --color-primary: #0a84ff; /* Azul mais vibrante para fundo escuro */
+  /* Cores mais vibrantes para contrastar com fundo escuro */
+  --color-primary: #0a84ff;
   --color-primary-dark: #409cff;
+  --color-primary-light-alpha: rgba(10, 132, 255, 0.15);
   
-  --color-text-primary: #f5f5f7; /* Quase branco */
-  --color-text-secondary: #86868b; /* Cinza médio */
+  /* Texto */
+  --color-text-primary: #f5f5f7; /* Branco gelo */
+  --color-text-secondary: #98989d; /* Cinza médio */
+  --color-text-header: #e2e8f0;
   
-  --color-bg-page: #000000;      /* Fundo da página (preto real) */
-  --color-bg-component: #1c1c1e; /* Fundo de cards (cinza escuro) */
-  --color-border: #38383a;       /* Bordas sutis */
+  /* Fundos */
+  --color-bg-page: #000000;      /* Preto real (estilo iOS/Mac) */
+  --color-bg-component: #1c1c1e; /* Cinza muito escuro */
+  --color-bg-alt: #242426;       /* Listras de tabela */
+  --color-bg-header: #2c2c2e;    /* Cabeçalho de tabela */
+  --color-bg-hover: #3a3a3c;     /* Hover mais claro */
   
-  --shadow-color: rgba(0, 0, 0, 0.5); /* Sombra mais forte */
+  /* Bordas (mais sutis) */
+  --color-border: #38383a;
+  --color-border-hover: #58585a;
+  
+  /* Botões Secundários (Dark) */
+  --color-button-secondary-bg: #2c2c2e;
+  --color-button-secondary-text: #f5f5f7;
+  --color-button-secondary-border: #38383a;
+  --color-button-secondary-hover-bg: #3a3a3c;
+
+  /* Botões Desabilitados */
+  --color-button-disabled-bg: #2c2c2e;
+  --color-button-disabled-text: #636366;
+
+  /* Feedback (Cores adaptadas para não cegar o usuário) */
+  --color-error-bg: #450a0a;      /* Vermelho bem escuro */
+  --color-error-text: #fecaca;    /* Texto claro */
+  --color-error-border: #7f1d1d;
+
+  --color-success-bg: #064e3b;    /* Verde bem escuro */
+  --color-success-text: #a7f3d0;  /* Texto claro */
+  
+  --shadow-color: rgba(0, 0, 0, 0.5);
 }
 
 /* ---------------------------------- */
-/* 3. APLICAÇÃO GERAL                 */
+/* 4. ESTILOS GERAIS                  */
 /* ---------------------------------- */
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -65,18 +131,52 @@ body {
   background-color: var(--color-bg-page);
   color: var(--color-text-primary);
   min-height: 100vh;
-  /* Transição suave ao trocar de tema */
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-img, picture, video, canvas, svg { display: block; max-width: 100%; }
-input, button, textarea, select { font: inherit; }
+/* Mídia */
+img, picture, video, canvas, svg { 
+  display: block; 
+  max-width: 100%; 
+}
 
-/* Ajuste para inputs no modo escuro */
-[data-theme="dark"] input, 
-[data-theme="dark"] select, 
-[data-theme="dark"] textarea {
-  background-color: #2c2c2e;
+/* Inputs e Elementos de Formulário (Adaptação Automática) */
+input, button, textarea, select { 
+  font: inherit; 
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+select,
+textarea {
+  background-color: var(--color-bg-component);
   color: var(--color-text-primary);
-  border-color: var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:disabled, select:disabled, textarea:disabled {
+  background-color: var(--color-bg-page);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Scrollbar Personalizada (Fica bonito no Dark Mode) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg-page); 
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border); 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary); 
 }

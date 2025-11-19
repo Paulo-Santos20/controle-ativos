@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import * as XLSX from 'xlsx'; // Apenas para leitura
-import ExcelJS from 'exceljs'; // Para gerar o arquivo colorido
-import { saveAs } from 'file-saver'; // Para baixar
+import * as XLSX from 'xlsx'; 
+import ExcelJS from 'exceljs'; 
+import { saveAs } from 'file-saver'; 
 import { writeBatch, doc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase'; 
 import { toast } from 'sonner';
@@ -14,6 +14,10 @@ const BulkImportPage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [validationErrors, setValidationErrors] = useState([]);
   const [importStats, setImportStats] = useState({ computers: 0, printers: 0 });
+
+  // ... (MANTENHA AS FUNÇÕES processRow, onDrop, validateData, handleImport IGUAIS) ...
+  // Vou repetir apenas as funções essenciais se você for copiar tudo, 
+  // mas a lógica de processamento não mudou, apenas a visualização abaixo.
 
   const processRow = (row) => {
     const normalizedRow = {};
@@ -70,49 +74,31 @@ const BulkImportPage = () => {
   const onDrop = useCallback((acceptedFiles) => {
     const file = acceptedFiles[0];
     const reader = new FileReader();
-
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-        
         let allRows = [];
         workbook.SheetNames.forEach(sheetName => {
           const worksheet = workbook.Sheets[sheetName];
           const json = XLSX.utils.sheet_to_json(worksheet);
           allRows = [...allRows, ...json];
         });
-        
-        if (allRows.length === 0) {
-          toast.error("A planilha está vazia.");
-          return;
-        }
-
+        if (allRows.length === 0) { toast.error("A planilha está vazia."); return; }
         const processedData = allRows.map(processRow);
         validateData(processedData);
-        
         const comps = processedData.filter(d => d.type === 'computador').length;
         const prints = processedData.filter(d => d.type === 'impressora').length;
         setImportStats({ computers: comps, printers: prints });
-
         setFileData(processedData);
-
-      } catch (error) {
-        console.error(error);
-        toast.error("Erro ao ler o arquivo Excel.");
-      }
+      } catch (error) { console.error(error); toast.error("Erro ao ler o arquivo Excel."); }
     };
-
     reader.readAsArrayBuffer(file);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop, 
-    accept: { 
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/vnd.ms-excel': ['.xls'],
-      'text/csv': ['.csv']
-    },
+    accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'], 'application/vnd.ms-excel': ['.xls'], 'text/csv': ['.csv'] },
     maxFiles: 1
   });
 
@@ -124,31 +110,19 @@ const BulkImportPage = () => {
       if (!row.status) errors.push(`Item ${index + 1} (${row.tombamento}): Falta 'Status'`);
     });
     setValidationErrors(errors);
-    if (errors.length > 0) {
-      toast.warning(`${errors.length} erros encontrados.`);
-    } else {
-      toast.success(`${data.length} itens válidos!`);
-    }
+    if (errors.length > 0) toast.warning(`${errors.length} erros encontrados.`);
+    else toast.success(`${data.length} itens válidos!`);
   };
 
   const handleImport = async () => {
-    if (validationErrors.length > 0) {
-      toast.error("Corrija os erros antes de importar.");
-      return;
-    }
-
+    if (validationErrors.length > 0) { toast.error("Corrija os erros antes de importar."); return; }
     setIsUploading(true);
     const toastId = toast.loading("Iniciando importação...");
-
     try {
       const chunkSize = 400;
       const chunks = [];
-      for (let i = 0; i < fileData.length; i += chunkSize) {
-        chunks.push(fileData.slice(i, i + chunkSize));
-      }
-
+      for (let i = 0; i < fileData.length; i += chunkSize) chunks.push(fileData.slice(i, i + chunkSize));
       let processedCount = 0;
-
       for (const chunk of chunks) {
         const batch = writeBatch(db);
         chunk.forEach((item) => {
@@ -159,67 +133,36 @@ const BulkImportPage = () => {
         processedCount += chunk.length;
         toast.loading(`Processados ${processedCount} de ${fileData.length}...`, { id: toastId });
       }
-
       toast.success(`Sucesso! ${processedCount} ativos importados.`, { id: toastId });
       setFileData([]); 
       setImportStats({ computers: 0, printers: 0 });
-    } catch (error) {
-      console.error(error);
-      toast.error("Erro na importação: " + error.message, { id: toastId });
-    } finally {
-      setIsUploading(false);
-    }
+    } catch (error) { console.error(error); toast.error("Erro na importação: " + error.message, { id: toastId }); } finally { setIsUploading(false); }
   };
 
-  // --- 5. GERAR MODELO COM CORES (USANDO EXCELJS) ---
   const downloadTemplate = async () => {
     const workbook = new ExcelJS.Workbook();
-    
-    // Estilos
-    const mandatoryFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } }; // Vermelho Claro
-    const mandatoryFont = { color: { argb: 'FF9C0006' }, bold: true }; // Vermelho Escuro
-    
-    const optionalFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } }; // Verde Claro
-    const optionalFont = { color: { argb: 'FF006100' }, bold: true }; // Verde Escuro
-
+    const mandatoryFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } }; 
+    const mandatoryFont = { color: { argb: 'FF9C0006' }, bold: true }; 
+    const optionalFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } }; 
+    const optionalFont = { color: { argb: 'FF006100' }, bold: true }; 
     const mandatoryCols = ["Tombamento", "Tipo", "Status", "Unidade"];
 
-    // Helper
     const createSheet = (sheetName, headers, exampleRow) => {
       const sheet = workbook.addWorksheet(sheetName);
       const headerRow = sheet.addRow(headers);
-      
       headerRow.eachCell((cell, colNumber) => {
         const headerName = cell.value;
-        if (mandatoryCols.includes(headerName)) {
-          cell.fill = mandatoryFill;
-          cell.font = mandatoryFont;
-        } else {
-          cell.fill = optionalFill;
-          cell.font = optionalFont;
-        }
+        if (mandatoryCols.includes(headerName)) { cell.fill = mandatoryFill; cell.font = mandatoryFont; } 
+        else { cell.fill = optionalFill; cell.font = optionalFont; }
         cell.border = { bottom: { style: 'thin' } };
         sheet.getColumn(colNumber).width = 18;
       });
-
       sheet.addRow(exampleRow);
     };
 
-    // Aba 1: Computadores
-    createSheet(
-      "Computadores",
-      ["Tombamento", "Tipo", "Marca", "Modelo", "Serial", "Status", "Unidade", "Setor", "Sala", "Pavimento", "Funcionario", "Hostname", "Processador", "Memoria", "HD_SSD", "SO", "Antivirus", "MAC", "Service_Tag", "Observacao"],
-      ["CMP-001", "computador", "Dell", "Optiplex", "12345", "Em uso", "HMR", "TI", "Sala TI", "Térreo", "João", "HMR-TI-01", "i5", "8GB", "256GB", "Win10", "Kaspersky", "", "", ""]
-    );
+    createSheet("Computadores", ["Tombamento", "Tipo", "Marca", "Modelo", "Serial", "Status", "Unidade", "Setor", "Sala", "Pavimento", "Funcionario", "Hostname", "Processador", "Memoria", "HD_SSD", "SO", "Antivirus", "MAC", "Service_Tag", "Observacao"], ["CMP-001", "computador", "Dell", "Optiplex", "12345", "Em uso", "HMR", "TI", "Sala TI", "Térreo", "João", "HMR-TI-01", "i5", "8GB", "256GB", "Win10", "Kaspersky", "", "", ""]);
+    createSheet("Impressoras", ["Tombamento", "Tipo", "Marca", "Modelo", "Serial", "Status", "Unidade", "Setor", "Sala", "Pavimento", "Funcionario", "IP", "Conectividade", "Cartucho", "Colorido", "Frente_Verso", "Observacao"], ["IMP-001", "impressora", "Brother", "8157", "98765", "Em uso", "HMR", "Recepção", "Balcão", "Térreo", "", "192.168.0.50", "Rede", "TN-3472", "Não", "Sim", ""]);
 
-    // Aba 2: Impressoras
-    createSheet(
-      "Impressoras",
-      ["Tombamento", "Tipo", "Marca", "Modelo", "Serial", "Status", "Unidade", "Setor", "Sala", "Pavimento", "Funcionario", "IP", "Conectividade", "Cartucho", "Colorido", "Frente_Verso", "Observacao"],
-      ["IMP-001", "impressora", "Brother", "8157", "98765", "Em uso", "HMR", "Recepção", "Balcão", "Térreo", "", "192.168.0.50", "Rede", "TN-3472", "Não", "Sim", ""]
-    );
-
-    // Baixar
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     saveAs(blob, "modelo_ativos_colorido.xlsx");
@@ -246,8 +189,8 @@ const BulkImportPage = () => {
           <div className={styles.dropText}>
             <p>Arraste seu Excel aqui ou clique para selecionar.</p>
             <div style={{display:'flex', gap: 10, justifyContent: 'center', marginTop: 8}}>
-                <span style={{color: '#991b1b', fontWeight: 'bold', fontSize: '0.8rem', background:'#fee2e2', padding:'2px 8px', borderRadius:4}}>Vermelho: Obrigatório</span>
-                <span style={{color: '#166534', fontWeight: 'bold', fontSize: '0.8rem', background:'#dcfce7', padding:'2px 8px', borderRadius:4}}>Verde: Opcional</span>
+                <span style={{color: 'var(--color-danger)', fontWeight: 'bold', fontSize: '0.8rem', background:'rgba(239, 68, 68, 0.1)', padding:'2px 8px', borderRadius:4}}>Vermelho: Obrigatório</span>
+                <span style={{color: 'var(--color-success)', fontWeight: 'bold', fontSize: '0.8rem', background:'rgba(34, 197, 94, 0.1)', padding:'2px 8px', borderRadius:4}}>Verde: Opcional</span>
             </div>
           </div>
         )}
@@ -256,9 +199,7 @@ const BulkImportPage = () => {
       {validationErrors.length > 0 && (
         <div className={styles.errorBox}>
           <h3><AlertTriangle size={20} /> Erros Encontrados</h3>
-          <ul>
-            {validationErrors.slice(0, 10).map((err, idx) => <li key={idx}>{err}</li>)}
-          </ul>
+          <ul>{validationErrors.slice(0, 10).map((err, idx) => <li key={idx}>{err}</li>)}</ul>
           <button onClick={() => {setFileData([]); setValidationErrors([])}} className={styles.textButton}>Limpar</button>
         </div>
       )}
@@ -268,49 +209,48 @@ const BulkImportPage = () => {
           <div className={styles.previewHeader}>
             <div className={styles.successBadge}>
               <CheckCircle size={18} />
-              <span>
-                Prontos: 
-                <strong> {importStats.computers} Computadores</strong>, 
-                <strong> {importStats.printers} Impressoras</strong>
-              </span>
+              <span>Prontos: <strong>{importStats.computers} Computadores</strong>, <strong>{importStats.printers} Impressoras</strong></span>
             </div>
             <div className={styles.actionButtons}>
                 <button className={styles.tertiaryButton} onClick={() => {setFileData([]); setImportStats({computers:0, printers:0})}}>
                     <RefreshCw size={16} /> Cancelar
                 </button>
-                <button 
-                className={styles.primaryButton} 
-                onClick={handleImport}
-                disabled={isUploading}
-                >
+                <button className={styles.primaryButton} onClick={handleImport} disabled={isUploading}>
                 {isUploading ? <Loader2 className={styles.spinner} /> : <FileSpreadsheet size={18} />}
                 {isUploading ? "Importando..." : "Confirmar Importação"}
                 </button>
             </div>
           </div>
 
+          {/* --- AQUI ESTÁ A MUDANÇA PRINCIPAL: TABELA DETALHADA --- */}
           <div className={styles.tablePreview}>
             <table>
               <thead>
                 <tr>
                   <th>Tombamento</th>
                   <th>Tipo</th>
-                  <th>Modelo</th>
-                  <th>Unidade</th>
+                  <th>Modelo / Marca</th>
+                  <th>Serial</th>
+                  <th>Status</th>
+                  <th>Local (Unid/Setor)</th>
+                  <th>Usuário</th>
                 </tr>
               </thead>
               <tbody>
-                {fileData.slice(0, 6).map((row, idx) => (
+                {fileData.slice(0, 10).map((row, idx) => (
                   <tr key={idx}>
-                    <td>{row.tombamento}</td>
+                    <td><strong>{row.tombamento}</strong></td>
                     <td>{row.type}</td>
                     <td>{row.marca} {row.modelo}</td>
-                    <td>{row.unitId}</td>
+                    <td>{row.serial || '-'}</td>
+                    <td><span className={styles.statusTag}>{row.status}</span></td>
+                    <td>{row.unitId} - {row.setor}</td>
+                    <td>{row.funcionario || '-'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {fileData.length > 6 && <p className={styles.moreText}>...e mais {fileData.length - 6} itens.</p>}
+            {fileData.length > 10 && <p className={styles.moreText}>...e mais {fileData.length - 10} itens.</p>}
           </div>
         </div>
       )}
