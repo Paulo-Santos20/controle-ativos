@@ -159,14 +159,14 @@
   color: var(--color-text-secondary);
   text-transform: uppercase;
   font-weight: 600;
+  transition: background-color 0.2s ease;
 }
 
 .table tr:last-child td {
   border-bottom: none;
 }
 .table tr:hover {
-  background-color: #f9fafb;
-}
+background-color: var(--color-bg-hover);}
 
 /* --- Checkbox Styles (Reforçado) --- */
 .checkboxButton {
@@ -194,13 +194,11 @@
 }
 
 .rowSelected {
-  background-color: #eff6ff !important; /* Azul bem claro */
-}
+background-color: rgba(0, 122, 255, 0.15) !important;}
 
 /* Borda lateral azul para destacar a seleção */
 .rowSelected td:first-child {
-  box-shadow: inset 4px 0 0 #2563eb; 
-}
+box-shadow: inset 4px 0 0 var(--color-primary);}
 
 /* --- Status Badges --- */
 .statusBadge {

@@ -1,9 +1,11 @@
 /* AssetDetail.module.css */
 
+/* --- Layout --- */
 .page {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  width: 100%;
 }
 
 /* --- Cabeçalho --- */
@@ -31,12 +33,14 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+  flex-wrap: wrap;
 }
 
 .title {
   font-size: 1.75rem;
   font-weight: 700;
   margin: 0;
+  color: var(--color-text-primary);
 }
 
 .backButton {
@@ -49,49 +53,89 @@
   font-size: 0.9rem;
   cursor: pointer;
   padding: 0;
+  transition: color 0.2s;
 }
 .backButton:hover { color: var(--color-primary); }
 
-/* --- Botões de Ação --- */
+/* --- Botões de Ação (Estilização Unificada) --- */
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-sm);
 }
 
+/* Base para todos os botões */
 .primaryButton, .actionButton, .actionButtonSecondary, .deleteButton, .iconButton {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
   padding: 8px 16px;
-  border: none;
   border-radius: var(--border-radius);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   font-size: 0.9rem;
+  border: 1px solid transparent;
 }
 
-.primaryButton { background-color: var(--color-primary); color: white; }
-.primaryButton:hover { background-color: var(--color-primary-dark); }
+/* 1. Botão Primário (Editar) - Azul Sólido */
+.primaryButton {
+  background-color: var(--color-primary);
+  color: white;
+}
+.primaryButton:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
 
-.actionButton { background-color: #fff; border: 1px solid var(--color-border); color: var(--color-text-primary); }
-.actionButton:hover { background-color: var(--color-bg-page); }
+/* 2. Botão Secundário (Movimentar) - Fundo Componente */
+.actionButton {
+  background-color: var(--color-bg-component); /* Adapta ao Dark Mode */
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+.actionButton:hover {
+  background-color: var(--color-bg-page);
+  border-color: var(--color-text-secondary);
+}
 
-.actionButtonSecondary { background-color: #fef3c7; color: #92400e; } /* Amarelo */
-.actionButtonSecondary:hover { background-color: #fde68a; }
+/* 3. Botão Preventiva (Amarelo Translúcido) */
+.actionButtonSecondary {
+  background-color: rgba(245, 158, 11, 0.15); 
+  color: #d97706; /* Âmbar */
+  border-color: rgba(245, 158, 11, 0.2);
+}
+.actionButtonSecondary:hover {
+  background-color: rgba(245, 158, 11, 0.25);
+}
+/* Ajuste de texto para Dark Mode (Amarelo mais claro) */
+:global([data-theme="dark"]) .actionButtonSecondary {
+  color: #fbbf24; 
+}
 
-.deleteButton { background-color: #fee2e2; color: #991b1b; } /* Vermelho */
-.deleteButton:hover { background-color: #fecaca; }
+/* 4. Botão Excluir (Vermelho Translúcido) */
+.deleteButton {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--color-danger);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.deleteButton:hover {
+  background-color: rgba(239, 68, 68, 0.25);
+}
 
+/* 5. Ícone Quadrado (QR Code) */
 .iconButton {
-  padding: 8px;
-  border-radius: 50%;
-  background-color: #fff;
+  padding: 8px; /* Quadrado/Redondo */
+  background-color: var(--color-bg-component);
   border: 1px solid var(--color-border);
   color: var(--color-text-secondary);
+  justify-content: center;
 }
-.iconButton:hover { background-color: var(--color-bg-page); color: var(--color-primary); }
+.iconButton:hover {
+  background-color: var(--color-bg-page);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
 
 /* --- Grid de Conteúdo --- */
 .contentGrid {
@@ -100,11 +144,11 @@
   gap: var(--spacing-lg);
 }
 @media (min-width: 1024px) {
-  .contentGrid { grid-template-columns: 2fr 1fr; } /* Informação maior que histórico */
+  .contentGrid { grid-template-columns: 2fr 1fr; } /* Info maior que histórico */
 }
 
-/* --- Card de Informações --- */
-.infoCard {
+/* --- Cards (Container) --- */
+.infoCard, .historyCard {
   background-color: var(--color-bg-component);
   padding: var(--spacing-lg);
   border-radius: var(--border-radius);
@@ -112,13 +156,20 @@
   border: 1px solid var(--color-border);
 }
 
-.infoTitle {
+.historyCard {
+  max-height: 800px;
+  overflow-y: auto;
+}
+
+/* Títulos de Seção no Card */
+.infoTitle, .sectionTitle {
   display: flex;
-  gap: var(--spacing-md);
   align-items: center;
+  gap: var(--spacing-md);
   border-bottom: 1px solid var(--color-border);
   padding-bottom: var(--spacing-md);
   margin-bottom: var(--spacing-lg);
+  color: var(--color-text-primary);
 }
 
 .titleIcon {
@@ -126,12 +177,35 @@
   background-color: var(--color-bg-page);
   border-radius: 50%;
   color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.assetType { font-size: 0.8rem; text-transform: uppercase; color: var(--color-text-secondary); font-weight: 600; letter-spacing: 0.5px; }
-.assetName { font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); margin: 0; }
-.assetId { font-size: 0.9rem; color: var(--color-text-secondary); }
+.assetType {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  display: block;
+}
 
+.assetName {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 4px 0;
+  line-height: 1.2;
+}
+
+.assetId {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Subtítulos */
 .detailSubtitle {
   font-size: 1rem;
   font-weight: 600;
@@ -143,6 +217,7 @@
   padding-bottom: 4px;
 }
 
+/* Grid de Informações */
 .infoGrid {
   display: grid;
   grid-template-columns: 1fr;
@@ -152,9 +227,23 @@
   .infoGrid { grid-template-columns: 1fr 1fr; }
 }
 
-.infoGrid div { display: flex; flex-direction: column; }
-.infoGrid span { font-size: 0.8rem; color: var(--color-text-secondary); }
-.infoGrid strong { font-size: 1rem; font-weight: 500; color: var(--color-text-primary); }
+.infoGrid div {
+  display: flex;
+  flex-direction: column;
+}
+
+.infoGrid span {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+
+.infoGrid strong {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  word-break: break-word;
+}
 
 .obsText {
   background-color: var(--color-bg-page);
@@ -162,31 +251,15 @@
   border-radius: var(--border-radius);
   font-style: italic;
   color: var(--color-text-secondary);
+  line-height: 1.5;
 }
 
-/* --- Card de Histórico --- */
-.historyCard {
-  background-color: var(--color-bg-component);
-  padding: var(--spacing-lg);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  border: 1px solid var(--color-border);
-  max-height: 800px;
-  overflow-y: auto;
-}
-
-.sectionTitle {
+/* --- Histórico --- */
+.historyList {
+  list-style: none;
   display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: var(--spacing-md);
-  padding-bottom: var(--spacing-sm);
-  border-bottom: 1px solid var(--color-border);
+  flex-direction: column;
 }
-
-.historyList { list-style: none; display: flex; flex-direction: column; }
 
 .historyItem {
   display: flex;
@@ -196,30 +269,93 @@
 }
 .historyItem:last-child { border-bottom: none; }
 
-.historyIcon { color: var(--color-text-secondary); margin-top: 4px; }
+.historyIcon {
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+  flex-shrink: 0;
+}
 
-.historyContent { display: flex; flex-direction: column; }
-.historyContent strong { font-size: 0.9rem; color: var(--color-text-primary); }
-.historyContent small { font-size: 0.75rem; color: var(--color-text-secondary); margin-bottom: 2px; }
-.historyContent p { font-size: 0.85rem; color: var(--color-text-primary); margin: 4px 0; }
+.historyContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
 
-/* --- Status Badges --- */
+.historyContent strong {
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+  display: block;
+}
+
+.historyContent small {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.historyContent p {
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+  margin: 4px 0;
+  line-height: 1.4;
+}
+
+/* --- Status Badges (Translúcidos para Dark Mode) --- */
 .statusBadge {
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
-.statusUsage { background-color: #def7ec; color: #03543f; }
-.statusMaintenance { background-color: #fdf6b2; color: #9f580a; }
-.statusStock { background-color: #e1effe; color: #1e429f; }
-.statusInactive { background-color: #f3f4f6; color: #374151; }
-.statusReturned { background-color: #fee2e2; color: #991b1b; text-decoration: line-through; }
+.statusUsage { background-color: rgba(52, 199, 89, 0.15); color: #28a745; }
+.statusMaintenance { background-color: rgba(255, 149, 0, 0.15); color: #d97706; }
+.statusStock { background-color: rgba(0, 122, 255, 0.15); color: #007aff; }
+.statusInactive { background-color: var(--color-bg-page); color: var(--color-text-secondary); border: 1px solid var(--color-border); }
+.statusReturned { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; text-decoration: line-through; }
 
-/* --- Estados --- */
-.loadingState { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: var(--color-text-secondary); gap: 10px; }
-.errorState { text-align: center; padding: 40px; color: var(--color-danger); }
-.emptyHistory { display: flex; flex-direction: column; align-items: center; padding: 40px; color: var(--color-text-secondary); gap: 10px; }
-.spinner { animation: spin 1s linear infinite; color: var(--color-primary); }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+/* --- Estados (Loading / Empty) --- */
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: var(--color-text-secondary);
+  gap: 10px;
+  text-align: center;
+}
+
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background-color: var(--color-bg-component);
+  border-radius: var(--border-radius);
+  text-align: center;
+  color: var(--color-danger);
+}
+
+.emptyHistory {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px;
+  color: var(--color-text-secondary);
+  gap: 10px;
+  text-align: center;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  color: var(--color-primary);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
