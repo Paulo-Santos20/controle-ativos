@@ -20,7 +20,7 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-/* --- Formulário de Adição --- */
+/* --- Formulário --- */
 .form {
   display: flex;
   gap: var(--spacing-sm);
@@ -34,7 +34,7 @@
   border-radius: var(--border-radius);
   font-size: var(--font-size-md);
   
-  /* CORREÇÃO DARK MODE: Fundo e texto adaptáveis */
+  /* ADAPTAÇÃO DARK MODE */
   background-color: var(--color-bg-page); 
   color: var(--color-text-primary);
   transition: all 0.2s;
@@ -43,7 +43,7 @@
 .input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
 .addButton {
@@ -67,12 +67,11 @@
 .addButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  background-color: var(--color-border); /* Visualmente desabilitado */
 }
 
 /* --- Lista de Itens --- */
 .listContainer {
-  /* Fundo da caixa da lista (Cinza claro no Light, Preto no Dark) */
+  /* Fundo da caixa (Cinza no Light, Preto no Dark) */
   background-color: var(--color-bg-page);
   border-radius: var(--border-radius);
   border: 1px solid var(--color-border);
@@ -93,17 +92,11 @@
   padding: 10px 16px;
   border-bottom: 1px solid var(--color-border);
   
-  /* CORREÇÃO DARK MODE:
-     Usa a cor do componente (Branco no Light, Cinza Escuro no Dark).
-     Isso garante contraste com o texto que será preto ou branco. */
+  /* Fundo do item (Branco no Light, Cinza Escuro no Dark) */
   background-color: var(--color-bg-component);
   color: var(--color-text-primary);
   
   transition: background-color 0.2s;
-}
-
-.listItem span {
-  font-weight: 500;
 }
 
 .listItem:last-child {
@@ -111,11 +104,14 @@
 }
 
 .listItem:hover {
-  /* Hover sutil adaptável */
+  /* Hover sutil (usa a cor da página para contraste) */
   background-color: var(--color-bg-page);
 }
 
-/* Botão de Excluir */
+.listItem span {
+  font-weight: 500;
+}
+
 .deleteButton {
   background: transparent;
   border: none;
@@ -130,12 +126,11 @@
 }
 
 .deleteButton:hover {
-  /* Vermelho com transparência (fica bom em qualquer fundo) */
   background-color: rgba(239, 68, 68, 0.15);
   color: var(--color-danger);
 }
 
-/* --- Estados (Loading/Vazio) --- */
+/* --- Estados --- */
 .loading, .error, .emptyState {
   display: flex;
   flex-direction: column;
@@ -159,12 +154,9 @@
   text-align: right;
 }
 
-@keyframes spin { 
-  from { transform: rotate(0deg); } 
-  to { transform: rotate(360deg); } 
-}
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-/* Responsividade para telas muito pequenas */
+/* Mobile */
 @media (max-width: 480px) {
   .form {
     flex-direction: column;

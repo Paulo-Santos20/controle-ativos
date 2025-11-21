@@ -6,7 +6,7 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import { 
-  FileDown, Filter, Loader2, Monitor, AlertTriangle, CheckCircle2, Building2, FileText
+  FileDown, Filter, Loader2, Monitor, AlertTriangle, CheckCircle2, Building2, FileText, Ban
 } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf'; 
@@ -17,10 +17,9 @@ import styles from './Reports.module.css';
 
 const COLORS = ['#007aff', '#5ac8fa', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
 
-// --- CORREÇÃO 1: Lista exata de status usada no cadastro ---
 const opcoesStatus = [
   "Em uso", 
-  "Em manutenção", // Era "Manutenção" antes, corrigido para "Em manutenção"
+  "Em manutenção", 
   "Manutenção agendada", 
   "Estoque", 
   "Inativo",
@@ -36,39 +35,68 @@ const Reports = () => {
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // --- QUERIES SEGURAS ---
+  // --- 1. HELPER DE PERMISSÃO ---
+  // Centraliza a lógica: Se tiver lista, usa a lista. Se não e não for admin, bloqueia.
+  const getPermissionConstraints = (field = 'unitId') => {
+    // Prioridade: Lista de Unidades Explícita
+    if (allowedUnits && allowedUnits.length > 0) {
+        return [where(field, 'in', allowedUnits)];
+    }
+    // Se Admin sem lista, vê tudo
+    if (isAdmin) {
+        return [];
+    }
+    // Se não é Admin e não tem lista, bloqueia
+    return [where(field, '==', 'BLOQUEADO')];
+  };
+
+  // --- 2. QUERY DE ATIVOS (DADOS DO RELATÓRIO) ---
   const assetsQuery = useMemo(() => {
     if (authLoading) return null;
-    const constraints = [];
-    if (!isAdmin) {
-        if (allowedUnits.length > 0) constraints.push(where('unitId', 'in', allowedUnits));
-        else constraints.push(where('unitId', '==', 'BLOQUEADO'));
-    }
+    const constraints = getPermissionConstraints('unitId');
     return query(collection(db, 'assets'), ...constraints);
   }, [authLoading, isAdmin, allowedUnits]);
 
+  // --- 3. QUERY DE UNIDADES (DROPDOWN) ---
+  // Aqui garantimos que o Dropdown só mostre o que é permitido
   const unitsQuery = useMemo(() => {
     if (authLoading) return null;
-    if (isAdmin) return query(collection(db, 'units'), orderBy('name', 'asc'));
-    if (allowedUnits.length > 0) return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
-    return null;
+    
+    // Usa 'documentId()' para filtrar pelo ID do documento da unidade
+    const constraints = getPermissionConstraints(documentId());
+    
+    // Se for Admin total (array vazio), ordena por nome. Senão, o 'in' não permite orderBy direto facilmente no client
+    if (constraints.length === 0) {
+        return query(collection(db, 'units'), orderBy('name', 'asc'));
+    }
+    
+    return query(collection(db, 'units'), ...constraints);
   }, [authLoading, isAdmin, allowedUnits]);
 
   const [assets, loadingAssets, errorAssets] = useCollection(assetsQuery);
   const [units, loadingUnits] = useCollection(unitsQuery);
 
-  // --- PROCESSAMENTO ---
+  // --- 4. PROCESSAMENTO E BLINDAGEM VISUAL ---
   const filteredData = useMemo(() => {
     if (!assets) return [];
+
     return assets.docs
       .map(doc => doc.data())
       .filter(item => {
-        // Filtros de Unidade e Tipo
+        // 1. Blindagem Visual (Dupla Checagem)
+        // Se o usuário tem lista restrita, o item TEM que estar nela
+        if (allowedUnits.length > 0 && !allowedUnits.includes(item.unitId)) {
+             return false;
+        }
+        // Se não é admin e não tem lista, não vê nada
+        if (!isAdmin && allowedUnits.length === 0) {
+             return false;
+        }
+
+        // 2. Filtros da UI
         const unitMatch = filterUnit === 'all' || item.unitId === filterUnit;
         const typeMatch = filterType === 'all' || item.type === filterType || item.tipoAtivo === filterType;
         
-        // --- CORREÇÃO 2: Filtro de Status Robusto ---
-        // Converte tudo para minúsculo para garantir que "Em manutenção" bata com "Em Manutenção"
         let statusMatch = true;
         if (filterStatus !== 'all') {
             const itemStatus = (item.status || '').toLowerCase().trim();
@@ -78,7 +106,7 @@ const Reports = () => {
         
         return unitMatch && typeMatch && statusMatch;
       });
-  }, [assets, filterUnit, filterType, filterStatus]);
+  }, [assets, filterUnit, filterType, filterStatus, isAdmin, allowedUnits]);
 
   const statusData = useMemo(() => {
     const counts = {};
@@ -99,7 +127,6 @@ const Reports = () => {
   }, [filteredData]);
 
   const totalAssets = filteredData.length;
-  // Contagem inteligente: Inclui qualquer status que contenha a palavra "manutenção"
   const totalMaintenance = filteredData.filter(i => i.status && i.status.toLowerCase().includes('manutenção')).length;
   const totalActive = filteredData.filter(i => i.status === 'Em uso').length;
 
@@ -166,11 +193,25 @@ const Reports = () => {
     ) : null;
   };
 
+  // --- ESTADOS DE UI ---
+
   if (loadingAssets || loadingUnits || authLoading) {
     return <div className={styles.loadingState}><Loader2 className={styles.spinner} /> Carregando dados...</div>;
   }
 
-  if (errorAssets) return <p className={styles.errorText}>Erro ao carregar dados.</p>;
+  if (errorAssets) {
+    // Tratativa amigável para erro de permissão
+    if (errorAssets.code === 'permission-denied') {
+        return (
+            <div className={styles.loadingState}>
+                <Ban size={48} color="var(--color-danger)" />
+                <h3>Acesso Negado</h3>
+                <p>Você não tem permissão para visualizar os relatórios desta unidade.</p>
+            </div>
+        );
+    }
+    return <p className={styles.errorText}>Erro ao carregar dados: {errorAssets.message}</p>;
+  }
 
   return (
     <div className={styles.page}>
@@ -193,12 +234,15 @@ const Reports = () => {
         <div className={styles.filterGroup}>
           <Filter size={16} /> <span>Filtros:</span>
         </div>
+        
+        {/* Dropdown de Unidades (Agora filtrado pelo banco) */}
         <select value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)} className={styles.filterSelect}>
           <option value="all">Todas as Unidades (Permitidas)</option>
           {units?.docs.map(doc => (
             <option key={doc.id} value={doc.id}>{doc.data().sigla || doc.data().name}</option>
           ))}
         </select>
+
         <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={styles.filterSelect}>
           <option value="all">Todos os Tipos</option>
           <option value="computador">Computadores</option>
@@ -234,14 +278,10 @@ const Reports = () => {
                 {statusData.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
               </Pie>
               <Tooltip formatter={(value, name) => [`${value} itens`, name]} /> 
-              
-              {/* LEGENDA MELHORADA COM QUANTIDADES */}
-              <Legend 
-                formatter={(value, entry) => {
+              <Legend formatter={(value, entry) => {
                     const item = statusData.find(s => s.name === value);
                     return `${value} (${item ? item.value : 0})`;
-                }} 
-              />
+              }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -253,7 +293,6 @@ const Reports = () => {
               <XAxis dataKey="name" tick={{fontSize: 12}} />
               <YAxis allowDecimals={false} />
               <Tooltip cursor={{fill: 'transparent'}} />
-              {/* BARRAS COM QUANTIDADES */}
               <Bar dataKey="value" fill="#007aff" radius={[4, 4, 0, 0]} label={{ position: 'top' }} />
             </BarChart>
           </ResponsiveContainer>

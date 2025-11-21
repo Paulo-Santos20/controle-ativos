@@ -7,8 +7,8 @@
   flex-direction: column;
   gap: var(--spacing-lg);
   width: 100%;
-  max-width: 1000px; /* Evita que fique muito largo em monitores grandes */
-  margin: 0 auto;    /* Centraliza */
+  max-width: 1000px; 
+  margin: 0 auto;    
 }
 
 .header {
@@ -21,7 +21,7 @@
 }
 
 .title {
-  font-size: 1.75rem; /* ~28px */
+  font-size: 1.75rem; 
   font-weight: 700;
   color: var(--color-text-primary);
   margin-bottom: 4px;
@@ -52,7 +52,7 @@
 }
 
 .secondaryButton:hover {
-  background-color: var(--color-bg-page);
+  background-color: var(--color-bg-page); /* Contraste sutil no hover */
   border-color: var(--color-text-secondary);
 }
 
@@ -69,21 +69,20 @@
   
   /* Scroll Horizontal para Mobile */
   overflow-x: auto; 
-  padding-bottom: 8px; /* Espaço para scrollbar nativa não colar */
+  padding-bottom: 8px; 
   margin-top: 10px;
   margin-bottom: 20px;
   
-  /* Esconde a barra de rolagem no Chrome/Safari para visual limpo */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none;  /* IE 10+ */
+  /* Esconde a barra de rolagem */
+  scrollbar-width: none; 
+  -ms-overflow-style: none;  
   
-  /* Garante que o primeiro item não cole na borda esquerda */
   padding-left: 2px;
   padding-right: 2px;
 }
 
 .tabsContainer::-webkit-scrollbar {
-  display: none; /* Chrome/Safari/Webkit */
+  display: none; 
 }
 
 /* Botão da Aba Individual */
@@ -92,58 +91,61 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 20px; /* Mais arredondado para parecer "Chip" */
+  
+  /* Cores Adaptáveis */
   background-color: var(--color-bg-component);
   color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  
+  border-radius: 20px; 
   cursor: pointer;
   white-space: nowrap;
   font-weight: 500;
   font-size: 0.9rem;
   transition: all 0.2s ease;
   
-  /* Sombra sutil */
+  /* Garante que o botão não amasse no mobile */
+  flex-shrink: 0; 
+  
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
+/* Hover no botão INATIVO */
 .tabButton:hover {
   background-color: var(--color-bg-page);
-  color: var(--color-text-primary);
+  color: var(--color-text-primary); /* Texto acende */
   border-color: var(--color-text-secondary);
   transform: translateY(-1px);
 }
 
+/* Ícones dentro do botão (Herda a cor do texto) */
 .tabButton svg {
-  color: var(--color-text-secondary);
+  color: currentColor; 
   transition: color 0.2s;
 }
 
-/* --- Estado Ativo da Aba --- */
+/* --- Estado Ativo da Aba (Selecionado) --- */
 .active {
   background-color: var(--color-primary);
-  color: white;
+  color: white !important; /* Força branco mesmo no Dark Mode para contraste com azul */
   border-color: var(--color-primary);
-  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25); /* Glow azul */
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3); /* Glow azul */
 }
 
 .active:hover {
   background-color: var(--color-primary-dark);
   border-color: var(--color-primary-dark);
-  color: white;
-}
-
-.active svg {
-  color: white; /* Força ícone branco quando ativo */
+  transform: translateY(-1px);
 }
 
 /* --- Responsividade --- */
 @media (min-width: 768px) {
   .header {
-    align-items: center; /* Alinha verticalmente no desktop */
+    align-items: center; 
   }
   
   .tabsContainer {
-    flex-wrap: wrap; /* No desktop, quebra linha se necessário em vez de scrollar */
+    flex-wrap: wrap; /* No desktop, quebra linha em vez de scrollar */
     overflow-x: visible;
   }
 }

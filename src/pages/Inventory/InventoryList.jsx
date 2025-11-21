@@ -27,8 +27,7 @@ const InventoryList = () => {
   // useAuth traz os dados do usuário logado
   const { permissions, isAdmin, allowedUnits, loading: authLoading, user } = useAuth();
 
- 
-
+  
   // Estados de UI
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalView, setModalView] = useState('select'); 
