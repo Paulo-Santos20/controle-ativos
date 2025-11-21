@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, orderBy, query } from 'firebase/firestore';
-import { db } from '../../lib/firebase'; // Caminho relativo corrigido
+import { db } from '../../lib/firebase'; 
 import { Plus, Building, Loader2, Search, MapPin, Pencil, Lock } from 'lucide-react';
 
-import { useAuth } from '../../hooks/useAuth'; // Caminho relativo corrigido
+import { useAuth } from '../../hooks/useAuth'; 
 
 import styles from './CadastroPages.module.css';
 import Modal from '../../components/Modal/Modal';

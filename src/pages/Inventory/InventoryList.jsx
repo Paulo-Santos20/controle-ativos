@@ -24,12 +24,17 @@ const opcoesStatus = [{ value: 'all', label: 'Todos os Status' }, { value: 'Em u
 const ITEMS_PER_PAGE = 20;
 
 const InventoryList = () => {
-  const { permissions, isAdmin, allowedUnits, loading: authLoading } = useAuth();
+  // useAuth traz os dados do usuário logado
+  const { permissions, isAdmin, allowedUnits, loading: authLoading, user } = useAuth();
 
+ 
+
+  // Estados de UI
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalView, setModalView] = useState('select'); 
   const [selectedIds, setSelectedIds] = useState([]);
 
+  // Estados de Dados
   const [assets, setAssets] = useState([]);
   const [lastDoc, setLastDoc] = useState(null);
   const [loading, setLoading] = useState(false); 
@@ -37,20 +42,31 @@ const InventoryList = () => {
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState(null);
 
+  // Filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterUnit, setFilterUnit] = useState("all");
   const [showReturned, setShowReturned] = useState(false); 
   const [unitsList, setUnitsList] = useState([]);
 
+  // Helper de Limpeza de String (Remove espaços invisíveis)
+  const cleanId = (id) => String(id || '').trim();
+
+  // 1. Limpeza de Segurança ao mudar permissões
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 600); // Aumentei um pouco o tempo para 600ms
+    setAssets([]);
+    setLastDoc(null);
+  }, [isAdmin, allowedUnits]);
+
+  // 2. Debounce
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 600); 
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // 3. Carregar Unidades
   useEffect(() => {
     const fetchUnits = async () => {
       const q = query(collection(db, 'units'), orderBy('name', 'asc'));
@@ -60,7 +76,17 @@ const InventoryList = () => {
     fetchUnits();
   }, []);
 
-  // --- AQUI ESTÁ A MÁGICA DA BUSCA ---
+  const getUnitName = (unitId) => {
+    if (!unitId) return '-';
+    const unit = unitsList.find(u => u.id === unitId);
+    if (unit) {
+        const data = unit.data();
+        return data.sigla || data.name || unitId;
+    }
+    return unitId;
+  };
+
+  // --- 4. BUSCA DE DADOS (QUERY) ---
   const fetchAssets = useCallback(async (isLoadMore = false, specificTerm = "") => {
     if (authLoading) return;
     
@@ -72,95 +98,63 @@ const InventoryList = () => {
     try {
       const collectionRef = collection(db, 'assets');
       
-      // --- MODO BUSCA ESPECÍFICA (Se tiver texto digitado) ---
+      // A. Busca Específica (Texto)
       if (specificTerm) {
         const termRaw = specificTerm.trim();
-        
-        // Prepara variações do texto para tentar encontrar de qualquer jeito
-        const termUpper = termRaw.toUpperCase(); // ex: "DELL", "CMP-01"
-        // Primeira letra maiúscula (Capitalize) ex: "Setor", "Dell"
+        const termUpper = termRaw.toUpperCase();
         const termCap = termRaw.charAt(0).toUpperCase() + termRaw.slice(1).toLowerCase(); 
         
-        const queries = [];
-        const limitSearch = 10; // Busca 10 de cada tipo para não pesar
+        // (Consultas paralelas mantidas para performance)
+        const queries = [
+            query(collectionRef, where(documentId(), '>=', termUpper), where(documentId(), '<=', termUpper + '\uf8ff'), limit(10)),
+            query(collectionRef, where('setor', '>=', termCap), where('setor', '<=', termCap + '\uf8ff'), limit(10)),
+            query(collectionRef, where('serial', '>=', termUpper), where('serial', '<=', termUpper + '\uf8ff'), limit(10)),
+            query(collectionRef, where('modelo', '>=', termCap), where('modelo', '<=', termCap + '\uf8ff'), limit(10)),
+            query(collectionRef, where('hostname', '>=', termUpper), where('hostname', '<=', termUpper + '\uf8ff'), limit(10))
+        ];
 
-        // 1. Busca por ID (Tombamento) - Exato ou Prefixo (Maiúsculo)
-        queries.push(query(collectionRef, 
-          where(documentId(), '>=', termUpper), 
-          where(documentId(), '<=', termUpper + '\uf8ff'), 
-          limit(limitSearch)
-        ));
-
-        // 2. Busca por SETOR (Adicionado!) - Tenta Capitalizado (Ex: "Recepção")
-        queries.push(query(collectionRef, 
-          where('setor', '>=', termCap), 
-          where('setor', '<=', termCap + '\uf8ff'), 
-          limit(limitSearch)
-        ));
-        
-        // 3. Busca por SERIAL
-        queries.push(query(collectionRef, where('serial', '>=', termUpper), where('serial', '<=', termUpper + '\uf8ff'), limit(limitSearch)));
-
-        // 4. Busca por MODELO (Tenta Capitalizado e Maiúsculo)
-        queries.push(query(collectionRef, where('modelo', '>=', termCap), where('modelo', '<=', termCap + '\uf8ff'), limit(limitSearch)));
-        
-        // 5. Busca por HOSTNAME
-        queries.push(query(collectionRef, where('hostname', '>=', termUpper), where('hostname', '<=', termUpper + '\uf8ff'), limit(limitSearch)));
-
-        // Executa todas as buscas em paralelo
         const snapshots = await Promise.all(queries.map(q => getDocs(q)));
-        
-        // Junta os resultados em um Map para remover duplicatas (pelo ID)
         const uniqueAssets = new Map();
         
         snapshots.forEach(snap => {
           snap.docs.forEach(doc => {
-            const data = doc.data();
-            
-            // --- FILTRO DE SEGURANÇA (Manual) ---
-            // Como não podemos filtrar por unidade na query de busca textual (índices complexos),
-            // filtramos aqui no código.
-            if (isAdmin || allowedUnits.includes(data.unitId)) {
-              
-              // --- FILTRO DE STATUS E TIPO (Manual) ---
-              // Se o usuário digitou busca, respeitamos os filtros de dropdown também?
-              // Geralmente, busca textual "vence" tudo, mas vamos respeitar o básico:
-              const typeMatch = filterType === 'all' || data.type === filterType;
-              // Ocultar devolvidos se não estiver marcado
-              const statusMatch = showReturned || data.status !== 'Devolvido';
-
-              if (typeMatch && statusMatch) {
-                 uniqueAssets.set(doc.id, { id: doc.id, ...data });
-              }
-            }
+             uniqueAssets.set(doc.id, { id: doc.id, ...doc.data() });
           });
         });
 
-        const mergedResults = Array.from(uniqueAssets.values());
-        setAssets(mergedResults);
-        setHasMore(false); // Busca textual desativa o "Carregar Mais" infinito
+        setAssets(Array.from(uniqueAssets.values()));
+        setHasMore(false); 
 
       } else {
-        // --- MODO LISTAGEM NORMAL (Sem busca, apenas paginação) ---
+        // B. Listagem Padrão
         let constraints = [orderBy('createdAt', 'desc')];
 
-        if (!isAdmin) {
-          if (allowedUnits.length > 0) constraints.push(where("unitId", "in", allowedUnits));
-          else constraints.push(where("unitId", "==", "SEM_PERMISSAO"));
+        // --- LÓGICA DE SEGURANÇA CORRIGIDA (NO SERVIDOR) ---
+        // Se tiver unidades específicas na lista, FILTRA por elas (mesmo sendo Admin).
+        // Se não tiver unidades e NÃO for admin, BLOQUEIA.
+        // Se não tiver unidades e FOR admin, MOSTRA TUDO.
+        
+        if (allowedUnits && allowedUnits.length > 0) {
+             constraints.push(where("unitId", "in", allowedUnits));
+        } else if (!isAdmin) {
+             constraints.push(where("unitId", "==", "SEM_PERMISSAO"));
         }
 
         if (filterType !== "all") constraints.push(where("type", "==", filterType));
         if (filterStatus !== "all") constraints.push(where("status", "==", filterStatus));
+        
+        // Filtro de unidade selecionado pelo usuário
         if (filterUnit !== "all") {
-          if (isAdmin || allowedUnits.includes(filterUnit)) {
-            constraints.push(where("unitId", "==", filterUnit));
-          }
+           // Só permite filtrar se o usuário tiver acesso a essa unidade (ou for super admin sem restrição)
+           if (isAdmin && allowedUnits.length === 0) {
+              constraints.push(where("unitId", "==", filterUnit));
+           } else if (allowedUnits.includes(filterUnit)) {
+              constraints.push(where("unitId", "==", filterUnit));
+           }
         }
 
         constraints.push(limit(ITEMS_PER_PAGE));
-        if (isLoadMore && lastDoc) {
-          constraints.push(startAfter(lastDoc));
-        }
+        if (isLoadMore && lastDoc) constraints.push(startAfter(lastDoc));
 
         const q = query(collectionRef, ...constraints);
         const snapshot = await getDocs(q);
@@ -178,22 +172,63 @@ const InventoryList = () => {
       }
 
     } catch (err) {
-      console.error("Erro na busca:", err);
+      console.error("Erro:", err);
       setError(err);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [authLoading, isAdmin, allowedUnits, filterType, filterStatus, filterUnit, lastDoc, showReturned]);
+  }, [authLoading, isAdmin, allowedUnits, filterType, filterStatus, filterUnit, lastDoc]);
 
   useEffect(() => {
     setLastDoc(null);
     fetchAssets(false, debouncedSearch);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterType, filterStatus, filterUnit, isAdmin, allowedUnits, debouncedSearch, showReturned]); // showReturned adicionado aqui
+  }, [filterType, filterStatus, filterUnit, isAdmin, JSON.stringify(allowedUnits), debouncedSearch, showReturned]);
 
-  // Filtro visual final (apenas segurança, pois a busca já filtrou)
-  const displayedAssets = assets; 
+
+  // --- 5. FILTRAGEM VISUAL BLINDADA (CLIENT-SIDE) ---
+  const displayedAssets = useMemo(() => {
+    if (!assets) return [];
+
+    // Lista limpa de IDs permitidos
+    const safeAllowedUnits = allowedUnits.map(u => cleanId(u));
+    const hasSpecificUnits = safeAllowedUnits.length > 0;
+
+    return assets.filter(asset => {
+      const assetUnitId = cleanId(asset.unitId);
+
+      // --- NOVA REGRA DE SEGURANÇA ---
+      // 1. Se o usuário tem unidades específicas na lista, ele SÓ pode ver essas unidades.
+      //    Isso vale MESMO se ele for Admin.
+      if (hasSpecificUnits) {
+         if (!safeAllowedUnits.includes(assetUnitId)) {
+            return false; // Bloqueia visualmente
+         }
+      } 
+      // 2. Se não tem unidades na lista:
+      //    - Se for Admin, vê tudo (passa).
+      //    - Se não for Admin, não vê nada (já bloqueado na query, mas reforça aqui).
+      else if (!isAdmin) {
+         return false;
+      }
+
+      // Filtro Devolvido
+      if (!showReturned && asset.status === 'Devolvido') return false;
+
+      // Filtro de Texto (Reforço para busca específica)
+      if (debouncedSearch) {
+         const search = debouncedSearch.toLowerCase();
+         return (
+            asset.id.toLowerCase().includes(search) || 
+            (asset.serial && asset.serial.toLowerCase().includes(search)) ||
+            (asset.hostname && asset.hostname.toLowerCase().includes(search)) ||
+            (asset.modelo && asset.modelo.toLowerCase().includes(search)) ||
+            (asset.setor && asset.setor.toLowerCase().includes(search))
+         );
+      }
+      return true;
+    });
+  }, [assets, isAdmin, allowedUnits, showReturned, debouncedSearch]);
 
   const getStatusClass = (status) => {
     if (status === 'Em uso') return styles.statusUsage;
@@ -215,7 +250,11 @@ const InventoryList = () => {
   };
 
   const handleOpenModal = (view) => { setModalView(view); setIsModalOpen(true); };
-  const handleCloseModal = () => { setIsModalOpen(false); setTimeout(() => setModalView('select'), 300); fetchAssets(false, debouncedSearch); };
+  const handleCloseModal = () => { 
+    setIsModalOpen(false); 
+    setTimeout(() => setModalView('select'), 300); 
+    fetchAssets(false, debouncedSearch); 
+  };
   const handleBulkSuccess = () => { setSelectedIds([]); fetchAssets(false, debouncedSearch); };
 
   const renderModalContent = () => {
@@ -229,9 +268,7 @@ const InventoryList = () => {
   };
 
   const renderContent = () => {
-    if (loading || authLoading) {
-      return <InventoryTableSkeleton />;
-    }
+    if (loading || authLoading) return <InventoryTableSkeleton />;
     
     if (error) {
       if (error.code === 'failed-precondition') {
@@ -245,7 +282,7 @@ const InventoryList = () => {
         <div className={styles.emptyState}>
           <Package size={50} />
           <h2>Nenhum ativo encontrado</h2>
-          <p>{debouncedSearch ? `Nada encontrado para "${debouncedSearch}"` : "Tente ajustar os filtros."}</p>
+          <p>{debouncedSearch ? "Tente outro termo." : "Ajuste os filtros ou verifique suas permissões."}</p>
         </div>
       );
     }
@@ -285,7 +322,7 @@ const InventoryList = () => {
                     <td data-label="Tombamento"><strong>{asset.id}</strong></td>
                     <td data-label="Tipo">{asset.tipoAtivo || asset.type}</td>
                     <td data-label="Status"><span className={`${styles.statusBadge} ${getStatusClass(asset.status)}`}>{asset.status}</span></td>
-                    <td data-label="Unidade" className={styles.hideMobile}>{asset.unitId}</td>
+                    <td data-label="Unidade" className={styles.hideMobile}>{getUnitName(asset.unitId)}</td>
                     <td data-label="Setor" className={styles.hideMobile}>{asset.setor}</td>
                     <td data-label="Serial" className={styles.hideMobile}>{asset.serial}</td>
                     <td className={styles.actionCell}>
@@ -359,7 +396,7 @@ const InventoryList = () => {
             <Filter size={16} />
             <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={styles.filterSelect}>{opcoesTipo.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select>
             <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={styles.filterSelect}>{opcoesStatus.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select>
-            <select value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)} className={styles.filterSelect}><option value="all">Todas as Unidades</option>{unitsList.map(d=><option key={d.id} value={d.id}>{d.data().sigla}</option>)}</select>
+            <select value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)} className={styles.filterSelect}><option value="all">Todas as Unidades</option>{unitsList.map(d=><option key={d.id} value={d.id}>{d.data().sigla || d.data().name}</option>)}</select>
           </div>
           <label className={styles.checkboxFilter}><input type="checkbox" checked={showReturned} onChange={(e) => setShowReturned(e.target.checked)} /> <Archive size={16} /> Mostrar Devolvidos</label>
         </div>

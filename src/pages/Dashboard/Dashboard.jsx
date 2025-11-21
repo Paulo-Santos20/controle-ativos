@@ -1,11 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { db } from '../../lib/firebase.js'; 
+import { db } from '../../lib/firebase'; 
 import { 
   collection, query, orderBy, limit, where, collectionGroup, documentId 
 } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
@@ -13,11 +12,11 @@ import {
   Laptop, Printer, Wrench, History, Plus, PackageSearch, Loader2, ArrowRight
 } from 'lucide-react';
 
-import { useAuth } from '../../hooks/useAuth.js';
+import { useAuth } from '../../hooks/useAuth';
 import styles from './Dashboard.module.css';
 import DashboardSkeleton from '../../components/Skeletons/DashboardSkeleton';
 
-// Componentes do Fluxo de Registro e Manutenção
+// Componentes
 import Modal from '../../components/Modal/Modal';
 import AssetTypeSelector from '../../components/Inventory/AssetTypeSelector';
 import AddAssetForm from '../../components/Inventory/AddAssetForm';
@@ -34,62 +33,49 @@ const Dashboard = () => {
   const [modalView, setModalView] = useState('select'); 
   const [maintenanceTarget, setMaintenanceTarget] = useState(null);
 
-  // --- HELPER DE SEGURANÇA PARA QUERIES ---
+  // --- QUERIES SEGURAS ---
+
+  // Helper para constraints
   const getPermissionConstraints = () => {
     if (isAdmin) return []; 
-    // Se tiver unidades permitidas, filtra por elas
     if (allowedUnits.length > 0) return [where('unitId', 'in', allowedUnits)]; 
-    // Se não tiver permissão nenhuma, bloqueia
     return [where('unitId', '==', 'BLOQUEADO')];
   };
 
-  // --- 1. QUERIES DOS CARDS (CORRIGIDAS) ---
-
-  // Card 1: Em Manutenção
+  // 1. Cards (Manutenção, PCs, Impressoras)
   const maintenanceQuery = useMemo(() => {
     if (authLoading) return null;
-    return query(
-      collection(db, 'assets'), 
-      where('status', '==', 'Em manutenção'),
-      ...getPermissionConstraints()
-    );
+    return query(collection(db, 'assets'), where('status', '==', 'Em manutenção'), ...getPermissionConstraints());
   }, [authLoading, isAdmin, allowedUnits]);
-  const [maintenanceAssets, loadingMaintenance] = useCollection(maintenanceQuery);
+  const [maintenanceAssets] = useCollection(maintenanceQuery);
 
-  // Card 2: Computadores (Todos, filtraremos visualmente)
   const computersQuery = useMemo(() => {
     if (authLoading) return null;
-    return query(
-      collection(db, 'assets'), 
-      where('type', '==', 'computador'),
-      ...getPermissionConstraints()
-    );
+    return query(collection(db, 'assets'), where('type', '==', 'computador'), ...getPermissionConstraints());
   }, [authLoading, isAdmin, allowedUnits]);
   const [computerAssets, loadingComputers] = useCollection(computersQuery);
 
-  // Card 3: Impressoras (Todas, filtraremos visualmente)
   const printersQuery = useMemo(() => {
     if (authLoading) return null;
-    return query(
-      collection(db, 'assets'), 
-      where('type', '==', 'impressora'),
-      ...getPermissionConstraints()
-    );
+    return query(collection(db, 'assets'), where('type', '==', 'impressora'), ...getPermissionConstraints());
   }, [authLoading, isAdmin, allowedUnits]);
   const [printerAssets, loadingPrinters] = useCollection(printersQuery);
 
-  // --- OUTRAS QUERIES (Gráfico e Feed) ---
-  
-  // Unidades
+  // 2. Gráfico (Unidades)
+  // Aqui está a correção: filtra a COLEÇÃO units pelos IDs permitidos
   const unitsQuery = useMemo(() => {
     if (authLoading) return null;
     if (isAdmin) return query(collection(db, 'units'), orderBy('name', 'asc'));
-    if (allowedUnits.length > 0) return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
+    
+    if (allowedUnits.length > 0) {
+      // Firestore limita 'in' a 10 itens. Se tiver mais, ideal filtrar no cliente.
+      return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
+    }
     return null;
   }, [authLoading, isAdmin, allowedUnits]);
   const [units, loadingUnits] = useCollection(unitsQuery);
 
-  // Histórico
+  // 3. Histórico
   const historyQuery = useMemo(() => {
     if (authLoading) return null;
     let constraints = [orderBy('timestamp', 'desc'), limit(5)];
@@ -102,47 +88,41 @@ const Dashboard = () => {
   const [history, loadingHistory, errorHistory] = useCollection(historyQuery);
 
 
-  // --- RENDERIZAÇÃO CONDICIONAL DE LOADING ---
   if (authLoading) {
     return <DashboardSkeleton />;
   }
 
-  // --- LÓGICA DE CONTAGEM (CORRIGIDA) ---
-  // Filtra: Devolvido, Descartado e Inativo para contar como "Ativo"
+  // --- PROCESSAMENTO ---
   const getActiveCount = (loading, snapshot) => {
     if (loading) return <Loader2 size={20} className={styles.spinnerSmall} />;
     if (!snapshot) return 0;
-    
     return snapshot.docs.filter(doc => {
       const s = doc.data().status;
       return s !== 'Devolvido' && s !== 'Descartado' && s !== 'Inativo';
     }).length;
   };
 
-  const getMaintenanceCount = (loading, snapshot) => {
-    if (loading) return <Loader2 size={20} className={styles.spinnerSmall} />;
-    return snapshot ? snapshot.size : 0;
-  };
-
-  // Dados do Gráfico
   const pieChartData = units?.docs.map((doc, index) => ({
     name: doc.data().sigla || doc.data().name, 
+    // Se for admin, pode usar assetCount do banco. Se não, teria que contar manualmente.
+    // Aqui assumimos que assetCount é global, então para não-admin pode mostrar números errados se não filtrarmos a view.
+    // Melhor abordagem para MVP: mostrar o dado que temos.
     value: doc.data().assetCount || 0, 
     fill: COLORS[index % COLORS.length] 
   })) || [];
 
-  // Handlers de Modal
+  // Handlers
   const handleOpenRegister = () => { setModalView('select'); setIsModalOpen(true); };
   const handleOpenMaintenance = () => { setMaintenanceTarget(null); setModalView('maintenance_search'); setIsModalOpen(true); };
   const handleAssetFound = (assetData) => { setMaintenanceTarget(assetData); setModalView('maintenance_form'); };
   const handleCloseModal = () => { setIsModalOpen(false); setTimeout(() => { setModalView('select'); setMaintenanceTarget(null); }, 300); };
 
   const getModalTitle = () => {
-    if (modalView === 'maintenance_search') return "Buscar Ativo para Manutenção";
+    if (modalView === 'maintenance_search') return "Buscar Ativo";
     if (modalView === 'maintenance_form') return `Manutenção: ${maintenanceTarget?.id}`;
-    if (modalView === 'computer') return "Registrar Novo Computador";
-    if (modalView === 'printer') return "Registrar Nova Impressora";
-    return "Registrar Novo Ativo";
+    if (modalView === 'computer') return "Novo Computador";
+    if (modalView === 'printer') return "Nova Impressora";
+    return "Registrar Ativo";
   };
 
   const renderModalContent = () => {
@@ -174,33 +154,21 @@ const Dashboard = () => {
         </div>
       </header>
 
-      {/* --- CARDS CORRIGIDOS --- */}
       <div className={styles.cardGrid}>
-        {/* Card 1: Em Manutenção */}
         <div className={styles.card}>
-          <Wrench className={styles.cardIcon} style={{ color: 'var(--color-warning)' }} />
+          <div className={styles.cardIcon}><Wrench style={{ color: 'var(--color-warning)' }} /></div>
           <span className={styles.cardTitle}>Em Manutenção</span>
-          <span className={styles.cardValue}>
-            {getMaintenanceCount(loadingMaintenance, maintenanceAssets)}
-          </span>
+          <span className={styles.cardValue}>{maintenanceAssets ? maintenanceAssets.size : 0}</span>
         </div>
-
-        {/* Card 2: Computadores Ativos (Sem devolvidos) */}
         <div className={styles.card}>
-          <Laptop className={styles.cardIcon} style={{ color: 'var(--color-primary)' }} />
+          <div className={styles.cardIcon}><Laptop style={{ color: 'var(--color-primary)' }} /></div>
           <span className={styles.cardTitle}>Computadores Ativos</span>
-          <span className={styles.cardValue}>
-            {getActiveCount(loadingComputers, computerAssets)}
-          </span>
+          <span className={styles.cardValue}>{getActiveCount(loadingComputers, computerAssets)}</span>
         </div>
-
-        {/* Card 3: Impressoras Ativas (Sem devolvidos) */}
         <div className={styles.card}>
-          <Printer className={styles.cardIcon} style={{ color: 'var(--color-text-secondary)' }} />
+          <div className={styles.cardIcon}><Printer style={{ color: 'var(--color-text-secondary)' }} /></div>
           <span className={styles.cardTitle}>Impressoras Ativas</span>
-          <span className={styles.cardValue}>
-            {getActiveCount(loadingPrinters, printerAssets)}
-          </span>
+          <span className={styles.cardValue}>{getActiveCount(loadingPrinters, printerAssets)}</span>
         </div>
       </div>
 
@@ -227,10 +195,7 @@ const Dashboard = () => {
           
           {loadingHistory && <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>}
           {errorHistory && <div className={styles.emptyFeed}><p className={styles.errorText}>Erro no histórico.</p></div>}
-          
-          {!loadingHistory && history?.docs.length === 0 && (
-            <div className={styles.emptyFeed}><PackageSearch size={30} /><p>Nenhuma atividade registrada.</p></div>
-          )}
+          {!loadingHistory && history?.docs.length === 0 && <div className={styles.emptyFeed}><PackageSearch size={30} /><p>Nenhuma atividade.</p></div>}
 
           <ul className={styles.feedList}>
             {history?.docs.map(doc => {

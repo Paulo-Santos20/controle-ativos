@@ -24,13 +24,12 @@
   font-weight: 700;
   color: var(--color-text-primary);
   letter-spacing: -0.02em;
-  
 }
 
 /* ------------------------------------------------------------------
    2. BOTÕES
 ------------------------------------------------------------------ */
-.primaryButton, .secondaryButton {
+.primaryButton, .secondaryButton, .dangerButton {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
@@ -40,7 +39,6 @@
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 0.9rem;
-  
 }
 
 .primaryButton {
@@ -51,7 +49,7 @@
 .primaryButton:hover {
   background-color: var(--color-primary-dark);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3); /* Glow sutil */
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
 }
 .primaryButton:disabled {
   opacity: 0.6;
@@ -70,6 +68,16 @@
   border-color: var(--color-text-secondary);
 }
 
+/* Botão de Perigo (Desativar/Excluir) */
+.dangerButton {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.dangerButton:hover {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
 /* Ícone de Ação (Redondo) */
 .iconButton {
   display: flex;
@@ -84,13 +92,14 @@
   color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.2s;
-  
 }
+/* CORREÇÃO: Hover com fundo adaptável */
 .iconButton:hover {
-  background-color: var(--color-bg-page);
+  background-color: var(--color-bg-page); 
+  /* A cor do texto/ícone deve mudar para primária ou manter a original se tiver estilo inline */
   border-color: var(--color-border);
-  /* A cor do ícone é herdada ou definida inline no JSX (ex: verde/vermelho para status) */
 }
+
 
 /* ------------------------------------------------------------------
    3. BARRA DE FERRAMENTAS
@@ -104,7 +113,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  
 }
 
 .searchBox {
@@ -128,9 +136,8 @@
   background: transparent;
   outline: none;
   font-size: 0.95rem;
-  color: var(--color-text-primary); /* Adapta ao dark mode */
+  color: var(--color-text-primary);
   height: 100%;
-  
 }
 .searchBox svg {
   color: var(--color-text-secondary);
@@ -161,10 +168,10 @@
   height: 42px;
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
-  background-color: var(--color-bg-page); /* Adapta ao dark mode */
-  color: var(--color-text-primary);       /* Adapta ao dark mode */
+  background-color: var(--color-bg-page);
   font-size: 0.9rem;
   font-weight: 500;
+  color: var(--color-text-primary);
   flex-grow: 1;
   cursor: pointer;
 }
@@ -190,8 +197,9 @@
 .checkboxFilter:hover {
   border-color: var(--color-text-secondary);
 }
+
 /* ------------------------------------------------------------------
-   4. LISTA / TABELA
+   4. CONTEÚDO & TABELA
 ------------------------------------------------------------------ */
 .content {
   background-color: var(--color-bg-component);
@@ -203,18 +211,18 @@
   overflow: hidden;
 }
 
+/* --- LISTA (Layout de Cards) --- */
 .list {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
 }
 
-/* Item da Lista (Card Mobile) */
 .listItem {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
-  background-color: var(--color-bg-page); /* Fundo do card interno */
+  background-color: var(--color-bg-page);
   padding: var(--spacing-md);
   border-radius: var(--border-radius);
   border: 1px solid var(--color-border);
@@ -257,8 +265,7 @@
   gap: var(--spacing-sm);
   padding-top: var(--spacing-sm);
   border-top: 1px solid var(--color-border);
-  justify-content: flex-start; /* Mobile: Esquerda */
-  
+  justify-content: flex-start;
 }
 
 /* --- TABELA (Modo Desktop e inventoryList) --- */
@@ -269,7 +276,6 @@
   text-align: left;
   border-bottom: 1px solid var(--color-border);
   color: var(--color-text-primary);
-  
 }
 .table th {
   background-color: var(--color-bg-page);
@@ -288,12 +294,26 @@
 }
 .detailsButton:hover { text-decoration: underline; }
 
-
 /* ------------------------------------------------------------------
    5. ESTILOS ESPECÍFICOS (ROLES, STATUS)
 ------------------------------------------------------------------ */
 
-/* Badge de Role (Admin/Técnico) - Adapta ao Dark Mode via rgba */
+.statusBadge {
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+/* Cores Translúcidas (Dark Mode Friendly) */
+.statusUsage { background-color: rgba(52, 199, 89, 0.15); color: #28a745; border: 1px solid rgba(52, 199, 89, 0.2); }
+.statusMaintenance { background-color: rgba(255, 149, 0, 0.15); color: #d97706; border: 1px solid rgba(255, 149, 0, 0.2); }
+.statusStock { background-color: rgba(0, 122, 255, 0.15); color: #007aff; border: 1px solid rgba(0, 122, 255, 0.2); }
+.statusInactive { background-color: var(--color-bg-page); color: var(--color-text-secondary); border: 1px solid var(--color-border); }
+.statusReturned { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; text-decoration: line-through; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+/* User Role Badge */
 .userRole {
   display: inline-block;
   font-size: 0.75rem;
@@ -302,12 +322,12 @@
   border-radius: 12px;
   margin-top: 6px;
   text-transform: capitalize;
-  background-color: rgba(0, 122, 255, 0.15); 
+  background-color: rgba(0, 122, 255, 0.1); 
   color: var(--color-primary);
   border: 1px solid rgba(0, 122, 255, 0.2);
 }
 
-/* Usuário Inativo / Desativado */
+/* Item Inativo */
 .itemInactive {
   opacity: 0.6;
   background-color: var(--color-bg-page);
@@ -317,7 +337,6 @@
   text-decoration: line-through;
   color: var(--color-text-secondary);
 }
-
 .badgeInactive {
   display: inline-block;
   font-size: 0.7rem;
@@ -326,7 +345,7 @@
   border-radius: 4px;
   margin-left: 8px;
   text-transform: uppercase;
-  background-color: rgba(239, 68, 68, 0.15); /* Vermelho transparente */
+  background-color: rgba(239, 68, 68, 0.15);
   color: var(--color-danger);
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
@@ -347,7 +366,7 @@
     min-width: 160px;
   }
 
-  /* Listagem Horizontal (Cards viram linhas) */
+  /* Listagem Horizontal */
   .listItem {
     flex-direction: row;
     align-items: center;
@@ -373,9 +392,7 @@
   .actionCell { justify-content: flex-end; }
 }
 
-/* ------------------------------------------------------------------
-   7. TABELA MOBILE (Estilo Card)
------------------------------------------------------------------- */
+/* Mobile Table Card View */
 @media (max-width: 767px) {
   .hideMobile { display: none; }
   .table thead { display: none; }
@@ -410,7 +427,7 @@
   }
 }
 
-/* --- Estados --- */
+/* Estados */
 .loadingState, .emptyState {
   display: flex;
   flex-direction: column;

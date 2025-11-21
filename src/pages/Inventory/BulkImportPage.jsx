@@ -1,73 +1,113 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx'; 
 import ExcelJS from 'exceljs'; 
 import { saveAs } from 'file-saver'; 
-import { writeBatch, doc, serverTimestamp, collection, query, orderBy } from 'firebase/firestore';
-import { useCollection } from 'react-firebase-hooks/firestore'; // Necessário para listar unidades
+import { writeBatch, doc, serverTimestamp, collection, query, orderBy, where, documentId } from 'firebase/firestore';
+import { useCollection } from 'react-firebase-hooks/firestore';
 import { db, auth } from '../../lib/firebase'; 
 import { toast } from 'sonner';
-import { Loader2, UploadCloud, AlertTriangle, CheckCircle, FileSpreadsheet, Download, RefreshCw, Laptop, Printer } from 'lucide-react';
+import { 
+  Loader2, UploadCloud, AlertTriangle, CheckCircle, 
+  FileSpreadsheet, Download, RefreshCw, Laptop, Printer, Building2, Lock 
+} from 'lucide-react';
 import styles from './BulkImportPage.module.css';
+import { useAuth } from '../../hooks/useAuth';
 
 const BulkImportPage = () => {
-  // Estado para decidir o que estamos importando (Computador ou Impressora)
-  const [importType, setImportType] = useState('computador'); // 'computador' | 'impressora'
+  const { allowedUnits } = useAuth(); // Removemos o uso de 'isAdmin' para lógica de dados
+
+  const [importType, setImportType] = useState('computador');
   
-  const [fileData, setFileData] = useState([]);
+  const [allParsedData, setAllParsedData] = useState([]); 
+  const [detectedUnits, setDetectedUnits] = useState([]); 
+  const [selectedUnits, setSelectedUnits] = useState([]); 
+  const [fileData, setFileData] = useState([]); 
   const [isUploading, setIsUploading] = useState(false);
   const [validationErrors, setValidationErrors] = useState([]);
-  const [importCount, setImportCount] = useState(0);
+  const [importStats, setImportStats] = useState({ count: 0 });
 
-  // Busca as Unidades para gerar as abas da planilha
-  const [unitsSnapshot, loadingUnits] = useCollection(
-    query(collection(db, 'units'), orderBy('name', 'asc'))
-  );
+  // --- CORREÇÃO DE SEGURANÇA ESTRITA (QUERY) ---
+  // Mesmo sendo Admin, só busca as unidades que estão na lista 'allowedUnits'
+  const unitsQuery = useMemo(() => {
+    // Se não tiver unidades permitidas, retorna null (ou uma query que não traz nada)
+    if (!allowedUnits || allowedUnits.length === 0) {
+        return query(collection(db, 'units'), where(documentId(), '==', 'SEM_PERMISSAO'));
+    }
+    // Filtra estritamente pelo ID
+    return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
+  }, [allowedUnits]);
 
-  // --- 1. DEFINIÇÃO DAS COLUNAS (Cabeçalhos) ---
+  const [unitsSnapshot, loadingUnits] = useCollection(unitsQuery);
+
+  // Mapa de Tradução (Nome -> ID)
+  const unitMap = useMemo(() => {
+    if (!unitsSnapshot) return {};
+    const map = {};
+    unitsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const id = doc.id; 
+        map[id.trim().toLowerCase()] = id;
+        if (data.sigla) map[data.sigla.trim().toLowerCase()] = id;
+        if (data.name) map[data.name.trim().toLowerCase()] = id;
+    });
+    return map;
+  }, [unitsSnapshot]);
+
+  const resolveUnitId = useCallback((text) => {
+      if (!text) return null;
+      const cleanText = String(text).trim().toLowerCase();
+      return unitMap[cleanText] || null; 
+  }, [unitMap]);
+
+  // --- CORREÇÃO DE SEGURANÇA ESTRITA (HELPER) ---
+  const canImportToUnit = useCallback((realUnitId) => {
+    if (!realUnitId) return false;
+    // REMOVIDO: if (isAdmin) return true; 
+    // AGORA: Só passa se estiver na lista explícita
+    return allowedUnits.includes(realUnitId.trim());
+  }, [allowedUnits]);
+
+  const clearAll = () => {
+    setFileData([]);
+    setAllParsedData([]);
+    setDetectedUnits([]);
+    setSelectedUnits([]);
+    setValidationErrors([]);
+    setImportStats({ count: 0 });
+  };
+
   const getHeaders = () => {
+    const common = ["Tombamento", "Status", "Setor", "Sala", "Pavimento", "Funcionario", "Marca", "Modelo", "Serial"];
     if (importType === 'computador') {
-      return [
-        "Tombamento", "Hostname", "Marca", "Modelo", "Serial", "Status", 
-        "Setor", "Sala", "Pavimento", "Funcionario", 
-        "Processador", "Memoria", "HD_SSD", "SO", "Antivirus", "MAC", "Service_Tag", 
-        "Observacao" // Único opcional
-      ];
+      return [...common, "Hostname", "Processador", "Memoria", "HD_SSD", "SO", "Antivirus", "MAC", "Service_Tag", "Observacao"];
     } else {
-      return [
-        "Tombamento", "Marca", "Modelo", "Serial", "IP", "Status", 
-        "Setor", "Sala", "Pavimento", "Funcionario", 
-        "Conectividade", "Cartucho", "Colorido", "Frente_Verso", 
-        "Observacao" // Único opcional
-      ];
+      return [...common, "IP", "Conectividade", "Cartucho", "Colorido", "Frente_Verso", "Observacao"];
     }
   };
 
-  // --- 2. LÓGICA DE PROCESSAMENTO ---
   const processRow = (row, sheetName) => {
     const normalizedRow = {};
-    // Normaliza as chaves para minúsculo e sem espaços
-    Object.keys(row).forEach(key => {
-      normalizedRow[key.trim().toLowerCase()] = row[key];
-    });
+    Object.keys(row).forEach(key => { normalizedRow[key.trim().toLowerCase()] = row[key]; });
 
-    // Dados Base (Obrigatórios para ambos)
+    const unitText = normalizedRow['unidade'] ? String(normalizedRow['unidade']).trim() : sheetName.trim();
+    const realUnitId = resolveUnitId(unitText);
+
     const baseData = {
       tombamento: String(normalizedRow['tombamento'] || '').trim(),
       type: importType,
-      // A unidade vem do Nome da Aba (Sheet Name)
-      unitId: sheetName.trim(), 
+      unitId: realUnitId, 
+      unitNameOriginal: unitText,
       
-      marca: normalizedRow['marca'] || '',
-      modelo: normalizedRow['modelo'] || '',
-      serial: normalizedRow['serial'] || '',
-      status: normalizedRow['status'] || '',
+      status: normalizedRow['status'] || 'Estoque',
       setor: normalizedRow['setor'] || '',
       sala: normalizedRow['sala'] || '',
       pavimento: normalizedRow['pavimento'] || '',
       funcionario: normalizedRow['funcionario'] || '',
-      observacao: normalizedRow['observacao'] || '', // Opcional
-      
+      marca: normalizedRow['marca'] || '',
+      modelo: normalizedRow['modelo'] || '',
+      serial: normalizedRow['serial'] || '',
+      observacao: normalizedRow['observacao'] || '',
       createdAt: serverTimestamp(),
       lastSeen: serverTimestamp(),
       importedBy: auth.currentUser?.email,
@@ -92,15 +132,13 @@ const BulkImportPage = () => {
         ip: normalizedRow['ip'] || '',
         conectividade: normalizedRow['conectividade'] || '',
         cartucho: normalizedRow['cartucho'] || '',
-        colorido: normalizedRow['colorido'] || '',
-        frenteVerso: normalizedRow['frente_verso'] || ''
+        colorido: normalizedRow['colorido'] || 'Não',
+        frenteVerso: normalizedRow['frente_verso'] || 'Não'
       };
     }
   };
 
-  // --- 3. LEITURA DO ARQUIVO ---
   const onDrop = useCallback((acceptedFiles) => {
-    if (!acceptedFiles.length) return;
     const file = acceptedFiles[0];
     const reader = new FileReader();
 
@@ -108,39 +146,44 @@ const BulkImportPage = () => {
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-        
         let allRows = [];
 
-        // Itera sobre cada aba (Cada aba é uma unidade)
         workbook.SheetNames.forEach(sheetName => {
-          // Ignora abas de instrução se houver
           if (sheetName.toLowerCase().includes('instru')) return;
-
           const worksheet = workbook.Sheets[sheetName];
           const json = XLSX.utils.sheet_to_json(worksheet);
-          
-          // Adiciona os dados processados, passando o nome da aba como unidade
           const processedRows = json.map(row => processRow(row, sheetName));
           allRows = [...allRows, ...processedRows];
         });
         
         if (allRows.length === 0) {
-          toast.error("A planilha está vazia ou as abas não correspondem.");
+          toast.error("A planilha está vazia.");
           return;
         }
 
-        validateData(allRows);
-        setImportCount(allRows.length);
-        setFileData(allRows);
+        const uniqueUnits = [...new Set(allRows.map(item => item.unitId))].filter(Boolean).sort();
+        setDetectedUnits(uniqueUnits);
+        setAllParsedData(allRows);
+
+        // Bloqueio Rápido: Se a única unidade encontrada não for permitida
+        if (uniqueUnits.length === 1) {
+            if (canImportToUnit(uniqueUnits[0])) {
+                handleConfirmSelection([uniqueUnits[0]], allRows);
+            } else {
+                // Como o ID pode ser nulo se não achou no mapa, verificamos o nome original
+                const originalName = allRows[0]?.unitNameOriginal || uniqueUnits[0];
+                toast.error(`ACESSO NEGADO: Você não tem permissão na unidade "${originalName}".`);
+                clearAll();
+            }
+        } 
 
       } catch (error) {
         console.error(error);
-        toast.error("Erro ao ler o arquivo. Verifique o formato.");
+        toast.error("Erro ao ler arquivo.");
       }
     };
-
     reader.readAsArrayBuffer(file);
-  }, [importType]); // Recria se o tipo mudar
+  }, [importType, resolveUnitId, canImportToUnit]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop, 
@@ -148,133 +191,122 @@ const BulkImportPage = () => {
     maxFiles: 1
   });
 
-  // --- 4. VALIDAÇÃO RIGOROSA ---
-  const validateData = (data) => {
-    const errors = [];
-    
-    data.forEach((row, index) => {
-      const rowNum = index + 2; // +1 header +1 index 0
-      const ref = row.tombamento || `Linha ${rowNum}`;
+  const getUnitLabel = (unitId) => {
+     const unitDoc = unitsSnapshot?.docs.find(d => d.id === unitId);
+     return unitDoc ? (unitDoc.data().sigla || unitDoc.data().name) : unitId;
+  };
 
-      // Validação Base (Tudo obrigatório exceto obs)
-      if (!row.tombamento) errors.push(`${ref}: Falta Tombamento`);
-      if (!row.marca) errors.push(`${ref}: Falta Marca`);
-      if (!row.modelo) errors.push(`${ref}: Falta Modelo`);
-      if (!row.serial) errors.push(`${ref}: Falta Serial`);
-      if (!row.status) errors.push(`${ref}: Falta Status`);
-      if (!row.setor) errors.push(`${ref}: Falta Setor`);
-      if (!row.sala) errors.push(`${ref}: Falta Sala`);
-      if (!row.pavimento) errors.push(`${ref}: Falta Pavimento`);
-      // Funcionario pode ser opcional se for estoque, mas o prompt pediu "todas obrigatórias"
-      if (!row.funcionario && row.status === 'Em uso') errors.push(`${ref}: Falta Funcionário (obrigatório para Em Uso)`);
-
-      if (importType === 'computador') {
-         if (!row.hostname) errors.push(`${ref}: Falta Hostname`);
-         if (!row.processador) errors.push(`${ref}: Falta Processador`);
-         if (!row.memoria) errors.push(`${ref}: Falta Memória`);
-         if (!row.hdSsd) errors.push(`${ref}: Falta HD/SSD`);
-         if (!row.so) errors.push(`${ref}: Falta S.O.`);
-      } else {
-         if (!row.cartucho) errors.push(`${ref}: Falta Cartucho`);
-         if (!row.conectividade) errors.push(`${ref}: Falta Conectividade`);
-      }
-    });
-
-    setValidationErrors(errors);
-    
-    if (errors.length > 0) {
-      toast.warning(`${errors.length} erros encontrados. A importação será bloqueada.`);
+  const toggleUnit = (unitId) => {
+    if (!canImportToUnit(unitId)) {
+        toast.error(`Sem permissão para a unidade ${getUnitLabel(unitId)}.`);
+        return;
+    }
+    if (selectedUnits.includes(unitId)) {
+      setSelectedUnits(selectedUnits.filter(u => u !== unitId));
     } else {
-      toast.success(`${data.length} itens validados com sucesso!`);
+      setSelectedUnits([...selectedUnits, unitId]);
     }
   };
 
-  // --- 5. ENVIO ---
-  const handleImport = async () => {
-    if (validationErrors.length > 0) {
-      toast.error("Corrija os erros indicados antes de importar.");
+  const handleConfirmSelection = (unitsToProcess = selectedUnits, sourceData = allParsedData) => {
+    const validUnits = unitsToProcess.filter(u => canImportToUnit(u));
+
+    if (validUnits.length === 0) {
+      toast.error("Nenhuma unidade permitida selecionada.");
       return;
     }
 
-    setIsUploading(true);
-    const toastId = toast.loading("Importando para o banco de dados...");
+    const filtered = sourceData.filter(item => validUnits.includes(item.unitId));
+    validateData(filtered);
+    setImportStats({ count: filtered.length });
+    setFileData(filtered);
+    
+    if (unitsToProcess !== selectedUnits) setSelectedUnits(validUnits);
+  };
 
-    try {
-      const chunkSize = 400;
-      const chunks = [];
-      for (let i = 0; i < fileData.length; i += chunkSize) {
-        chunks.push(fileData.slice(i, i + chunkSize));
+  const validateData = (data) => {
+    const errors = [];
+    data.forEach((row, index) => {
+      const ref = `Linha ${index + 2} (${row.unitNameOriginal || '?'})`;
+      
+      if (!row.tombamento) errors.push(`${ref}: Falta Tombamento`);
+      if (!row.status) errors.push(`${ref}: Falta Status`);
+      
+      if (!row.unitId) {
+          errors.push(`${ref}: Unidade "${row.unitNameOriginal}" desconhecida.`);
+      } 
+      else if (!canImportToUnit(row.unitId)) {
+          errors.push(`${ref}: PERMISSÃO NEGADA para "${getUnitLabel(row.unitId)}".`);
       }
 
-      let processedCount = 0;
+      if (importType === 'computador' && !row.hostname) errors.push(`${ref}: Falta Hostname`);
+    });
+    setValidationErrors(errors);
+    if (errors.length === 0) toast.success(`${data.length} itens validados!`);
+    else toast.warning(`${errors.length} erros encontrados.`);
+  };
 
+  const handleImport = async () => {
+    if (validationErrors.length > 0) return toast.error("Corrija os erros.");
+    setIsUploading(true);
+    const toastId = toast.loading("Importando...");
+
+    try {
+      const chunkSize = 400; 
+      const chunks = [];
+      for (let i = 0; i < fileData.length; i += chunkSize) chunks.push(fileData.slice(i, i + chunkSize));
+
+      let processedCount = 0;
       for (const chunk of chunks) {
         const batch = writeBatch(db);
         chunk.forEach((item) => {
-          const assetRef = doc(db, 'assets', item.tombamento);
-          batch.set(assetRef, item); 
+          const { unitNameOriginal, ...finalItem } = item;
+          if (!canImportToUnit(finalItem.unitId)) return; 
+          const assetRef = doc(db, 'assets', finalItem.tombamento);
+          batch.set(assetRef, finalItem); 
         });
         await batch.commit();
         processedCount += chunk.length;
-        toast.loading(`Salvando ${processedCount} de ${fileData.length}...`, { id: toastId });
+        toast.loading(`Salvando ${processedCount}...`, { id: toastId });
       }
-
-      toast.success(`Sucesso! ${processedCount} ${importType}s importados.`, { id: toastId });
-      setFileData([]); 
-      setImportCount(0);
+      toast.success("Importação concluída!", { id: toastId });
+      clearAll();
     } catch (error) {
-      console.error(error);
-      toast.error("Erro na gravação: " + error.message, { id: toastId });
+      toast.error("Erro: " + error.message, { id: toastId });
     } finally {
       setIsUploading(false);
     }
   };
 
-  // --- 6. GERAR MODELO POR UNIDADE ---
   const downloadTemplate = async () => {
-    if (!unitsSnapshot || unitsSnapshot.empty) {
-      toast.error("Nenhuma unidade cadastrada para gerar as abas.");
-      return;
-    }
+    if (!unitsSnapshot || unitsSnapshot.empty) return toast.error("Nenhuma unidade disponível.");
 
     const workbook = new ExcelJS.Workbook();
     const headers = getHeaders();
     
-    // Estilos
-    const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } }; // Vermelho Claro (Obrigatório)
-    const headerFont = { color: { argb: 'FF9C0006' }, bold: true };
-    
-    const obsFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } }; // Verde Claro (Opcional)
-    const obsFont = { color: { argb: 'FF006100' }, bold: true };
+    const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+    const obsFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } };
+    const fontStyle = { bold: true, color: { argb: 'FF000000' } };
 
-    // Cria uma aba para cada unidade
     unitsSnapshot.docs.forEach(doc => {
-      const unitName = doc.data().sigla || doc.data().name || "Unidade";
-      // Limpa caracteres inválidos para nome de aba Excel
-      const safeSheetName = unitName.replace(/[*?:\/\[\]]/g, '').substring(0, 30);
-      
-      const sheet = workbook.addWorksheet(safeSheetName);
-      const headerRow = sheet.addRow(headers);
-
-      // Aplica estilos
-      headerRow.eachCell((cell, colNumber) => {
-        const val = cell.value;
-        if (val === 'Observacao') {
-           cell.fill = obsFill;
-           cell.font = obsFont;
-        } else {
-           cell.fill = headerFill;
-           cell.font = headerFont;
-        }
-        cell.border = { bottom: { style: 'thin' } };
-        sheet.getColumn(colNumber).width = 18;
-      });
+      // CORREÇÃO: Só gera a aba se tiver permissão (mesmo sendo Admin)
+      if (canImportToUnit(doc.id)) {
+        const unitName = doc.data().sigla || doc.data().name;
+        const safeName = unitName.replace(/[\/\\\?\*\[\]]/g, '').substring(0, 30);
+        const sheet = workbook.addWorksheet(safeName);
+        const row = sheet.addRow(headers);
+  
+        row.eachCell((cell) => {
+            cell.fill = cell.value === 'Observacao' ? obsFill : headerFill;
+            cell.font = fontStyle;
+            sheet.getColumn(cell.col).width = 20;
+        });
+      }
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const fileName = `modelo_importacao_${importType}_por_unidade.xlsx`;
-    saveAs(blob, fileName);
+    saveAs(blob, `modelo_${importType}_por_unidade.xlsx`);
   };
 
   return (
@@ -282,128 +314,78 @@ const BulkImportPage = () => {
       <header className={styles.header}>
         <div>
           <h1 className={styles.title}>Importação em Massa</h1>
-          <p className={styles.subtitle}>
-            Selecione o tipo, baixe o modelo (com abas por unidade) e preencha.
-          </p>
+          <p className={styles.subtitle}>Baixe o modelo, preencha as abas das unidades e envie.</p>
         </div>
+        <button onClick={downloadTemplate} className={styles.secondaryButton} disabled={loadingUnits}>
+          <Download size={18} /> Baixar Modelo
+        </button>
       </header>
 
-      {/* SELETOR DE TIPO DE IMPORTAÇÃO */}
       <div className={styles.typeSelector}>
-        <button 
-          className={`${styles.typeButton} ${importType === 'computador' ? styles.activeType : ''}`}
-          onClick={() => { setImportType('computador'); setFileData([]); setValidationErrors([]); }}
-        >
-          <Laptop size={24} />
-          <div>
-            <strong>Computadores</strong>
-            <small>Desktops, Notebooks...</small>
-          </div>
-        </button>
-        <button 
-          className={`${styles.typeButton} ${importType === 'impressora' ? styles.activeType : ''}`}
-          onClick={() => { setImportType('impressora'); setFileData([]); setValidationErrors([]); }}
-        >
-          <Printer size={24} />
-          <div>
-            <strong>Impressoras</strong>
-            <small>Térmicas, Laser, Etiquetas...</small>
-          </div>
-        </button>
+        <button className={`${styles.typeButton} ${importType === 'computador' ? styles.activeType : ''}`} onClick={() => { setImportType('computador'); clearAll(); }}><Laptop size={24} /> <strong>Computadores</strong></button>
+        <button className={`${styles.typeButton} ${importType === 'impressora' ? styles.activeType : ''}`} onClick={() => { setImportType('impressora'); clearAll(); }}><Printer size={24} /> <strong>Impressoras</strong></button>
       </div>
 
-      {/* ÁREA DE AÇÃO */}
-      <div className={styles.actionArea}>
-        <div className={styles.step}>
-          <span className={styles.stepNum}>1</span>
-          <p>Baixe a planilha modelo. Ela virá com uma aba para cada unidade cadastrada.</p>
-          <button onClick={downloadTemplate} className={styles.secondaryButton} disabled={loadingUnits}>
-            {loadingUnits ? <Loader2 className={styles.spinner} /> : <Download size={18} />} 
-            Baixar Modelo ({importType.toUpperCase()})
-          </button>
-        </div>
-
-        <div className={styles.step}>
-          <span className={styles.stepNum}>2</span>
-          <p>Preencha os dados nas abas corretas. (Vermelho = Obrigatório)</p>
-        </div>
-
-        <div className={styles.step} style={{width: '100%'}}>
-          <span className={styles.stepNum}>3</span>
-          <div {...getRootProps()} className={`${styles.dropzone} ${isDragActive ? styles.active : ''}`}>
-            <input {...getInputProps()} />
-            <UploadCloud size={48} className={styles.uploadIcon} />
-            <div className={styles.dropText}>
-              <p>Solte a planilha preenchida aqui.</p>
-              <small>Importando como: <strong>{importType.toUpperCase()}</strong></small>
-            </div>
-          </div>
-        </div>
+      <div {...getRootProps()} className={`${styles.dropzone} ${isDragActive ? styles.active : ''}`}>
+        <input {...getInputProps()} />
+        <UploadCloud size={48} className={styles.uploadIcon} />
+        <div className={styles.dropText}><p>Arraste sua planilha aqui.</p></div>
       </div>
 
-      {/* EXIBIÇÃO DE ERROS */}
-      {validationErrors.length > 0 && (
-        <div className={styles.errorBox}>
-          <h3><AlertTriangle size={20} /> {validationErrors.length} Erros Encontrados</h3>
-          <ul>
-            {validationErrors.slice(0, 20).map((err, idx) => <li key={idx}>{err}</li>)}
-            {validationErrors.length > 20 && <li>...e mais {validationErrors.length - 20}.</li>}
-          </ul>
-          <button onClick={() => {setFileData([]); setValidationErrors([])}} className={styles.textButton}>
-            Limpar e tentar novamente
-          </button>
+      {detectedUnits.length > 0 && fileData.length === 0 && (
+        <div className={styles.unitSelectorBox}>
+          <div className={styles.alertHeader}>
+            <Building2 size={20} color="var(--color-primary)" />
+            <h3>Unidades encontradas:</h3>
+          </div>
+          <p>Selecione quais importar (Cadeado = Sem permissão):</p>
+          
+          <div className={styles.unitGrid}>
+             {detectedUnits.map(unitId => {
+               const hasPermission = canImportToUnit(unitId);
+               const label = getUnitLabel(unitId);
+               return (
+                 <label key={unitId} className={`${styles.unitCheckboxCard} ${selectedUnits.includes(unitId) ? styles.checked : ''} ${!hasPermission ? styles.disabledCard : ''}`}>
+                   <input type="checkbox" checked={selectedUnits.includes(unitId)} onChange={() => toggleUnit(unitId)} disabled={!hasPermission} />
+                   <span>{label}</span>
+                   {!hasPermission && <Lock size={14} className={styles.lockIcon} />}
+                 </label>
+               );
+             })}
+          </div>
+
+          <div style={{marginTop: 20}}>
+             <button className={styles.primaryButton} onClick={() => handleConfirmSelection()} disabled={selectedUnits.length === 0}>Processar</button>
+          </div>
         </div>
       )}
 
-      {/* PREVIEW E CONFIRMAÇÃO */}
+      {validationErrors.length > 0 && (
+        <div className={styles.errorBox}>
+          <h3><AlertTriangle size={20} /> Erros ({validationErrors.length})</h3>
+          <ul>{validationErrors.slice(0, 10).map((e, i) => <li key={i}>{e}</li>)}</ul>
+          <button onClick={clearAll} className={styles.textButton}>Limpar</button>
+        </div>
+      )}
+
       {fileData.length > 0 && validationErrors.length === 0 && (
         <div className={styles.previewContainer}>
           <div className={styles.previewHeader}>
-            <div className={styles.successBadge}>
-              <CheckCircle size={18} />
-              <span>
-                <strong>{importCount}</strong> {importType}s prontos para importar.
-              </span>
-            </div>
+            <div className={styles.successBadge}><CheckCircle size={18} /><span>Importar <strong>{importStats.count}</strong> itens.</span></div>
             <div className={styles.actionButtons}>
-                <button className={styles.tertiaryButton} onClick={() => {setFileData([]); setImportCount(0)}}>
-                    <RefreshCw size={16} /> Cancelar
-                </button>
-                <button 
-                  className={styles.primaryButton} 
-                  onClick={handleImport}
-                  disabled={isUploading}
-                >
-                  {isUploading ? <Loader2 className={styles.spinner} /> : <FileSpreadsheet size={18} />}
-                  {isUploading ? "Enviando..." : "Confirmar Importação"}
-                </button>
+                <button className={styles.tertiaryButton} onClick={clearAll}>Cancelar</button>
+                <button className={styles.primaryButton} onClick={handleImport} disabled={isUploading}>{isUploading ? <Loader2 className={styles.spinner} /> : <FileSpreadsheet size={18} />} Confirmar</button>
             </div>
           </div>
-
           <div className={styles.tablePreview}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Unidade (Aba)</th>
-                  <th>Tombamento</th>
-                  <th>Modelo</th>
-                  <th>Serial</th>
-                  {importType === 'computador' ? <th>Hostname</th> : <th>IP</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {fileData.slice(0, 10).map((row, idx) => (
-                  <tr key={idx}>
-                    <td><strong>{row.unitId}</strong></td>
-                    <td>{row.tombamento}</td>
-                    <td>{row.marca} {row.modelo}</td>
-                    <td>{row.serial}</td>
-                    <td>{importType === 'computador' ? row.hostname : row.ip}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {fileData.length > 10 && <p className={styles.moreText}>...e mais {fileData.length - 10} itens.</p>}
+             <table>
+                <thead><tr><th>Unidade</th><th>Tombamento</th><th>Modelo</th><th>Setor</th></tr></thead>
+                <tbody>
+                   {fileData.slice(0, 8).map((r, i) => (
+                      <tr key={i}><td>{getUnitLabel(r.unitId)}</td><td>{r.tombamento}</td><td>{r.modelo}</td><td>{r.setor}</td></tr>
+                   ))}
+                </tbody>
+             </table>
           </div>
         </div>
       )}
