@@ -2,55 +2,46 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // Atualiza o app automaticamente quando houver nova versão
-      registerType: 'autoUpdate',
+      registerType: 'autoUpdate', // Importante: Tenta atualizar sozinho
       
-      // Arquivos estáticos para incluir no cache
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
-      
-      // Configuração do Manifesto (Aparência do App instalado)
-      manifest: {
-        name: 'ITAM Hospitalar - Gestão de Ativos',
-        short_name: 'ITAM',
-        description: 'Sistema de gestão de ativos hospitalares offline-first',
-        theme_color: '#007aff',
-        background_color: '#f2f2f7',
-        display: 'standalone', // Remove a barra de URL do navegador
-        orientation: 'portrait',
-        
-        // Ícones que aparecerão na tela do celular
-        icons: [
-          {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ]
+      // Configurações do Workbox (O motor do PWA)
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        cleanupOutdatedCaches: true, // Limpa versões velhas
+        clientsClaim: true, // O novo SW assume o controle imediatamente
+        skipWaiting: true,  // Não espera o usuário fechar a aba
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // Aumenta limite para 5MB
       },
       
-      // Configuração de Cache (Workbox)
-      workbox: {
-        // Aumenta o limite de tamanho de arquivo para cache (para 4MB)
-        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-        
-        // Padrões de arquivos para cachear
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+      devOptions: {
+        enabled: true // Facilita seus testes locais
+      },
+
+      // ... (seu manifesto continua aqui igual) ...
+      manifest: {
+        // ... mantenha suas configurações de ícones e cores ...
+        name: 'ITAM Hospitalar',
+        short_name: 'ITAM',
+        theme_color: '#007aff',
+        background_color: '#f2f2f7',
+        display: 'standalone',
+        orientation: 'portrait',
+        icons: [
+            {
+                src: 'pwa-192x192.png',
+                sizes: '192x192',
+                type: 'image/png'
+            },
+            {
+                src: 'pwa-512x512.png',
+                sizes: '512x512',
+                type: 'image/png'
+            }
+        ]
       }
     })
   ],
