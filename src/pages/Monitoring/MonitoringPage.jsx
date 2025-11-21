@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { db } from '../../lib/firebase'; // Caminho corrigido
+import { db } from '../../lib/firebase'; 
 import { 
   Search, Clock, AlertTriangle, CheckCircle, Filter, ArrowRight, Loader2, ShieldAlert 
 } from 'lucide-react';
@@ -12,8 +12,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import styles from './MonitoringPage.module.css';
 
-// Status que requerem monitoramento (Filtro Padrão)
-// Removemos "Devolvido" daqui conforme solicitado anteriormente
 const ATTENTION_STATUSES = [
   "Manutenção agendada", 
   "Em manutenção", 
@@ -34,26 +32,24 @@ const MonitoringPage = () => {
   const [filterStatus, setFilterStatus] = useState("attention"); 
   const [searchTerm, setSearchTerm] = useState("");
 
-  // --- 1. QUERY AO BANCO DE DADOS ---
+  // --- 1. QUERY AO BANCO DE DADOS (SEGURANÇA ESTRITA) ---
   const assetsQuery = useMemo(() => {
     if (authLoading) return null;
     
     const collectionRef = collection(db, 'assets');
-    
     // Ordenação padrão (necessária índice se combinada com where)
-    // Se der erro de índice, tente remover o orderBy temporariamente para testar
     const constraints = [orderBy('lastSeen', 'asc')]; 
 
-    // A. FILTRO DE SEGURANÇA (PRIORIDADE MÁXIMA)
-    if (!isAdmin) {
-      if (allowedUnits.length > 0) {
-        // Filtra apenas unidades permitidas
+    // A. FILTRO DE UNIDADE (PRIORIDADE 1)
+    // Se tem unidades na lista, filtra por elas (Mesmo se for Admin)
+    if (allowedUnits && allowedUnits.length > 0) {
         constraints.push(where('unitId', 'in', allowedUnits));
-      } else {
-        // Se não tem unidade, bloqueia tudo
-        return null;
-      }
+    } 
+    // Se NÃO tem unidades e NÃO é Admin, bloqueia.
+    else if (!isAdmin) {
+        return null; // Bloqueio total
     }
+    // Se não tem unidades e É Admin, passa direto (vê tudo)
 
     // B. FILTRO DE STATUS (SIMPLES)
     // Só aplicamos no banco se for um valor único. 
@@ -67,13 +63,12 @@ const MonitoringPage = () => {
 
   const [assets, loading, error] = useCollection(assetsQuery);
 
-  // --- 2. PROCESSAMENTO E FILTRAGEM LOCAL (JAVASCRIPT) ---
+  // --- 2. PROCESSAMENTO E FILTRAGEM LOCAL (BLINDAGEM) ---
   const processedAssets = useMemo(() => {
     if (!assets) return [];
 
     let data = assets.docs.map(doc => {
       const asset = doc.data();
-      // Garante que lastSeen seja uma data válida
       const lastSeenDate = asset.lastSeen?.toDate ? asset.lastSeen.toDate() : new Date();
       const daysElapsed = differenceInDays(new Date(), lastSeenDate);
       
@@ -82,18 +77,30 @@ const MonitoringPage = () => {
         ...asset,
         lastSeenDate,
         daysElapsed,
-        // Flag de Alerta
         isOverdue: ATTENTION_STATUSES.includes(asset.status) && daysElapsed > 5
       };
     });
 
-    // A. FILTRO DE STATUS "EM ATENÇÃO" (LOCAL)
-    // Isso resolve o problema do Firebase não aceitar dois "IN"
-    if (filterStatus === 'attention') {
-      data = data.filter(asset => ATTENTION_STATUSES.includes(asset.status));
+    // 2.1 FILTRO DE SEGURANÇA VISUAL (Reforço)
+    // Garante que não mostre nada fora da lista permitida
+    if (allowedUnits && allowedUnits.length > 0) {
+        const safeAllowed = allowedUnits.map(u => String(u).trim());
+        data = data.filter(item => {
+            const itemUnit = String(item.unitId || '').trim();
+            return safeAllowed.includes(itemUnit);
+        });
+    } else if (!isAdmin) {
+        // Se não tem lista e não é admin, limpa tudo
+        return [];
     }
 
-    // B. FILTRO DE TEXTO
+    // 2.2 FILTRO DE STATUS (Lógica de Aplicação)
+    if (filterStatus === 'attention') {
+      data = data.filter(asset => ATTENTION_STATUSES.includes(asset.status));
+    } 
+    // Se for 'all' ou específico, o filtro do banco já cuidou (ou 'all' mostra tudo que passou na segurança)
+
+    // 2.3 FILTRO DE TEXTO
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       data = data.filter(asset => 
@@ -105,7 +112,7 @@ const MonitoringPage = () => {
 
     // C. ORDENAÇÃO FINAL (Atrasados primeiro)
     return data.sort((a, b) => b.daysElapsed - a.daysElapsed);
-  }, [assets, searchTerm, filterStatus]);
+  }, [assets, searchTerm, filterStatus, isAdmin, allowedUnits]);
 
   const alertsCount = processedAssets.filter(a => a.isOverdue).length;
 
@@ -114,7 +121,7 @@ const MonitoringPage = () => {
     return (
       <div className={styles.loadingState}>
         <Loader2 className={styles.spinner} size={48} />
-        <p style={{marginTop: 10}}>Analisando dados...</p>
+        <p style={{marginTop: 10}}>Calculando...</p>
       </div>
     );
   }
