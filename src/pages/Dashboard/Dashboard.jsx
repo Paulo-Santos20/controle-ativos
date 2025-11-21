@@ -16,7 +16,6 @@ import { useAuth } from '../../hooks/useAuth';
 import styles from './Dashboard.module.css';
 import DashboardSkeleton from '../../components/Skeletons/DashboardSkeleton';
 
-// Componentes
 import Modal from '../../components/Modal/Modal';
 import AssetTypeSelector from '../../components/Inventory/AssetTypeSelector';
 import AddAssetForm from '../../components/Inventory/AddAssetForm';
@@ -33,66 +32,122 @@ const Dashboard = () => {
   const [modalView, setModalView] = useState('select'); 
   const [maintenanceTarget, setMaintenanceTarget] = useState(null);
 
-  // --- QUERIES SEGURAS ---
-
-  // Helper para constraints
+  // --- HELPER DE SEGURANÇA ---
   const getPermissionConstraints = () => {
-    if (isAdmin) return []; 
-    if (allowedUnits.length > 0) return [where('unitId', 'in', allowedUnits)]; 
+    if (allowedUnits && allowedUnits.length > 0) {
+        return [where('unitId', 'in', allowedUnits)]; 
+    }
+    if (isAdmin) {
+        return []; 
+    }
     return [where('unitId', '==', 'BLOQUEADO')];
   };
 
-  // 1. Cards (Manutenção, PCs, Impressoras)
+  // --- 2. QUERIES (HOOKS) ---
+
+  // A. Cards
   const maintenanceQuery = useMemo(() => {
     if (authLoading) return null;
-    return query(collection(db, 'assets'), where('status', '==', 'Em manutenção'), ...getPermissionConstraints());
+    return query(
+      collection(db, 'assets'), 
+      where('status', '==', 'Em manutenção'),
+      ...getPermissionConstraints()
+    );
   }, [authLoading, isAdmin, allowedUnits]);
   const [maintenanceAssets] = useCollection(maintenanceQuery);
 
   const computersQuery = useMemo(() => {
     if (authLoading) return null;
-    return query(collection(db, 'assets'), where('type', '==', 'computador'), ...getPermissionConstraints());
+    return query(
+      collection(db, 'assets'), 
+      where('type', '==', 'computador'),
+      ...getPermissionConstraints()
+    );
   }, [authLoading, isAdmin, allowedUnits]);
   const [computerAssets, loadingComputers] = useCollection(computersQuery);
 
   const printersQuery = useMemo(() => {
     if (authLoading) return null;
-    return query(collection(db, 'assets'), where('type', '==', 'impressora'), ...getPermissionConstraints());
+    return query(
+      collection(db, 'assets'), 
+      where('type', '==', 'impressora'),
+      ...getPermissionConstraints()
+    );
   }, [authLoading, isAdmin, allowedUnits]);
   const [printerAssets, loadingPrinters] = useCollection(printersQuery);
 
-  // 2. Gráfico (Unidades)
-  // Aqui está a correção: filtra a COLEÇÃO units pelos IDs permitidos
+  // --- B. DADOS PARA O GRÁFICO (Esta query estava faltando) ---
+  const allAssetsQuery = useMemo(() => {
+    if (authLoading) return null;
+    return query(collection(db, 'assets'), ...getPermissionConstraints());
+  }, [authLoading, isAdmin, allowedUnits]);
+  // Aqui definimos a variável que estava dando erro:
+  const [allAssets, loadingAllAssets] = useCollection(allAssetsQuery);
+
+
+  // C. Unidades (Para os nomes)
   const unitsQuery = useMemo(() => {
     if (authLoading) return null;
-    if (isAdmin) return query(collection(db, 'units'), orderBy('name', 'asc'));
-    
-    if (allowedUnits.length > 0) {
-      // Firestore limita 'in' a 10 itens. Se tiver mais, ideal filtrar no cliente.
-      return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
+    if (allowedUnits && allowedUnits.length > 0) {
+        return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
+    }
+    if (isAdmin) {
+        return query(collection(db, 'units'), orderBy('name', 'asc'));
     }
     return null;
   }, [authLoading, isAdmin, allowedUnits]);
   const [units, loadingUnits] = useCollection(unitsQuery);
 
-  // 3. Histórico
+  // D. Histórico (Feed)
   const historyQuery = useMemo(() => {
-    if (authLoading) return null;
-    let constraints = [orderBy('timestamp', 'desc'), limit(5)];
-    if (!isAdmin) {
-      if (allowedUnits.length > 0) constraints.push(where('unitId', 'in', allowedUnits));
-      else return null;
-    }
-    return query(collectionGroup(db, 'history'), ...constraints);
-  }, [authLoading, isAdmin, allowedUnits]);
+    if (authLoading || !isAdmin) return null; // Só admin vê feed
+    return query(collectionGroup(db, 'history'), orderBy('timestamp', 'desc'), limit(5));
+  }, [authLoading, isAdmin]);
   const [history, loadingHistory, errorHistory] = useCollection(historyQuery);
 
 
+  // --- 3. CÁLCULO DO GRÁFICO ---
+  const pieChartData = useMemo(() => {
+    if (!allAssets || !units) return [];
+
+    // Conta quantos ativos existem por ID de unidade
+    const counts = {};
+    allAssets.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.status === 'Devolvido' || data.status === 'Descartado') return;
+
+        const uId = data.unitId;
+        if (uId) {
+            counts[uId] = (counts[uId] || 0) + 1;
+        }
+    });
+
+    // Mapeia usando os nomes das unidades
+    return units.docs
+      .map(doc => {
+         const unitData = doc.data();
+         const count = counts[doc.id] || 0;
+         return {
+            name: unitData.sigla || unitData.name,
+            value: count,
+            fill: COLORS[0] 
+         };
+      })
+      .filter(item => item.value > 0) // Esconde unidades vazias
+      .map((item, index) => ({
+          ...item,
+          fill: COLORS[index % COLORS.length]
+      }));
+
+  }, [allAssets, units]);
+
+
+  // --- 4. LOADING GLOBAL ---
   if (authLoading) {
     return <DashboardSkeleton />;
   }
 
-  // --- PROCESSAMENTO ---
+  // --- HELPERS VISUAIS ---
   const getActiveCount = (loading, snapshot) => {
     if (loading) return <Loader2 size={20} className={styles.spinnerSmall} />;
     if (!snapshot) return 0;
@@ -102,16 +157,6 @@ const Dashboard = () => {
     }).length;
   };
 
-  const pieChartData = units?.docs.map((doc, index) => ({
-    name: doc.data().sigla || doc.data().name, 
-    // Se for admin, pode usar assetCount do banco. Se não, teria que contar manualmente.
-    // Aqui assumimos que assetCount é global, então para não-admin pode mostrar números errados se não filtrarmos a view.
-    // Melhor abordagem para MVP: mostrar o dado que temos.
-    value: doc.data().assetCount || 0, 
-    fill: COLORS[index % COLORS.length] 
-  })) || [];
-
-  // Handlers
   const handleOpenRegister = () => { setModalView('select'); setIsModalOpen(true); };
   const handleOpenMaintenance = () => { setMaintenanceTarget(null); setModalView('maintenance_search'); setIsModalOpen(true); };
   const handleAssetFound = (assetData) => { setMaintenanceTarget(assetData); setModalView('maintenance_form'); };
@@ -172,49 +217,59 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className={styles.contentRow}>
+      {/* Layout Dinâmico: Ocupa 100% se não for Admin (sem feed) */}
+      <div className={`${styles.contentRow} ${!isAdmin ? styles.fullWidth : ''}`}>
+        
         <div className={styles.chartContainer}>
           <h2 className={styles.sectionTitle}>Ativos por Unidade</h2>
-          {loadingUnits ? <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div> : (
+          {/* Aqui usamos a variável loadingAllAssets que estava faltando */}
+          {(loadingAllAssets || loadingUnits) ? <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div> : (
             <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie data={pieChartData} cx="50%" cy="50%" labelLine={false} outerRadius={110} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
-                  {pieChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.fill} />))}
-                </Pie>
-                <Tooltip /> <Legend />
-              </PieChart>
+              {pieChartData.length > 0 ? (
+                <PieChart>
+                  <Pie data={pieChartData} cx="50%" cy="50%" labelLine={false} outerRadius={110} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                    {pieChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.fill} />))}
+                  </Pie>
+                  <Tooltip /> <Legend />
+                </PieChart>
+              ) : (
+                <div className={styles.emptyFeed}><p>Nenhum dado para exibir.</p></div>
+              )}
             </ResponsiveContainer>
           )}
         </div>
 
-        <div className={styles.feedContainer}>
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}><History size={18} /> Últimas Atividades</h2>
-            <Link to="/atividades" className={styles.viewAllLink}>Ver Tudo <ArrowRight size={16} /></Link>
-          </div>
-          
-          {loadingHistory && <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>}
-          {errorHistory && <div className={styles.emptyFeed}><p className={styles.errorText}>Erro no histórico.</p></div>}
-          {!loadingHistory && history?.docs.length === 0 && <div className={styles.emptyFeed}><PackageSearch size={30} /><p>Nenhuma atividade.</p></div>}
+        {/* Feed apenas para Admin */}
+        {isAdmin && (
+          <div className={styles.feedContainer}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}><History size={18} /> Últimas Atividades</h2>
+              <Link to="/atividades" className={styles.viewAllLink}>Ver Tudo <ArrowRight size={16} /></Link>
+            </div>
+            
+            {loadingHistory && <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>}
+            {errorHistory && <div className={styles.emptyFeed}><p className={styles.errorText}>Erro no histórico.</p></div>}
+            {!loadingHistory && history?.docs.length === 0 && <div className={styles.emptyFeed}><PackageSearch size={30} /><p>Nenhuma atividade.</p></div>}
 
-          <ul className={styles.feedList}>
-            {history?.docs.map(doc => {
-              const item = doc.data();
-              const date = item.timestamp?.toDate();
-              return (
-                <li key={doc.id} className={styles.feedItem}>
-                  <History className={styles.feedIcon} />
-                  <div className={styles.feedContent}>
-                    <strong>{item.type}</strong>
-                    <span className={styles.feedTime}>{date ? formatDistanceToNow(date, { addSuffix: true, locale: ptBR }) : '...'}</span>
-                    <p>{item.details}</p>
-                    <small>Usuário: {item.user}</small>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+            <ul className={styles.feedList}>
+              {history?.docs.map(doc => {
+                const item = doc.data();
+                const date = item.timestamp?.toDate();
+                return (
+                  <li key={doc.id} className={styles.feedItem}>
+                    <History className={styles.feedIcon} />
+                    <div className={styles.feedContent}>
+                      <strong>{item.type}</strong>
+                      <span className={styles.feedTime}>{date ? formatDistanceToNow(date, { addSuffix: true, locale: ptBR }) : '...'}</span>
+                      <p>{item.details}</p>
+                      <small>Usuário: {item.user}</small>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

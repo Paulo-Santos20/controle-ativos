@@ -350,3 +350,21 @@
   display: flex;
   align-items: center;
 }
+
+.contentRow {
+  display: grid;
+  grid-template-columns: 1fr; /* Mobile */
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .contentRow {
+    grid-template-columns: 2fr 1fr; /* Padrão: Gráfico + Feed */
+  }
+  
+  /* Essa classe remove a coluna do feed e estica o gráfico */
+  .contentRow.fullWidth {
+    grid-template-columns: 1fr; 
+  }
+}
