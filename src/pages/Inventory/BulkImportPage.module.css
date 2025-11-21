@@ -5,288 +5,218 @@
   padding: 20px;
   max-width: 1000px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
 }
 
 /* --- Header --- */
 .header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  flex-wrap: wrap;
-  gap: 15px;
+  flex-direction: column;
+  gap: 8px;
 }
-
 .title {
-  font-size: 2.2em;
+  font-size: 2rem;
   font-weight: 700;
   color: var(--color-text-primary);
-  margin-bottom: 5px;
 }
-
 .subtitle {
-  font-size: 1em;
   color: var(--color-text-secondary);
 }
 
-/* --- Botões --- */
-.secondaryButton {
-  background-color: var(--color-button-secondary-bg);
-  color: var(--color-button-secondary-text);
-  border: 1px solid var(--color-button-secondary-border);
-  padding: 10px 18px;
-  border-radius: var(--border-radius);
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s ease;
+/* --- Seletor de Tipo --- */
+.typeSelector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
 }
 
-.secondaryButton:hover {
-  background-color: var(--color-button-secondary-hover-bg);
-  color: var(--color-button-secondary-hover-text);
-  border-color: var(--color-button-secondary-hover-border);
+.typeButton {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background-color: var(--color-bg-component);
+  border: 2px solid var(--color-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
 }
+
+.typeButton svg {
+  color: var(--color-text-secondary);
+}
+
+.typeButton div {
+  display: flex;
+  flex-direction: column;
+}
+.typeButton strong {
+  font-size: 1.1rem;
+  color: var(--color-text-primary);
+}
+.typeButton small {
+  color: var(--color-text-secondary);
+}
+
+/* Estado Ativo do Seletor */
+.typeButton.activeType {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light-alpha);
+}
+.typeButton.activeType svg {
+  color: var(--color-primary);
+}
+
+/* --- Área de Ação (Passos) --- */
+.actionArea {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background-color: var(--color-bg-component);
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.stepNum {
+  background-color: var(--color-primary);
+  color: white;
+  font-weight: bold;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.step p {
+  color: var(--color-text-primary);
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+}
+
+/* Dropzone Simplificado */
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: var(--color-bg-page);
+}
+.dropzone:hover, .dropzone.active {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light-alpha);
+}
+.uploadIcon { color: var(--color-primary); margin-bottom: 10px; }
+.dropText p { font-weight: 600; margin-bottom: 4px; }
+
+/* --- Preview e Botões --- */
+.secondaryButton {
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+.secondaryButton:hover { border-color: var(--color-text-secondary); }
 
 .primaryButton {
   background-color: var(--color-primary);
-  color: #fff;
+  color: white;
   border: none;
   padding: 10px 20px;
-  border-radius: var(--border-radius);
+  border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: background-color 0.2s ease;
 }
-
-.primaryButton:hover {
-  background-color: var(--color-primary-dark);
-}
-
-.primaryButton:disabled {
-  background-color: var(--color-button-disabled-bg);
-  color: var(--color-button-disabled-text);
-  cursor: not-allowed;
-}
+.primaryButton:hover { background-color: var(--color-primary-dark); }
+.primaryButton:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .tertiaryButton {
-  background-color: transparent;
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
-  padding: 9px 16px;
-  border-radius: var(--border-radius);
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s ease;
+  background: none; border: 1px solid var(--color-border); color: var(--color-text-secondary);
+  padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
 }
-
-.tertiaryButton:hover {
-  background-color: var(--color-bg-hover);
-  color: var(--color-text-primary);
-  border-color: var(--color-border-hover);
-}
+.tertiaryButton:hover { background-color: var(--color-bg-page); color: var(--color-text-primary); }
 
 .textButton {
-  background: none;
-  border: none;
-  color: var(--color-primary);
-  cursor: pointer;
-  font-size: 0.9em;
-  font-weight: 500;
-  margin-top: 10px;
-  transition: color 0.2s ease;
+  background: none; border: none; color: var(--color-primary);
+  cursor: pointer; font-weight: 600; text-decoration: underline;
 }
 
-.textButton:hover {
-  color: var(--color-primary-dark);
-}
-
-/* --- Dropzone (Área de Upload) --- */
-.dropzone {
-  border: 2px dashed var(--color-border-hover);
-  border-radius: var(--border-radius-lg);
-  padding: 40px 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background-color: var(--color-bg-component);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
-  margin-bottom: 30px;
-}
-
-.dropzone.active {
-  border-color: var(--color-primary);
-  background-color: var(--color-primary-light-alpha);
-}
-
-.uploadIcon {
-  color: var(--color-text-secondary);
-  opacity: 0.7;
-}
-
-.dropText {
-  color: var(--color-text-primary);
-  font-size: 1.1em;
-  font-weight: 500;
-}
-
-.dropText p {
-  margin-bottom: 5px;
-}
-
-/* --- Mensagens de Erro --- */
+/* Error Box */
 .errorBox {
   background-color: var(--color-error-bg);
-  color: var(--color-error-text);
   border: 1px solid var(--color-error-border);
-  border-radius: var(--border-radius);
-  padding: 15px 20px;
-  margin-bottom: 20px;
-}
-
-.errorBox h3 {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 1.1em;
-  margin-bottom: 10px;
   color: var(--color-error-text);
+  padding: 16px;
+  border-radius: 8px;
 }
+.errorBox ul { padding-left: 20px; margin: 10px 0; font-size: 0.9rem; }
 
-.errorBox ul {
-  list-style: disc;
-  margin-left: 20px;
-}
-
-.errorBox li {
-  margin-bottom: 5px;
-}
-
-/* --- Preview e Tabela --- */
+/* Preview Table */
 .previewContainer {
   background-color: var(--color-bg-component);
-  border-radius: var(--border-radius);
   border: 1px solid var(--color-border);
+  border-radius: 12px;
   padding: 20px;
 }
-
 .previewHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
-  gap: 15px;
-}
-
-.successBadge {
-  background-color: var(--color-success-bg);
-  color: var(--color-success-text);
-  padding: 8px 15px;
-  border-radius: var(--border-radius-full);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-}
-
-.successBadge strong {
-  font-weight: 700;
-}
-
-.actionButtons {
-  display: flex;
   gap: 10px;
 }
+.successBadge {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--color-success-text); background-color: var(--color-success-bg);
+  padding: 6px 12px; border-radius: 20px; font-weight: 500; font-size: 0.9rem;
+}
+.actionButtons { display: flex; gap: 10px; }
 
 .tablePreview {
-  background: var(--color-bg-component);
+  overflow-x: auto;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  overflow-x: auto;
 }
+.tablePreview table { width: 100%; border-collapse: collapse; min-width: 600px; }
+.tablePreview th { background-color: var(--color-bg-page); text-align: left; padding: 12px; font-size: 0.8rem; text-transform: uppercase; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border); }
+.tablePreview td { padding: 12px; border-bottom: 1px solid var(--color-border); color: var(--color-text-primary); }
+.tablePreview tr:last-child td { border-bottom: none; }
 
-.tablePreview table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 800px;
-}
+.moreText { text-align: center; padding: 10px; color: var(--color-text-secondary); font-size: 0.85rem; }
+.spinner { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-.tablePreview th, .tablePreview td {
-  padding: 12px 15px;
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-text-primary);
-}
-
-.tablePreview th {
-  background-color: var(--color-bg-page);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
-  font-weight: 700;
-}
-
-.tablePreview tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.tablePreview tbody tr:hover {
-  background-color: var(--color-bg-hover);
-}
-
-.moreText {
-  text-align: center;
-  margin-top: 15px;
-  color: var(--color-text-secondary);
-  font-style: italic;
-  font-size: 0.9em;
-}
-
-.statusTag {
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background-color: var(--color-bg-page);
-  border: 1px solid var(--color-border);
-}
-
-/* --- Spinner --- */
-.spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* --- Responsividade --- */
-@media (max-width: 768px) {
-  .header, .previewHeader {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .actionButtons {
-    width: 100%;
-    justify-content: stretch;
-  }
-  
-  .actionButtons button {
-    flex-grow: 1;
-  }
+@media (max-width: 640px) {
+  .typeSelector { grid-template-columns: 1fr; }
+  .previewHeader { flex-direction: column; align-items: flex-start; }
+  .actionButtons { width: 100%; justify-content: space-between; }
+  .actionButtons button { flex: 1; }
 }
