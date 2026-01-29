@@ -126,7 +126,7 @@ const Login = () => {
           <div className={styles.logoCircle}>
             <Hospital size={40} color="var(--color-primary)" />
           </div>
-          <h1 className={styles.title}>ITAM HCP Gestão</h1>
+          <h1 className={styles.title}>ATIVOS HCP Gestão</h1>
           <p className={styles.subtitle}>Acesso ao Sistema de Ativos</p>
         </div>
 

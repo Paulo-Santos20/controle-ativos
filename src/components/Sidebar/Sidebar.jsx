@@ -47,7 +47,7 @@ const Sidebar = () => {
         <aside className={styles.sidebar}>
             <div className={styles.logoContainer}>
                 <Hospital size={30} /> 
-                <h1>ITAM Hospitalar</h1>
+                <h1>ATIVOS Hospitalar</h1>
             </div>
 
             <nav className={styles.nav}>

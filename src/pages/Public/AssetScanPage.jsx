@@ -162,7 +162,7 @@ const AssetScanPage = () => {
         </Link>
       </div>
 
-      <footer className={styles.footer}>ITAM Hospitalar • Ficha Digital</footer>
+      <footer className={styles.footer}>ATIVOS Hospitalar • Ficha Digital</footer>
     </div>
   );
 };

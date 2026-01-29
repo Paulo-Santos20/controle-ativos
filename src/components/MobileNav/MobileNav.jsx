@@ -25,7 +25,7 @@ const MobileNav = ({ isOpen, onClose }) => {
         <header className={styles.header}>
           <div className={styles.logoContainer}>
             <LuHospital size={26} />
-            <h1>ITAM Hospitalar</h1>
+            <h1>ATIVOS Hospitalar</h1>
           </div>
           <button onClick={onClose} className={styles.closeButton} aria-label="Fechar menu">
             <LuX size={24} />

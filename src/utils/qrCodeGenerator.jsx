@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode'; 
 
-export const generateQrCodePdf = async (assets, hospitalLogoUrl, hospitalName = "ITAM Hospitalar") => {
+export const generateQrCodePdf = async (assets, hospitalLogoUrl, hospitalName = "ATIVOS Hospitalar") => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   
   // ... (código de configuração de página e dimensões mantém igual) ...

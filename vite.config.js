@@ -24,8 +24,8 @@ export default defineConfig({
       // ... (seu manifesto continua aqui igual) ...
       manifest: {
         // ... mantenha suas configurações de ícones e cores ...
-        name: 'ITAM Hospitalar',
-        short_name: 'ITAM',
+        name: 'ATIVOS Hospitalar',
+        short_name: 'ATIVOS',
         theme_color: '#007aff',
         background_color: '#f2f2f7',
         display: 'standalone',
