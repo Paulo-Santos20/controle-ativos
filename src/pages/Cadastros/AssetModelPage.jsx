@@ -1,9 +1,29 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, orderBy, query, where } from 'firebase/firestore'; 
+import { 
+  collection, 
+  orderBy, 
+  query, 
+  where, 
+  documentId 
+} from 'firebase/firestore'; 
 import { db } from '../../lib/firebase';
-import { Plus, Loader2, Search, Laptop, ChevronRight, Package, Printer, HardDrive, Pencil, ShieldAlert } from 'lucide-react';
+import { 
+  Plus, 
+  Loader2, 
+  Search, 
+  Laptop, 
+  ChevronRight, 
+  Package, 
+  Printer, 
+  HardDrive, 
+  Pencil, 
+  ShieldAlert 
+} from 'lucide-react';
+
+// --- Imports para o Gráfico ---
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 import { useAuth } from '../../hooks/useAuth';
 
@@ -13,6 +33,8 @@ import AddAssetForm from '../../components/Inventory/AddAssetForm';
 import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
 import EditAssetForm from '../../components/Inventory/EditAssetForm'; 
 import EditPrinterForm from '../../components/Inventory/EditPrinterForm';
+
+const COLORS = ['#007aff', '#5ac8fa', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
 
 const TypeIcon = ({ type }) => {
   if (type === 'computador') return <Laptop size={20} />;
@@ -27,7 +49,7 @@ const AssetModelPage = ({ type, title }) => {
   const [editingAssetDoc, setEditingAssetDoc] = useState(null); 
   const [searchTerm, setSearchTerm] = useState("");
 
-  // --- QUERY SEGURA ---
+  // --- 1. QUERY DE ATIVOS (JÁ FILTRADA POR TIPO) ---
   const q = useMemo(() => {
     if (authLoading) return null;
 
@@ -48,7 +70,58 @@ const AssetModelPage = ({ type, title }) => {
   
   const [assets, loading, error] = useCollection(q);
 
-  // --- FILTRAGEM VISUAL ---
+  // --- 2. QUERY DE UNIDADES (NECESSÁRIA PARA O GRÁFICO) ---
+  const unitsQuery = useMemo(() => {
+    if (authLoading) return null;
+    if (allowedUnits && allowedUnits.length > 0) {
+        return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
+    }
+    if (isAdmin) {
+        return query(collection(db, 'units'), orderBy('name', 'asc'));
+    }
+    return null;
+  }, [authLoading, isAdmin, allowedUnits]);
+  
+  const [unitsSnapshot, loadingUnits] = useCollection(unitsQuery);
+
+  // --- 3. CÁLCULO DOS DADOS DO GRÁFICO ---
+  const pieChartData = useMemo(() => {
+    if (!assets || !unitsSnapshot) return [];
+
+    // Conta quantos ativos existem por ID de unidade
+    // Como 'assets' já está filtrado por 'type' na query principal,
+    // este gráfico mostrará apenas computadores OU impressoras dependendo da página.
+    const counts = {};
+    assets.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.status === 'Devolvido' || data.status === 'Descartado') return;
+
+        const uId = data.unitId;
+        if (uId) {
+            counts[uId] = (counts[uId] || 0) + 1;
+        }
+    });
+
+    // Mapeia usando os nomes das unidades
+    return unitsSnapshot.docs
+      .map(doc => {
+         const unitData = doc.data();
+         const count = counts[doc.id] || 0;
+         return {
+            name: unitData.sigla || unitData.name,
+            value: count,
+            fill: COLORS[0] 
+         };
+      })
+      .filter(item => item.value > 0) // Esconde unidades vazias
+      .map((item, index) => ({
+          ...item,
+          fill: COLORS[index % COLORS.length]
+      }));
+
+  }, [assets, unitsSnapshot]);
+
+  // --- FILTRAGEM VISUAL (BUSCA) ---
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
     
@@ -158,7 +231,44 @@ const AssetModelPage = ({ type, title }) => {
         </button>
       </header>
 
-      {/* 2. BARRA DE BUSCA (AQUI É O LUGAR CORRETO) */}
+      {/* 2. GRÁFICO (NOVO) */}
+      <div className={styles.chartSection} style={{ marginBottom: 20, background: 'var(--color-background-card)', padding: 20, borderRadius: 12, boxShadow: 'var(--shadow-card)' }}>
+         <h3 style={{ marginBottom: 15, fontSize: '1.1rem', color: 'var(--color-text-primary)' }}>Distribuição por Unidade</h3>
+         
+         {(loading || loadingUnits) ? (
+             <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                 <Loader2 className={styles.spinner} />
+             </div>
+         ) : (
+             <div style={{ width: '100%', height: 250 }}>
+                {pieChartData.length > 0 ? (
+                    <ResponsiveContainer>
+                        <PieChart>
+                            <Pie 
+                                data={pieChartData} 
+                                cx="50%" 
+                                cy="50%" 
+                                labelLine={false} 
+                                outerRadius={80} 
+                                dataKey="value" 
+                                label={({ name, value }) => `${name}: ${value}`}
+                            >
+                                {pieChartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                            </Pie>
+                            <Tooltip /> 
+                            <Legend verticalAlign="bottom" height={36}/>
+                        </PieChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', marginTop: 100 }}>Sem dados para exibir.</p>
+                )}
+             </div>
+         )}
+      </div>
+
+      {/* 3. BARRA DE BUSCA */}
       <div className={styles.toolbar}>
         <div className={styles.searchBox}>
           <Search size={18} />
@@ -171,7 +281,7 @@ const AssetModelPage = ({ type, title }) => {
         </div>
       </div>
 
-      {/* 3. CONTEÚDO (TABELA OU MENSAGEM DE VAZIO) */}
+      {/* 4. CONTEÚDO (TABELA OU MENSAGEM DE VAZIO) */}
       <div className={styles.content}>
         {(loading || authLoading) && (
           <div className={styles.loadingState}>

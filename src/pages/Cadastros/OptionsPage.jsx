@@ -89,10 +89,7 @@ const OptionsPage = () => {
             Cadastre as opções padrão (Setores, Locais, etc) usadas nos formulários.
           </p>
         </div>
-        <button className={styles.secondaryButton} onClick={handlePopulateDefaults} disabled={isSeeding}>
-          <Database size={16} />
-          {isSeeding ? "Criando..." : "Carregar Padrões do Sistema"}
-        </button>
+        
       </header>
 
       <div style={{ display: 'flex', gap: '24px', flexDirection: 'column', marginTop: '20px' }}>

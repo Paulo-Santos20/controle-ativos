@@ -5,19 +5,17 @@ import { z } from 'zod';
 import { 
   collection, 
   doc, 
-  setDoc, 
   serverTimestamp, 
   query, 
   orderBy, 
-  writeBatch // Importa o writeBatch para a transação
+  writeBatch // Importa o writeBatch para transações atômicas (Edição + Histórico)
 } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { db, auth } from '/src/lib/firebase.js'; // Importa 'auth' para o log
+import { db, auth } from '/src/lib/firebase.js'; 
 import { toast } from 'sonner';
-// Reutiliza o CSS dedicado para formulários de ativos
 import styles from './AssetForms.module.css'; 
 
-// --- Constantes para os Dropdowns (UI/UX de Excelência) ---
+// --- Constantes Atualizadas ---
 const tiposAtivo = [
   "Multifuncional", 
   "Comum", 
@@ -37,10 +35,19 @@ const opcoesStatus = [
 ];
 const opcoesConectividade = ["Rede/USB", "Rede", "USB", "Wi-Fi", "Bluetooth", "Outro"];
 const opcoesFrenteVerso = ["Sim", "Não", "Não se aplica"];
-const opcoesCartucho = ["Laser (Toner)", "Jato de Tinta", "Térmica (Ribbon)", "Térmica (Direta)", "Matricial (Fita)", "Outro"];
+
+// --- ATUALIZADO: Opção 'Etiqueta' incluída ---
+const opcoesCartucho = [
+  "Laser (Toner)", 
+  "Jato de Tinta", 
+  "Térmica (Ribbon)", 
+  "Térmica (Direta)", 
+  "Matricial (Fita)", 
+  "Etiqueta", 
+  "Outro"
+];
 const opcoesColorido = ["Sim", "Não"];
 
-// Opções de Localização (Reutilizadas)
 const opcoesPavimento = ["Subsolo", "Térreo", "1º Andar", "2º Andar", "3º Andar", "4º Andar", "Outro"];
 const opcoesSetor = [
   "Recepção", "Triagem", "Emergência", "UTI Adulto", "UTI Neonatal", "UTI Pediátrica",
@@ -57,8 +64,9 @@ const opcoesSala = [
 ];
 
 /**
- * Schema de validação Zod para editar uma Impressora.
- * (Não valida 'tombamento' pois é o ID).
+ * Schema de validação Zod para EDITAR.
+ * OBS: O campo 'tombamento' NÃO está aqui pois ele é o ID do documento
+ * e não deve ser alterado na edição, apenas visualizado.
  */
 const printerSchema = z.object({
   // Seção "Dados"
@@ -91,10 +99,6 @@ const printerSchema = z.object({
 
 /**
  * Formulário para EDITAR um Ativo (Impressora) existente.
- * @param {object} props
- * @param {() => void} props.onClose - Função para fechar o modal.
- * @param {string} props.assetId - O ID (Tombamento) do ativo.
- * @param {object} props.existingData - Os dados atuais do ativo para pré-preencher.
  */
 const EditPrinterForm = ({ onClose, assetId, existingData }) => {
   // Busca 'units' (Hospitais) para o dropdown de Localização
@@ -106,16 +110,16 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
     register, 
     handleSubmit, 
     reset,
-    watch, // Para observar o campo "Colorido"
+    watch,
     formState: { errors, isSubmitting } 
   } = useForm({
     resolver: zodResolver(printerSchema)
   });
 
-  // UI/UX: Preenche o formulário com os dados existentes
+  // Preenche o formulário com os dados existentes ao abrir
   useEffect(() => {
     if (existingData) {
-      reset(existingData); // 'reset' preenche todos os campos
+      reset(existingData); 
     }
   }, [existingData, reset]);
 
@@ -123,44 +127,45 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
   const isColorida = watch("colorido") === "Sim";
 
   /**
-   * Salva as alterações na impressora e, se o status mudou,
-   * cria um log de histórico em uma transação.
+   * Salva as alterações e gera histórico se necessário
    */
   const onSubmit = async (data) => {
     const toastId = toast.loading("Salvando alterações...");
     try {
-      // 1. Inicia o Lote (Princípio 5: Código de Alta Qualidade)
+      // 1. Inicia o Lote (Batch)
       const batch = writeBatch(db);
 
       // 2. Define a atualização do documento principal
       const assetRef = doc(db, 'assets', assetId);
+      
       const updatedAsset = { 
         ...data, 
-        lastSeen: serverTimestamp() // Atualiza "visto por último"
+        lastSeen: serverTimestamp() // Atualiza data de modificação
       };
-      // 'merge: true' preserva campos como 'createdAt'
+      
+      // O 'tombamento' (ID) não é alterado aqui, pois ele é a chave do documento
       batch.set(assetRef, updatedAsset, { merge: true });
 
-      // 3. (A CORREÇÃO) Verifica se o status mudou e cria o log
+      // 3. Verifica se o status mudou para criar log
       const statusHasChanged = existingData.status !== data.status;
       
       if (statusHasChanged) {
-        const historyRef = doc(collection(assetRef, 'history')); // Cria log na subcoleção
+        const historyRef = doc(collection(assetRef, 'history')); 
         batch.set(historyRef, {
           type: "Atualização de Status",
           details: `Status alterado de "${existingData.status}" para "${data.status}".`,
           oldStatus: existingData.status,
           newStatus: data.status,
           timestamp: serverTimestamp(),
-          user: auth.currentUser.displayName || auth.currentUser.email,
+          user: auth.currentUser?.email || "Sistema",
         });
       }
       
-      // 4. Executa a transação
+      // 4. Efetiva as mudanças
       await batch.commit();
       
-      toast.success(`Impressora ${assetId} atualizada!`, { id: toastId });
-      onClose(); // Fecha o modal
+      toast.success(`Impressora atualizada com sucesso!`, { id: toastId });
+      onClose(); 
     } catch (error) {
       console.error("Erro ao atualizar:", error);
       toast.error("Erro ao atualizar: " + error.message, { id: toastId });
@@ -168,18 +173,17 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
   };
 
   return (
-    // Reutiliza o CSS (AssetForms.module.css)
     <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
       
       {/* === SEÇÃO DADOS === */}
       <fieldset className={styles.fieldset}>
         <legend className={styles.subtitle}>Dados da Impressora</legend>
         
-        {/* UI/UX: Mostra o ID (Tombamento) mas não permite edição */}
+        {/* UI/UX: Mostra o ID (Tombamento) mas desabilitado */}
         <div className={styles.formGroup}>
             <label>Tombamento (ID)</label>
             <input defaultValue={assetId} disabled className={styles.inputDisabled} />
-            <small>O Tombamento (ID) não pode ser editado.</small>
+            <small style={{color: '#666', fontSize: '0.8em'}}>O Tombamento (ID) não pode ser alterado na edição.</small>
         </div>
 
         <div className={styles.grid3}>
@@ -209,7 +213,7 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
         <div className={styles.grid3}>
            <div className={styles.formGroup}>
             <label htmlFor="serial">Serial</label>
-            <input id="serial" {...register("serial")} placeholder="Digite o serial..." className={errors.serial ? styles.inputError : ''} />
+            <input id="serial" {...register("serial")} className={errors.serial ? styles.inputError : ''} />
             {errors.serial && <p className={styles.errorMessage}>{errors.serial.message}</p>}
           </div>
            <div className={styles.formGroup}>
@@ -279,7 +283,6 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="cartuchoPreto">Modelo Cartucho Preto</label>
             <input id="cartuchoPreto" {...register("cartuchoPreto")} placeholder="Ex: TN-3472" />
           </div>
-          {/* UI/UX: Campo condicional */}
           {isColorida && (
             <div className={styles.formGroup}>
               <label htmlFor="cartuchoColorido">Modelo Cartucho Colorido</label>
