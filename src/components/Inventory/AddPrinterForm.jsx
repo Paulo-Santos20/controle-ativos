@@ -23,7 +23,6 @@ const opcoesMarca = [
   "GODEX", "Konica Minolta", "Ricoh", "Samsung", "Outra"
 ];
 const opcoesPropriedade = ["Própria", "Alugada", "Doação"];
-// --- Fim da Atualização ---
 
 const opcoesStatus = [
   "Em uso", "Manutenção", "Inativo", "Estoque", 
@@ -31,7 +30,17 @@ const opcoesStatus = [
 ];
 const opcoesConectividade = ["Rede/USB", "Rede", "USB", "Wi-Fi", "Bluetooth", "Outro"];
 const opcoesFrenteVerso = ["Sim", "Não", "Não se aplica"];
-const opcoesCartucho = ["Laser (Toner)", "Jato de Tinta", "Térmica (Ribbon)", "Térmica (Direta)", "Matricial (Fita)", "Outro"];
+
+// --- ATUALIZADO: Adicionada opção 'Etiqueta' ---
+const opcoesCartucho = [
+  "Laser (Toner)", 
+  "Jato de Tinta", 
+  "Térmica (Ribbon)", 
+  "Térmica (Direta)", 
+  "Matricial (Fita)", 
+  "Etiqueta", // Nova opção adicionada
+  "Outro"
+];
 const opcoesColorido = ["Sim", "Não"];
 
 // Opções de Localização (Reutilizadas)
@@ -56,11 +65,12 @@ const opcoesSala = [
 const printerSchema = z.object({
   // --- Seção "Dados" ---
   tipoAtivo: z.string().min(1, "O Tipo de Ativo é obrigatório"),
-  marca: z.string().min(1, "A Marca é obrigatória"), // <-- Campo 'marca' ainda é validado
+  marca: z.string().min(1, "A Marca é obrigatória"),
   modelo: z.string().min(1, "O Modelo é obrigatório"),
   serial: z.string().min(3, "O Serial é obrigatório"),
-  tombamento: z.string().min(3, "O Tombamento (ID do Doc) é obrigatório"),
-  propriedade: z.string().min(1, "A Propriedade é obrigatória"), // <-- Campo 'propriedade'
+  // --- ATUALIZADO: Tombamento agora é opcional ---
+  tombamento: z.string().optional().or(z.literal('')),
+  propriedade: z.string().min(1, "A Propriedade é obrigatória"),
   status: z.string().min(1, "O Status é obrigatório"),
   
   // --- Seção "Configuração" ---
@@ -116,20 +126,25 @@ const AddPrinterForm = ({ onClose, onBack }) => {
   const onSubmit = async (data) => {
     const toastId = toast.loading("Registrando impressora...");
     try {
-      // Usamos o 'tombamento' como ID único do documento
-      const assetRef = doc(db, 'assets', data.tombamento);
+      // LOGICA DE ID: Se tiver tombamento, usa ele. Se não, usa o Serial (que é obrigatório).
+      const docId = data.tombamento && data.tombamento.trim() !== '' 
+                    ? data.tombamento.trim() 
+                    : data.serial.trim();
+
+      const assetRef = doc(db, 'assets', docId);
       
       const newAsset = {
         ...data,
+        // Garante que salve como string vazia se undefined
+        tombamento: data.tombamento || "", 
         createdAt: serverTimestamp(),
         lastSeen: serverTimestamp(),
-        // Adiciona o tipo "pai" explicitamente
         type: 'impressora' 
       };
 
       await setDoc(assetRef, newAsset);
       
-      toast.success(`Impressora ${data.tombamento} registrada!`, { id: toastId });
+      toast.success(`Impressora registrada com sucesso!`, { id: toastId });
       onClose(); // Fecha o modal
     } catch (error) {
       console.error("Erro ao registrar ativo:", error);
@@ -151,7 +166,6 @@ const AddPrinterForm = ({ onClose, onBack }) => {
         <legend className={styles.subtitle}>Dados da Impressora</legend>
         
         <div className={styles.grid3}>
-          {/* --- ATUALIZADO: Tipo Ativo --- */}
           <div className={styles.formGroup}>
             <label htmlFor="tipoAtivo">Tipo Ativo</label>
             <select id="tipoAtivo" {...register("tipoAtivo")} className={errors.tipoAtivo ? styles.inputError : ''}>
@@ -161,7 +175,6 @@ const AddPrinterForm = ({ onClose, onBack }) => {
             {errors.tipoAtivo && <p className={styles.errorMessage}>{errors.tipoAtivo.message}</p>}
           </div>
           
-          {/* --- ATUALIZADO: Marca (de <input> para <select>) --- */}
           <div className={styles.formGroup}>
             <label htmlFor="marca">Marca</label>
             <select id="marca" {...register("marca")} className={errors.marca ? styles.inputError : ''}>
@@ -180,17 +193,16 @@ const AddPrinterForm = ({ onClose, onBack }) => {
 
         <div className={styles.grid3}>
            <div className={styles.formGroup}>
-            <label htmlFor="tombamento">Tombamento (ID)</label>
-            <input id="tombamento" {...register("tombamento")} placeholder="Digite o tombamento..." className={errors.tombamento ? styles.inputError : ''} />
+            <label htmlFor="tombamento">Tombamento (Opcional)</label>
+            <input id="tombamento" {...register("tombamento")} placeholder="Se vazio, o Serial será o ID" className={errors.tombamento ? styles.inputError : ''} />
             {errors.tombamento && <p className={styles.errorMessage}>{errors.tombamento.message}</p>}
           </div>
           <div className={styles.formGroup}>
-            <label htmlFor="serial">Serial</label>
+            <label htmlFor="serial">Serial *</label>
             <input id="serial" {...register("serial")} placeholder="Digite o serial..." className={errors.serial ? styles.inputError : ''} />
             {errors.serial && <p className={styles.errorMessage}>{errors.serial.message}</p>}
           </div>
            <div className={styles.formGroup}>
-            {/* --- ATUALIZADO: Propriedade --- */}
             <label htmlFor="propriedade">Propriedade</label>
             <select id="propriedade" {...register("propriedade")} className={errors.propriedade ? styles.inputError : ''}>
               <option value="">Selecione...</option>
@@ -240,7 +252,7 @@ const AddPrinterForm = ({ onClose, onBack }) => {
         
         <div className={styles.grid2}>
           <div className={styles.formGroup}>
-            <label htmlFor="cartucho">Tipo de Insumo (Cartucho)</label>
+            <label htmlFor="cartucho">Tipo de Insumo</label>
             <select id="cartucho" {...register("cartucho")} className={errors.cartucho ? styles.inputError : ''}>
               <option value="">Selecione...</option>
               {opcoesCartucho.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -258,11 +270,10 @@ const AddPrinterForm = ({ onClose, onBack }) => {
 
         <div className={styles.grid3}>
           <div className={styles.formGroup}>
-            <label htmlFor="cartuchoPreto">Modelo Cartucho Preto</label>
-            <input id="cartuchoPreto" {...register("cartuchoPreto")} placeholder="Ex: TN-3472" />
+            <label htmlFor="cartuchoPreto">Modelo Cartucho Preto/Insumo</label>
+            <input id="cartuchoPreto" {...register("cartuchoPreto")} placeholder="Ex: TN-3472 ou Ribbon" />
           </div>
           
-          {/* UI/UX: Campo condicional */}
           {isColorida && (
             <div className={styles.formGroup}>
               <label htmlFor="cartuchoColorido">Modelo Cartucho Colorido</label>
@@ -271,7 +282,7 @@ const AddPrinterForm = ({ onClose, onBack }) => {
           )}
           
           <div className={styles.formGroup}>
-            <label htmlFor="drCilindro">Modelo DR/Cilindro</label>
+            <label htmlFor="drCilindro">Modelo DR/Cilindro (Opcional)</label>
             <input id="drCilindro" {...register("drCilindro")} placeholder="Ex: DR-3440" />
           </div>
         </div>
