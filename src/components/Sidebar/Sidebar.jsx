@@ -182,8 +182,6 @@ const Sidebar = () => {
                     </li>
                 </ul>
             </nav>
-            
-            <div className={styles.userSection} style={{ display: 'none' }}></div>
         </aside>
     );
 };

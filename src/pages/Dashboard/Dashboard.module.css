@@ -58,6 +58,17 @@
   }
 }
 
+@media (max-width: 480px) {
+  .title {
+    font-size: 1.5rem;
+  }
+  
+  .actionButton, .actionButtonSecondary {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.875rem;
+  }
+}
+
 /* --- Grid de Cards (Resumo) --- */
 .cardGrid {
   display: grid;

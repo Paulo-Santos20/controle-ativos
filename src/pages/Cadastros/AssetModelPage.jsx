@@ -29,12 +29,11 @@ import { useAuth } from '../../hooks/useAuth';
 
 import styles from './CadastroPages.module.css'; 
 import Modal from '../../components/Modal/Modal';
+import { COLORS } from '../../constants/options';
 import AddAssetForm from '../../components/Inventory/AddAssetForm'; 
 import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
 import EditAssetForm from '../../components/Inventory/EditAssetForm'; 
 import EditPrinterForm from '../../components/Inventory/EditPrinterForm';
-
-const COLORS = ['#007aff', '#5ac8fa', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
 
 const TypeIcon = ({ type }) => {
   if (type === 'computador') return <Laptop size={20} />;

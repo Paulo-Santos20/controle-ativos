@@ -1,16 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, doc, setDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, query, orderBy, getDoc } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { db } from '/src/lib/firebase.js'; // Caminho absoluto
+import { db } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
-// Reutiliza o CSS do formulário de computador (Código de Alta Qualidade)
-import styles from './AssetForms.module.css'; 
+import styles from './AssetForms.module.css';
+import { OPCOES_STATUS, OPCOES_PAVIMENTO, OPCOES_SETOR, OPCOES_SALA } from '../../constants/options';
 
-// --- ATUALIZADO: Constantes para os Dropdowns (UI/UX de Excelência) ---
-const tiposAtivo = [
+const TIPOS_ATIVO_IMPRESSORA = [
   "Multifuncional", 
   "Comum", 
   "Etiquetadora", 
@@ -18,30 +17,23 @@ const tiposAtivo = [
   "Térmica", 
   "Outro"
 ];
-const opcoesMarca = [
+const OPCOES_MARCA_IMPRESSORA = [
   "Brother", "HP", "Epson", "Gainscha", "Dascom", 
   "GODEX", "Konica Minolta", "Ricoh", "Samsung", "Outra"
 ];
-const opcoesPropriedade = ["Própria", "Alugada", "Doação"];
-
-const opcoesStatus = [
-  "Em uso", "Manutenção", "Inativo", "Estoque", 
-  "Manutenção agendada", "Devolução agendada", "Devolvido", "Reativação agendada"
-];
-const opcoesConectividade = ["Rede/USB", "Rede", "USB", "Wi-Fi", "Bluetooth", "Outro"];
-const opcoesFrenteVerso = ["Sim", "Não", "Não se aplica"];
-
-// --- ATUALIZADO: Adicionada opção 'Etiqueta' ---
-const opcoesCartucho = [
+const OPCOES_PROPRIEDADE = ["Própria", "Alugada", "Doação"];
+const OPCOES_CONECTIVIDADE = ["Rede/USB", "Rede", "USB", "Wi-Fi", "Bluetooth", "Outro"];
+const OPCOES_FRENTE_VERSO = ["Sim", "Não", "Não se aplica"];
+const OPCOES_CARTUCHO = [
   "Laser (Toner)", 
   "Jato de Tinta", 
   "Térmica (Ribbon)", 
   "Térmica (Direta)", 
   "Matricial (Fita)", 
-  "Etiqueta", // Nova opção adicionada
+  "Etiqueta",
   "Outro"
 ];
-const opcoesColorido = ["Sim", "Não"];
+const OPCOES_COLORIDO = ["Sim", "Não"];
 
 // Opções de Localização (Reutilizadas)
 const opcoesPavimento = ["Subsolo", "Térreo", "1º Andar", "2º Andar", "3º Andar", "4º Andar", "Outro"];
@@ -170,7 +162,7 @@ const AddPrinterForm = ({ onClose, onBack }) => {
             <label htmlFor="tipoAtivo">Tipo Ativo</label>
             <select id="tipoAtivo" {...register("tipoAtivo")} className={errors.tipoAtivo ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {tiposAtivo.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+              {TIPOS_ATIVO_IMPRESSORA.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
             </select>
             {errors.tipoAtivo && <p className={styles.errorMessage}>{errors.tipoAtivo.message}</p>}
           </div>
@@ -179,7 +171,7 @@ const AddPrinterForm = ({ onClose, onBack }) => {
             <label htmlFor="marca">Marca</label>
             <select id="marca" {...register("marca")} className={errors.marca ? styles.inputError : ''}>
               <option value="">Selecione a marca...</option>
-              {opcoesMarca.map(marca => <option key={marca} value={marca}>{marca}</option>)}
+              {OPCOES_MARCA_IMPRESSORA.map(marca => <option key={marca} value={marca}>{marca}</option>)}
             </select>
             {errors.marca && <p className={styles.errorMessage}>{errors.marca.message}</p>}
           </div>
@@ -206,7 +198,7 @@ const AddPrinterForm = ({ onClose, onBack }) => {
             <label htmlFor="propriedade">Propriedade</label>
             <select id="propriedade" {...register("propriedade")} className={errors.propriedade ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesPropriedade.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_PROPRIEDADE.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.propriedade && <p className={styles.errorMessage}>{errors.propriedade.message}</p>}
           </div>
@@ -216,7 +208,7 @@ const AddPrinterForm = ({ onClose, onBack }) => {
             <label htmlFor="status">Status</label>
             <select id="status" {...register("status")} className={errors.status ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesStatus.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_STATUS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.status && <p className={styles.errorMessage}>{errors.status.message}</p>}
         </div>
@@ -231,7 +223,7 @@ const AddPrinterForm = ({ onClose, onBack }) => {
             <label htmlFor="conectividade">Conectividade</label>
             <select id="conectividade" {...register("conectividade")} className={errors.conectividade ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesConectividade.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_CONECTIVIDADE.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.conectividade && <p className={styles.errorMessage}>{errors.conectividade.message}</p>}
           </div>
@@ -239,7 +231,7 @@ const AddPrinterForm = ({ onClose, onBack }) => {
             <label htmlFor="frenteVerso">Frente e Verso (Duplex)</label>
             <select id="frenteVerso" {...register("frenteVerso")} className={errors.frenteVerso ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesFrenteVerso.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_FRENTE_VERSO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.frenteVerso && <p className={styles.errorMessage}>{errors.frenteVerso.message}</p>}
           </div>
@@ -255,14 +247,14 @@ const AddPrinterForm = ({ onClose, onBack }) => {
             <label htmlFor="cartucho">Tipo de Insumo</label>
             <select id="cartucho" {...register("cartucho")} className={errors.cartucho ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesCartucho.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_CARTUCHO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.cartucho && <p className={styles.errorMessage}>{errors.cartucho.message}</p>}
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="colorido">Colorido?</label>
             <select id="colorido" {...register("colorido")} className={errors.colorido ? styles.inputError : ''}>
-              {opcoesColorido.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_COLORIDO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.colorido && <p className={styles.errorMessage}>{errors.colorido.message}</p>}
           </div>

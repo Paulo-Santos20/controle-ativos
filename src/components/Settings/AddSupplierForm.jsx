@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
+import { logAudit } from '../../utils/AuditLogger';
 import styles from './AddUnitForm.module.css'; // Reutiliza o CSS de formulários
 
 const supplierSchema = z.object({
@@ -50,6 +51,11 @@ const AddSupplierForm = ({ onClose, existingData }) => {
         createdAt: isEditing ? existingData.createdAt : serverTimestamp()
       });
       
+      await logAudit(
+        isEditing ? "Edição de Fornecedor" : "Criação de Fornecedor",
+        `Fornecedor "${data.name}" ${isEditing ? 'atualizado' : 'criado'}.`,
+        data.name
+      );
       toast.success("Empresa salva com sucesso!", { id: toastId });
       onClose();
     } catch (error) {

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
+import { logAudit } from '../../utils/AuditLogger';
 import styles from '../Settings/AddUnitForm.module.css'; 
 
 const crudSchema = z.object({
@@ -97,6 +98,11 @@ const AddRoleForm = ({ onClose, existingRoleDoc }) => {
         name: data.name,
         permissions: data.permissions,
       });
+      await logAudit(
+        "Criação de Perfil",
+        `Perfil "${data.name}" criado com permissões: ${Object.keys(data.permissions).join(', ')}.`,
+        data.name
+      );
       toast.success("Perfil salvo com sucesso!", { id: toastId });
       onClose();
     } catch (error) {

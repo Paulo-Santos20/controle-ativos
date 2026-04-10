@@ -2,7 +2,8 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { doc } from 'firebase/firestore';
 import { useDocumentData } from 'react-firebase-hooks/firestore';
-import { db } from '../../lib/firebase'; 
+import { db } from '../../lib/firebase';
+import { useUnits } from '../../hooks/useCommonQueries'; 
 import { 
   Loader2, PackageSearch, MapPin, Cpu, Tag, Box, LogIn, 
   Monitor, Wifi, Droplet, FileText, ShieldCheck, HardDrive, Server
@@ -11,6 +12,7 @@ import styles from './AssetScanPage.module.css';
 
 const AssetScanPage = () => {
   const { assetId } = useParams();
+  const { getUnitName } = useUnits();
   
   // Busca apenas os dados do documento (sem histórico)
   const [asset, loading, error] = useDocumentData(doc(db, 'assets', assetId));
@@ -93,7 +95,7 @@ const AssetScanPage = () => {
         <div className={styles.locationBox}>
           <div className={styles.locRow}>
             <span>Unidade:</span>
-            <strong>{asset.unitId}</strong>
+            <strong>{getUnitName(asset.unitId)}</strong>
           </div>
           <div className={styles.locRow}>
             <span>Pavimento:</span>

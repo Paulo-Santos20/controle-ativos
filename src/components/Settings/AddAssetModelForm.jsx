@@ -3,8 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { doc, setDoc } from 'firebase/firestore';
-import { db } from '/src/lib/firebase.js'; // Caminho absoluto
+import { db } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
+import { logAudit } from '../../utils/AuditLogger';
 import styles from './AddAssetModelForm.module.css';
 
 // Schema de validação (Código de Alta Qualidade)
@@ -51,6 +52,11 @@ const AddAssetModelForm = ({ onClose, defaultType = "" }) => {
       };
 
       await setDoc(modelRef, newModel);
+      await logAudit(
+        "Criação de Modelo",
+        `Modelo "${data.name}" (${data.manufacturer}) criado.`,
+        data.name
+      );
       toast.success("Modelo registrado com sucesso!", { id: toastId });
       onClose(); // Fecha o modal
     } catch (error) {

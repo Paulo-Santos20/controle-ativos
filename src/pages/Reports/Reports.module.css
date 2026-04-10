@@ -116,6 +116,31 @@
   .kpiGrid { grid-template-columns: repeat(4, 1fr); }
 }
 
+@media (max-width: 480px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .headerActions {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .headerActions button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .kpiCard {
+    padding: var(--spacing-md);
+  }
+  
+  .kpiValue {
+    font-size: 1.5rem;
+  }
+}
+
 .kpiCard {
   background-color: var(--color-bg-component);
   padding: var(--spacing-lg);

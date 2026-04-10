@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 
 import { useAuth } from '/src/hooks/useAuth.js';
+import { logAudit } from '../../utils/AuditLogger';
 import styles from '../Cadastros/CadastroPages.module.css'; 
 import Modal from '../../components/Modal/Modal';
 import EditUserForm from '/src/components/Users/EditUserForm.jsx';
@@ -109,6 +110,11 @@ const UserList = () => {
         await updateDoc(doc(db, 'users', userDoc.id), {
           isActive: newStatus
         });
+        await logAudit(
+          newStatus ? "Reativação de Usuário" : "Desativação de Usuário",
+          `Usuário "${userDoc.data().displayName}" foi ${newStatus ? 'reativado' : 'desativado'}.`,
+          userDoc.data().displayName
+        );
         toast.success(newStatus ? "Usuário reativado." : "Usuário desativado.");
       } catch (error) {
         toast.error("Erro ao atualizar status: " + error.message);

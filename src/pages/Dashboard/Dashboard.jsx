@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '../../hooks/useAuth';
+import { COLORS } from '../../constants/options';
 import styles from './Dashboard.module.css';
 import DashboardSkeleton from '../../components/Skeletons/DashboardSkeleton';
 
@@ -22,8 +23,6 @@ import AddAssetForm from '../../components/Inventory/AddAssetForm';
 import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
 import AssetSearchForm from '../../components/Inventory/AssetSearchForm';
 import MaintenanceAssetForm from '../../components/Inventory/MaintenanceAssetForm';
-
-const COLORS = ['#007aff', '#5ac8fa', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
 
 const Dashboard = () => {
   const { isAdmin, allowedUnits, permissions, loading: authLoading } = useAuth();

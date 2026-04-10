@@ -9,39 +9,21 @@ import {
   serverTimestamp, 
   query, 
   orderBy, 
-  writeBatch // Importa o writeBatch para a transação
+  writeBatch
 } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { db, auth } from '/src/lib/firebase.js'; // Importa 'auth' para o log
+import { db, auth } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
-// Reutiliza o CSS dedicado para formulários de ativos
-import styles from './AssetForms.module.css'; 
-
-// --- Constantes para os Dropdowns (UI/UX de Excelência) ---
-const tiposAtivo = ["Desktop", "All in One", "Notebook", "Tablet"];
-const opcoesPosse = ["Própria", "Alugado", "Doação", "Empréstimo"];
-const opcoesStatus = [
-  "Em uso", "Manutenção", "Inativo", "Estoque", 
-  "Manutenção agendada", "Devolução agendada", "Devolvido", "Reativação agendada"
-];
-const opcoesSO = [
-  "Windows 11 Pro", "Windows 11 Home", "Windows 10 Pro", "Windows 10 Home",
-  "Ubuntu", "Linux (Outro)", "macOS", "Não possui"
-];
-const opcoesPavimento = ["Subsolo", "Térreo", "1º Andar", "2º Andar", "3º Andar", "4º Andar", "Outro"];
-const opcoesSetor = [
-  "Recepção", "Triagem", "Emergência", "UTI Adulto", "UTI Neonatal", "UTI Pediátrica",
-  "Bloco Cirúrgico", "Centro Obstétrico", "Enfermaria", "Apartamentos", "Centro de Diagnóstico (CDI)",
-  "Laboratório", "Farmácia", "Almoxarifado", "TI", "Administração", "Faturamento", 
-  "Manutenção", "Nutrição (SND)", "Higienização (SHL)", "Outro"
-];
-const opcoesSala = [
-  "Bloco", "Central", "Laudos", "Emergência",
-  ...Array.from({ length: 10 }, (_, i) => `Consultório ${i + 1}`),
-  ...Array.from({ length: 3 }, (_, i) => `CPD ${i + 1}`),
-  ...Array.from({ length: 3 }, (_, i) => `Recepção ${i + 1}`),
-  ...Array.from({ length: 2 }, (_, i) => `Posto ${i + 1}`),
-];
+import styles from './AssetForms.module.css';
+import {
+  TIPOS_ATIVO_COMPUTADOR,
+  OPCOES_POSSE,
+  OPCOES_STATUS,
+  OPCOES_SO,
+  OPCOES_PAVIMENTO,
+  OPCOES_SETOR,
+  OPCOES_SALA
+} from '../../constants/options';
 
 /**
  * Schema de validação Zod para editar um Computador.
@@ -171,7 +153,7 @@ const EditAssetForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="tipoAtivo">Tipo Ativo</label>
             <select id="tipoAtivo" {...register("tipoAtivo")} className={errors.tipoAtivo ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {tiposAtivo.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+              {TIPOS_ATIVO_COMPUTADOR.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
             </select>
             {errors.tipoAtivo && <p className={styles.errorMessage}>{errors.tipoAtivo.message}</p>}
           </div>
@@ -215,14 +197,14 @@ const EditAssetForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="posse">Posse</label>
             <select id="posse" {...register("posse")} className={errors.posse ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesPosse.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_POSSE.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="status">Status</label>
             <select id="status" {...register("status")} className={errors.status ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesStatus.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_STATUS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
         </div>
@@ -250,7 +232,7 @@ const EditAssetForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="so">Sistema Operacional</label>
             <select id="so" {...register("so")} className={errors.so ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesSO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_SO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div className={styles.formGroup}>
@@ -282,14 +264,14 @@ const EditAssetForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="pavimento">Pavimento</label>
             <select id="pavimento" {...register("pavimento")} className={errors.pavimento ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesPavimento.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_PAVIMENTO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="setor">Setor</label>
             <select id="setor" {...register("setor")} className={errors.setor ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesSetor.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_SETOR.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
         </div>
@@ -298,7 +280,7 @@ const EditAssetForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="sala">Sala</label>
             <select id="sala" {...register("sala")} className={errors.sala ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesSala.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_SALA.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div className={styles.formGroup}>

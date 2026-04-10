@@ -6,12 +6,8 @@ import { doc, collection, writeBatch, serverTimestamp } from 'firebase/firestore
 import { db, auth } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import styles from './AssetForms.module.css'; // Reutiliza CSS
-
-// As opções (copiadas dos outros forms para consistência)
-const opcoesPavimento = ["Subsolo", "Térreo", "1º Andar", "2º Andar", "3º Andar", "4º Andar", "Outro"];
-const opcoesSetor = ["Recepção", "Triagem", "Emergência", "UTI Adulto", "UTI Neonatal", "UTI Pediátrica", "Bloco Cirúrgico", "Centro Obstétrico", "Enfermaria", "Apartamentos", "Centro de Diagnóstico (CDI)", "Laboratório", "Farmácia", "Almoxarifado", "TI", "Administração", "Faturamento", "Manutenção", "Nutrição (SND)", "Higienização (SHL)", "Outro"];
-const opcoesSala = ["Bloco", "Central", "Laudos", "Emergência", ...Array.from({ length: 10 }, (_, i) => `Consultório ${i + 1}`), ...Array.from({ length: 3 }, (_, i) => `CPD ${i + 1}`), ...Array.from({ length: 3 }, (_, i) => `Recepção ${i + 1}`), ...Array.from({ length: 2 }, (_, i) => `Posto ${i + 1}`)];
+import styles from './AssetForms.module.css';
+import { OPCOES_PAVIMENTO, OPCOES_SETOR, OPCOES_SALA } from '../../constants/options';
 
 const bulkMoveSchema = z.object({
   pavimento: z.string().min(1, "O novo pavimento é obrigatório"),
@@ -96,21 +92,21 @@ const BulkMoveForm = ({ onClose, selectedIds, onSuccess }) => {
             <label>Novo Pavimento</label>
             <select {...register("pavimento")} className={errors.pavimento ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesPavimento.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_PAVIMENTO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div className={styles.formGroup}>
             <label>Novo Setor</label>
             <select {...register("setor")} className={errors.setor ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesSetor.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_SETOR.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div className={styles.formGroup}>
             <label>Nova Sala</label>
             <select {...register("sala")} className={errors.sala ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesSala.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_SALA.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
         </div>

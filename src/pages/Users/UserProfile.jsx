@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase'; 
 import { toast } from 'sonner';
+import { logAudit } from '../../utils/AuditLogger';
 import { UAParser } from 'ua-parser-js'; 
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -140,6 +141,11 @@ const UserProfile = () => {
       const userDocRef = doc(db, 'users', user.uid);
       await updateDoc(userDocRef, { displayName: data.displayName });
       
+      await logAudit(
+        "Atualização de Perfil",
+        `Usuário alterou seu nome para "${data.displayName}".`,
+        user.displayName
+      );
       toast.success("Perfil atualizado com sucesso!");
     } catch (error) {
       toast.error("Erro ao atualizar perfil: " + error.message);
@@ -155,6 +161,11 @@ const UserProfile = () => {
       const batch = writeBatch(db);
       sessions.forEach((session) => batch.delete(session.ref));
       await batch.commit();
+      await logAudit(
+        "Encerramento de Sessões",
+        `Usuário encerrou todas as sessões (${sessions.length} dispositivos).`,
+        user.displayName
+      );
       await signOut(auth);
       toast.success("Desconectado com segurança.", { id: toastId });
     } catch (error) {
@@ -168,6 +179,11 @@ const UserProfile = () => {
       localStorage.setItem('device_custom_name', name);
       const sessionRef = doc(db, 'users', user.uid, 'sessions', currentSessionId);
       await updateDoc(sessionRef, { deviceName: name });
+      await logAudit(
+        "Renomear Dispositivo",
+        `Dispositivo renomeado para "${name}".`,
+        name
+      );
       toast.success("Dispositivo renomeado!");
     }
   };

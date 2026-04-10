@@ -3,6 +3,7 @@ import { doc, updateDoc, arrayUnion, arrayRemove, setDoc, getDoc } from 'firebas
 import { useDocumentData } from 'react-firebase-hooks/firestore';
 import { db } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
+import { logAudit } from '../../utils/AuditLogger';
 import { Plus, Trash2, Loader2, List } from 'lucide-react';
 import styles from './OptionManager.module.css'; // Vamos criar este CSS abaixo
 
@@ -43,6 +44,11 @@ const OptionManager = ({ docId, title, placeholder }) => {
         });
       }
       
+      await logAudit(
+        "Criação de Opção",
+        `Opção "${itemToAdd}" adicionada à lista "${title}".`,
+        title
+      );
       toast.success("Item adicionado!");
       setNewItem("");
     } catch (error) {
@@ -58,6 +64,11 @@ const OptionManager = ({ docId, title, placeholder }) => {
       await updateDoc(docRef, {
         values: arrayRemove(item)
       });
+      await logAudit(
+        "Remoção de Opção",
+        `Opção "${item}" removida da lista "${title}".`,
+        title
+      );
       toast.success("Item removido.");
     } catch (error) {
       toast.error("Erro ao remover item.");

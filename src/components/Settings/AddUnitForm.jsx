@@ -3,11 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { doc, setDoc } from 'firebase/firestore'; 
-import { ref, getDownloadURL } from 'firebase/storage'; // Importar getDownloadURL
-import { useUploadFile } from 'react-firebase-hooks/storage';
-import { db, storage } from '/src/lib/firebase.js';
+import { db } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
-import { Upload, Search, Link } from 'lucide-react';
+import { logAudit } from '../../utils/AuditLogger';
 import styles from './AddUnitForm.module.css';
 
 // Schema (sem alteração)
@@ -145,6 +143,11 @@ const AddUnitForm = ({ onClose, existingUnitDoc }) => {
       // Usamos 'merge: true' para não sobrescrever 'createdAt' em edições
       await setDoc(unitRef, newUnit, { merge: true }); 
       
+      await logAudit(
+        isEditing ? "Edição de Unidade" : "Criação de Unidade",
+        `Unidade "${data.name}" (${data.sigla}) ${isEditing ? 'atualizada' : 'criada'}.`,
+        data.name
+      );
       toast.success(isEditing ? "Unidade atualizada!" : "Unidade registrada!", { id: toastId });
       onClose();
     } catch (error) {

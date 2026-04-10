@@ -6,12 +6,7 @@ import { doc, collection, writeBatch, serverTimestamp } from 'firebase/firestore
 import { db, auth } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
 import styles from './AssetForms.module.css';
-
-// Reutiliza as opções de status
-const opcoesStatus = [
-  "Em manutenção", "Manutenção agendada", "Devolução agendada", 
-  "Devolvido", "Reativação agendada", "Em uso", "Inativo"
-];
+import { OPCOES_STATUS } from '../../constants/options';
 
 // Schema simples
 const maintenanceSchema = z.object({
@@ -66,7 +61,7 @@ const MaintenanceAssetForm = ({ onClose, assetId, currentData }) => {
         <div className={styles.formGroup}>
           <label htmlFor="newStatus">Novo Status do Ativo</label>
           <select id="newStatus" {...register("newStatus")} className={errors.newStatus ? styles.inputError : ''}>
-            {opcoesStatus.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            {OPCOES_STATUS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
           </select>
           {errors.newStatus && <p className={styles.errorMessage}>{errors.newStatus.message}</p>}
         </div>

@@ -18,10 +18,7 @@ import AddAssetForm from '../../components/Inventory/AddAssetForm';
 import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
 import BulkMoveForm from '../../components/Inventory/BulkMoveForm';
 import InventoryTableSkeleton from '../../components/Skeletons/InventoryTableSkeleton';
-
-const opcoesTipo = [{ value: 'all', label: 'Todos os Tipos' }, { value: 'computador', label: 'Computadores' }, { value: 'impressora', label: 'Impressoras' }];
-const opcoesStatus = [{ value: 'all', label: 'Todos os Status' }, { value: 'Em uso', label: 'Em uso' }, { value: 'Estoque', label: 'Estoque' }, { value: 'Manutenção', label: 'Manutenção' }, { value: 'Devolvido', label: 'Devolvido' }, { value: 'Inativo', label: 'Inativo' }];
-const ITEMS_PER_PAGE = 20;
+import { FILTRO_TIPO, FILTRO_STATUS, ITEMS_PER_PAGE } from '../../constants/options';
 
 const InventoryList = () => {
   // useAuth traz os dados do usuário logado
@@ -393,8 +390,8 @@ const InventoryList = () => {
         <div className={styles.filterRow}>
           <div className={styles.filterGroup}>
             <Filter size={16} />
-            <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={styles.filterSelect}>{opcoesTipo.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select>
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={styles.filterSelect}>{opcoesStatus.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select>
+            <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={styles.filterSelect}>{FILTRO_TIPO.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={styles.filterSelect}>{FILTRO_STATUS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select>
             <select value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)} className={styles.filterSelect}><option value="all">Todas as Unidades</option>{unitsList.map(d=><option key={d.id} value={d.id}>{d.data().sigla || d.data().name}</option>)}</select>
           </div>
           <label className={styles.checkboxFilter}><input type="checkbox" checked={showReturned} onChange={(e) => setShowReturned(e.target.checked)} /> <Archive size={16} /> Mostrar Devolvidos</label>

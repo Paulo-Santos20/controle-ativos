@@ -3,26 +3,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { doc, collection, writeBatch, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '/src/lib/firebase.js'; // Importa 'auth'
+import { db, auth } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
-import styles from './AssetForms.module.css'; // Reutiliza o CSS
-
-// --- COPIADO DO 'AddAssetForm.jsx' PARA CONSISTÊNCIA (Princípio 5) ---
-// (Idealmente, isso viveria em um arquivo 'constants.js' compartilhado)
-const opcoesPavimento = ["Subsolo", "Térreo", "1º Andar", "2º Andar", "3º Andar", "4º Andar", "Outro"];
-const opcoesSetor = [
-  "Recepção", "Triagem", "Emergência", "UTI Adulto", "UTI Neonatal", "UTI Pediátrica",
-  "Bloco Cirúrgico", "Centro Obstétrico", "Enfermaria", "Apartamentos", 
-  "Centro de Diagnóstico (CDI)", "Laboratório", "Farmácia", "Almoxarifado", 
-  "TI", "Administração", "Faturamento", "Manutenção", "Nutrição (SND)", "Higienização (SHL)", "Outro"
-];
-const opcoesSala = [
-  "Bloco", "Central", "Laudos", "Emergência",
-  ...Array.from({ length: 10 }, (_, i) => `Consultório ${i + 1}`),
-  ...Array.from({ length: 3 }, (_, i) => `CPD ${i + 1}`),
-  ...Array.from({ length: 3 }, (_, i) => `Recepção ${i + 1}`),
-  ...Array.from({ length: 2 }, (_, i) => `Posto ${i + 1}`),
-];
+import styles from './AssetForms.module.css';
+import { OPCOES_PAVIMENTO, OPCOES_SETOR, OPCOES_SALA } from '../../constants/options';
 
 // Schema Zod atualizado
 const moveSchema = z.object({
@@ -122,7 +106,7 @@ const MoveAssetForm = ({ onClose, assetId, currentData }) => {
             <label htmlFor="pavimento">Novo Pavimento</label>
             <select id="pavimento" {...register("pavimento")} className={errors.pavimento ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesPavimento.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_PAVIMENTO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.pavimento && <p className={styles.errorMessage}>{errors.pavimento.message}</p>}
           </div>
@@ -131,7 +115,7 @@ const MoveAssetForm = ({ onClose, assetId, currentData }) => {
             <label htmlFor="setor">Novo Setor</label>
             <select id="setor" {...register("setor")} className={errors.setor ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesSetor.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_SETOR.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.setor && <p className={styles.errorMessage}>{errors.setor.message}</p>}
           </div>
@@ -140,7 +124,7 @@ const MoveAssetForm = ({ onClose, assetId, currentData }) => {
             <label htmlFor="sala">Nova Sala</label>
             <select id="sala" {...register("sala")} className={errors.sala ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesSala.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_SALA.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.sala && <p className={styles.errorMessage}>{errors.sala.message}</p>}
           </div>

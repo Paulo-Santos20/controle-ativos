@@ -180,3 +180,27 @@ input:disabled, select:disabled, textarea:disabled {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-secondary); 
 }
+
+/* ---------------------------------- */
+/* RESPONSIVIDADE BASE                  */
+/* ---------------------------------- */
+
+@media (max-width: 768px) {
+  html {
+    font-size: 87.5%;
+  }
+  
+  .hide-mobile {
+    display: none !important;
+  }
+  
+  .show-mobile {
+    display: block !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .show-mobile {
+    display: none !important;
+  }
+}

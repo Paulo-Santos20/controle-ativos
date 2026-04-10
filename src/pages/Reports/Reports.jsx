@@ -13,20 +13,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable'; 
 
 import { useAuth } from '../../hooks/useAuth';
+import { OPCOES_STATUS, COLORS } from '../../constants/options';
 import styles from './Reports.module.css';
-
-const COLORS = ['#007aff', '#5ac8fa', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
-
-const opcoesStatus = [
-  "Em uso", 
-  "Em manutenção", 
-  "Manutenção agendada", 
-  "Estoque", 
-  "Inativo",
-  "Devolução agendada", 
-  "Devolvido", 
-  "Reativação agendada"
-];
 
 const Reports = () => {
   const { isAdmin, allowedUnits, loading: authLoading } = useAuth();
@@ -250,7 +238,7 @@ const Reports = () => {
         </select>
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={styles.filterSelect}>
           <option value="all">Todos os Status</option>
-          {opcoesStatus.map(status => (<option key={status} value={status}>{status}</option>))}
+          {OPCOES_STATUS.map(status => (<option key={status} value={status}>{status}</option>))}
         </select>
       </div>
 

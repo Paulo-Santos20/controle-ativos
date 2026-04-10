@@ -7,6 +7,7 @@ import { writeBatch, doc, serverTimestamp, collection, query, orderBy, where, do
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { db, auth } from '../../lib/firebase'; 
 import { toast } from 'sonner';
+import { logAudit } from '../../utils/AuditLogger';
 import { 
   Loader2, UploadCloud, AlertTriangle, CheckCircle, 
   FileSpreadsheet, Download, Laptop, Printer, Info, RefreshCw
@@ -413,6 +414,11 @@ const BulkImportPage = () => {
         }
 
         setUploadReport(report); 
+        await logAudit(
+          "Importação em Massa",
+          `Importados ${report.newCount} novos e ${report.updatedCount} atualizados (${importType}).`,
+          importType
+        );
         toast.success("Processo finalizado!", { id: toastId });
         setFileData([]); 
         setDetectedUnits([]);

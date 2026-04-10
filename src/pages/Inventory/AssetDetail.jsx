@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, Pencil, Truck, Wrench, History, Loader2, HardDrive, Printer, Laptop, ShieldAlert, Trash2, QrCode, Tag } from 'lucide-react';
 
 import { useAuth } from '../../hooks/useAuth';
+import { useUnits } from '../../hooks/useCommonQueries';
 import { generateQrCodePdf } from '../../utils/qrCodeGenerator'; 
 import { logAudit } from '../../utils/AuditLogger';
 import QrCodeModal from '../../components/Inventory/QrCodeModal';
@@ -43,6 +44,7 @@ const AssetDetail = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { isAdmin, allowedUnits, permissions, loading: authLoading } = useAuth();
+  const { getUnitName } = useUnits(allowedUnits, isAdmin);
 
   // Se o ID for "importar" (erro de rota), não busca nada
   const docId = assetId === 'importar' ? 'invalid' : assetId;
@@ -172,7 +174,7 @@ const AssetDetail = () => {
 
           <h3 className={styles.detailSubtitle}>Localização Atual</h3>
           <div className={styles.infoGrid}>
-            <div><span>Unidade</span><strong>{asset?.unitId}</strong></div>
+            <div><span>Unidade</span><strong>{getUnitName(asset?.unitId)}</strong></div>
             <div><span>Pavimento</span><strong>{asset?.pavimento}</strong></div>
             <div><span>Setor</span><strong>{asset?.setor}</strong></div>
             <div><span>Sala</span><strong>{asset?.sala}</strong></div>

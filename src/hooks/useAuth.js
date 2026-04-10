@@ -4,9 +4,7 @@ import { useDocumentData } from 'react-firebase-hooks/firestore';
 import { doc } from 'firebase/firestore'; 
 import { auth, db } from '/src/lib/firebase.js';
 
-// --- 1. DEFINA SEU E-MAIL DE SUPER ADMIN AQUI ---
-const MASTER_EMAIL = "seu.email@exemplo.com.br"; // <--- COLOQUE SEU E-MAIL AQUI
-// -----------------------------------------------
+const MASTER_EMAIL = import.meta.env.VITE_MASTER_EMAIL || "seu.email@exemplo.com.br";
 
 const defaultPermissions = {
   dashboard: { read: false },

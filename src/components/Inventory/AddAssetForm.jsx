@@ -1,39 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, doc, setDoc, serverTimestamp, query, orderBy, writeBatch } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, query, orderBy, writeBatch, getDoc } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { db, auth } from '/src/lib/firebase.js'; // Caminho absoluto
+import { db, auth } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
-// Reutiliza o CSS dedicado para formulários de ativos
-import styles from './AssetForms.module.css'; 
+import styles from './AssetForms.module.css';
 
-// --- Constantes para os Dropdowns (UI/UX de Excelência) ---
-const tiposAtivo = ["Desktop", "All in One", "Notebook", "Tablet"];
-const opcoesPosse = ["Própria", "Alugado", "Doação", "Empréstimo"];
-const opcoesStatus = [
-  "Em uso", "Manutenção", "Inativo", "Estoque", 
-  "Manutenção agendada", "Devolução agendada", "Devolvido", "Reativação agendada"
-];
-const opcoesSO = [
-  "Windows 11 Pro", "Windows 11 Home", "Windows 10 Pro", "Windows 10 Home",
-  "Ubuntu", "Linux (Outro)", "macOS", "Não possui"
-];
-const opcoesPavimento = ["Subsolo", "Térreo", "1º Andar", "2º Andar", "3º Andar", "4º Andar", "Outro"];
-const opcoesSetor = [
-  "Recepção", "Triagem", "Emergência", "UTI Adulto", "UTI Neonatal", "UTI Pediátrica",
-  "Bloco Cirúrgico", "Centro Obstétrico", "Enfermaria", "Apartamentos", "Centro de Diagnóstico (CDI)",
-  "Laboratório", "Farmácia", "Almoxarifado", "TI", "Administração", "Faturamento", 
-  "Manutenção", "Nutrição (SND)", "Higienização (SHL)", "Outro"
-];
-const opcoesSala = [
-  "Bloco", "Central", "Laudos", "Emergência",
-  ...Array.from({ length: 10 }, (_, i) => `Consultório ${i + 1}`),
-  ...Array.from({ length: 3 }, (_, i) => `CPD ${i + 1}`),
-  ...Array.from({ length: 3 }, (_, i) => `Recepção ${i + 1}`),
-  ...Array.from({ length: 2 }, (_, i) => `Posto ${i + 1}`),
-];
+import {
+  TIPOS_ATIVO_COMPUTADOR,
+  OPCOES_POSSE,
+  OPCOES_STATUS,
+  OPCOES_SO,
+  OPCOES_PAVIMENTO,
+  OPCOES_SETOR,
+  OPCOES_SALA
+} from '../../constants/options';
 
 /**
  * Schema de validação Zod para um novo ativo (Computador).
@@ -79,28 +62,44 @@ const assetSchema = z.object({
  * @param {() => void} props.onBack - Função para voltar ao seletor de tipo.
  */
 const AddAssetForm = ({ onClose, onBack }) => {
-  // Busca 'units' (Hospitais) para o dropdown de Localização
   const [units, loadingUnits] = useCollection(
     query(collection(db, 'units'), orderBy('name', 'asc'))
   );
+  const [isChecking, setIsChecking] = useState(false);
 
   const { 
     register, 
     handleSubmit, 
     reset,
+    setError,
+    clearErrors,
     formState: { errors, isSubmitting } 
   } = useForm({
     resolver: zodResolver(assetSchema)
   });
 
-  /**
-   * Salva o novo ativo e o registro de histórico inicial
-   * usando uma transação em lote (writeBatch).
-   */
+  const checkTombamentoExists = async (tombamento) => {
+    if (!tombamento || tombamento.length < 3) return false;
+    const docRef = doc(db, 'assets', tombamento);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists();
+  };
+
   const onSubmit = async (data) => {
-    const toastId = toast.loading("Registrando computador...");
+    setIsChecking(true);
+    clearErrors('tombamento');
+    
+    const toastId = toast.loading("Verificando tombamento...");
     try {
-      // 1. Inicia o Lote (Princípio 5: Código de Alta Qualidade)
+      const exists = await checkTombamentoExists(data.tombamento);
+      if (exists) {
+        setError('tombamento', { message: "Tombamento já existe no sistema" });
+        toast.error("Tombamento já cadastrado!", { id: toastId });
+        setIsChecking(false);
+        return;
+      }
+
+      toast.loading("Registrando...", { id: toastId });
       const batch = writeBatch(db);
 
       // 2. Define o documento principal do ativo
@@ -131,6 +130,8 @@ const AddAssetForm = ({ onClose, onBack }) => {
     } catch (error) {
       console.error("Erro ao registrar ativo:", error);
       toast.error("Erro ao registrar ativo: " + error.message, { id: toastId });
+    } finally {
+      setIsChecking(false);
     }
   };
 
@@ -154,7 +155,7 @@ const AddAssetForm = ({ onClose, onBack }) => {
             <label htmlFor="tipoAtivo">Tipo Ativo</label>
             <select id="tipoAtivo" {...register("tipoAtivo")} className={errors.tipoAtivo ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {tiposAtivo.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+              {TIPOS_ATIVO_COMPUTADOR.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
             </select>
             {errors.tipoAtivo && <p className={styles.errorMessage}>{errors.tipoAtivo.message}</p>}
           </div>
@@ -200,7 +201,7 @@ const AddAssetForm = ({ onClose, onBack }) => {
             <label htmlFor="posse">Posse</label>
             <select id="posse" {...register("posse")} className={errors.posse ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesPosse.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_POSSE.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.posse && <p className={styles.errorMessage}>{errors.posse.message}</p>}
           </div>
@@ -208,7 +209,7 @@ const AddAssetForm = ({ onClose, onBack }) => {
             <label htmlFor="status">Status</label>
             <select id="status" {...register("status")} className={errors.status ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesStatus.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_STATUS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.status && <p className={styles.errorMessage}>{errors.status.message}</p>}
           </div>
@@ -243,7 +244,7 @@ const AddAssetForm = ({ onClose, onBack }) => {
             <label htmlFor="so">Sistema Operacional</label>
             <select id="so" {...register("so")} className={errors.so ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesSO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_SO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.so && <p className={styles.errorMessage}>{errors.so.message}</p>}
           </div>
@@ -278,7 +279,7 @@ const AddAssetForm = ({ onClose, onBack }) => {
             <label htmlFor="pavimento">Pavimento</label>
             <select id="pavimento" {...register("pavimento")} className={errors.pavimento ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesPavimento.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_PAVIMENTO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.pavimento && <p className={styles.errorMessage}>{errors.pavimento.message}</p>}
           </div>
@@ -286,7 +287,7 @@ const AddAssetForm = ({ onClose, onBack }) => {
             <label htmlFor="setor">Setor</label>
             <select id="setor" {...register("setor")} className={errors.setor ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesSetor.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_SETOR.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.setor && <p className={styles.errorMessage}>{errors.setor.message}</p>}
           </div>
@@ -297,7 +298,7 @@ const AddAssetForm = ({ onClose, onBack }) => {
             <label htmlFor="sala">Sala</label>
             <select id="sala" {...register("sala")} className={errors.sala ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {opcoesSala.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {OPCOES_SALA.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.sala && <p className={styles.errorMessage}>{errors.sala.message}</p>}
           </div>
@@ -321,8 +322,8 @@ const AddAssetForm = ({ onClose, onBack }) => {
         <button type="button" onClick={handleClear} className={styles.tertiaryButton}>
           Limpar Formulário
         </button>
-        <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>
-          {isSubmitting ? "Salvando..." : "Registrar Computador"}
+        <button type="submit" className={styles.primaryButton} disabled={isSubmitting || isChecking}>
+          {isChecking ? "Verificando..." : isSubmitting ? "Salvando..." : "Registrar Computador"}
         </button>
       </div>
     </form>

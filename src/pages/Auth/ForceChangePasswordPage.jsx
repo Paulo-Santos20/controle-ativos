@@ -7,6 +7,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '/src/lib/firebase.js';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { logAudit } from '../../utils/AuditLogger';
 import { LockKeyhole, LogOut, Loader2, ShieldAlert } from 'lucide-react';
 
 // Reutiliza o CSS do Login para manter a identidade visual
@@ -47,6 +48,11 @@ const ForceChangePasswordPage = () => {
         mustChangePassword: false
       });
 
+      await logAudit(
+        "Alteração de Senha",
+        "Usuário alterou sua senha via redefinição obrigatória.",
+        user.displayName || user.email
+      );
       toast.success("Senha atualizada com sucesso!", { id: toastId });
       navigate('/'); // Redireciona para o Dashboard
       
