@@ -1,115 +1,182 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { collection, query, where, getDocs, documentId } from 'firebase/firestore';
+import React, { useState, useEffect, useRef } from 'react';
+import { collection, query, where, getDocs, orderBy, limit, documentId } from 'firebase/firestore';
 import { db } from '/src/lib/firebase.js';
-import { Bell, Check, AlertTriangle, Users, Clock, Loader2 } from 'lucide-react';
-import { differenceInDays } from 'date-fns';
+import { Bell, Check, AlertTriangle, Users, Clock, Loader2, Plus, ArrowRight, Wrench, RotateCcw, Package } from 'lucide-react';
+import { differenceInDays, differenceInHours, formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import styles from './NotificationMenu.module.css';
 
-// --- 1. IMPORTA O HOOK DE SEGURANÇA ---
 import { useAuth } from '/src/hooks/useAuth.js';
 
 const NotificationMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [lastReadTime, setLastReadTime] = useState(
-    localStorage.getItem('notifications_last_read') || 0
-  );
+  const [lastReadTime, setLastReadTime] = useState(() => {
+    const saved = localStorage.getItem('notifications_last_read');
+    return saved ? parseInt(saved) : Date.now();
+  });
   const menuRef = useRef(null);
 
-  // --- 2. PEGA DADOS DO USUÁRIO ---
   const { isAdmin, allowedUnits, loading: authLoading } = useAuth();
 
-  // --- 3. LÓGICA DE GERAÇÃO DE NOTIFICAÇÕES (FILTRADA) ---
+  // --- 1. GERAÇÃO DE NOTIFICAÇÕES BASEADAS NO HISTÓRICO ---
   useEffect(() => {
     if (authLoading) return;
 
     const generateNotifications = async () => {
       setLoading(true);
       const alerts = [];
-      const now = new Date();
+      const now = Date.now();
 
       try {
-        let q;
+        // Busca ativos da unidade(s) do usuário
+        let assetsQuery;
         const assetsRef = collection(db, 'assets');
 
-        // --- FILTRO DE SEGURANÇA ---
         if (isAdmin) {
-          // Admin vê tudo
-          q = query(assetsRef);
-        } else if (allowedUnits.length > 0) {
-          // Usuário vê apenas suas unidades
-          // (Nota: 'in' suporta max 10 unidades. Para mais, precisaria de lógica extra)
-          q = query(assetsRef, where('unitId', 'in', allowedUnits));
+          assetsQuery = query(assetsRef, limit(500));
+        } else if (allowedUnits && allowedUnits.length > 0) {
+          assetsQuery = query(assetsRef, where('unitId', 'in', allowedUnits), limit(500));
         } else {
-          // Sem permissão, sem notificações
           setNotifications([]);
           setLoading(false);
           return;
         }
 
-        const snapshot = await getDocs(q);
+        const snapshot = await getDocs(assetsQuery);
         const assets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // ANÁLISE 1: Manutenção Atrasada (> 5 dias)
+        // Para cada ativo, busca o histórico recente
+        for (const asset of assets) {
+          try {
+            const historyRef = collection(db, 'assets', asset.id, 'history');
+            const historyQuery = query(
+              historyRef,
+              orderBy('timestamp', 'desc'),
+              limit(3)
+            );
+            const historySnap = await getDocs(historyQuery);
+            
+            if (historySnap.empty) continue;
+
+            const historyItems = historySnap.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+
+            // Analisa o histórico mais recente
+            for (const hist of historyItems) {
+              if (!hist.timestamp) continue;
+
+              const histTime = hist.timestamp.toDate ? hist.timestamp.toDate().getTime() : hist.timestamp;
+              const hoursAgo = differenceInHours(now, histTime);
+              const daysAgo = differenceInDays(new Date(now), new Date(histTime));
+
+              // só mostra.notificações das últimas 48 horas
+              if (hoursAgo > 48) break;
+
+              const type = hist.type || '';
+              const assetName = asset.tombamento || asset.id;
+
+              // Notificação: Novo ativo cadastrado
+              if (type === 'Registro' || type.includes('registrado')) {
+                alerts.push({
+                  id: `new_${asset.id}_${histTime}`,
+                  type: 'new',
+                  title: 'Novo Ativo Cadastrado',
+                  message: `${assetName} foi adicionado ao sistema.`,
+                  subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
+                  time: histTime
+                });
+              }
+
+              // Notificação: Movimentação/Transferência
+              if (type === 'Movimentação' || type.includes('movido') || type.includes('transferência')) {
+                alerts.push({
+                  id: `move_${asset.id}_${histTime}`,
+                  type: 'move',
+                  title: 'Ativo Movimentado',
+                  message: `${assetName} foi transferido.`,
+                  details: hist.details || `De: ${hist.fromSector || '?'} → Para: ${hist.setor || hist.toSector || '?'}`,
+                  subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
+                  time: histTime
+                });
+              }
+
+              // Notificação: Entrada em manutenção
+              if (type === 'Manutenção' || type.includes('manutenção') || type === 'Atualização de Status') {
+                if (hist.newStatus === 'Em manutenção' || hist.details?.includes('manutenção')) {
+                  alerts.push({
+                    id: `maint_${asset.id}_${histTime}`,
+                    type: 'maintenance',
+                    title: 'Entrada em Manutenção',
+                    message: `${assetName} entrou em manutenção.`,
+                    details: hist.details,
+                    subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
+                    time: histTime
+                  });
+                }
+              }
+
+              // Notificação: Devolução
+              if (type === 'Devolução' || type.includes('devolu')) {
+                alerts.push({
+                  id: `return_${asset.id}_${histTime}`,
+                  type: 'return',
+                  title: 'Ativo Devolvido',
+                  message: `${assetName} foi devolvido.`,
+                  details: hist.details,
+                  subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
+                  time: histTime
+                });
+              }
+
+              // Notificação: Alteração de status
+              if (type === 'Atualização de Status' || type.includes('status')) {
+                alerts.push({
+                  id: `status_${asset.id}_${histTime}`,
+                  type: 'status',
+                  title: 'Status Atualizado',
+                  message: `${assetName}: ${hist.oldStatus || 'Anterior'} → ${hist.newStatus || 'Atual'}`,
+                  details: hist.details,
+                  subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
+                  time: histTime
+                });
+              }
+            }
+          } catch (e) {
+            // Erro ao buscar histórico de um ativo específico
+            console.warn('Erro ao buscar histórico:', asset.id, e);
+          }
+        }
+
+        // Análise adicional: Ativos com manutenção atrasada
         assets.forEach(asset => {
           if (asset.status === 'Em manutenção' && asset.lastSeen) {
-            const daysInMaintenance = differenceInDays(now, asset.lastSeen.toDate());
+            const daysInMaintenance = differenceInDays(new Date(now), asset.lastSeen?.toDate ? new Date(asset.lastSeen.toDate()) : new Date(asset.lastSeen));
             
             if (daysInMaintenance > 5) {
               alerts.push({
-                id: `maint_${asset.id}`,
-                type: 'delay',
+                id: `maint_delay_${asset.id}`,
+                type: 'alert',
                 title: 'Manutenção Atrasada',
-                message: `O ativo ${asset.tombamento || asset.id} está em manutenção há ${daysInMaintenance} dias.`,
-                time: asset.lastSeen.toDate().getTime()
+                message: `${asset.tombamento || asset.id} em manutenção há ${daysInMaintenance} dias.`,
+                subMessage: 'Verificar necessidade de peças',
+                time: asset.lastSeen.toDate ? asset.lastSeen.toDate().getTime() : asset.lastSeen
               });
             }
-          }
-          
-          // ANÁLISE EXTRA: Computador com defeito há muito tempo (Status 'Inativo' ou similar)
-          if (asset.status === 'Inativo' && asset.lastSeen) {
-             const daysInactive = differenceInDays(now, asset.lastSeen.toDate());
-             if (daysInactive > 30) {
-                alerts.push({
-                  id: `inactive_${asset.id}`,
-                  type: 'alert',
-                  title: 'Ativo Parado',
-                  message: `O ativo ${asset.id} está inativo há mais de 30 dias.`,
-                  time: asset.lastSeen.toDate().getTime()
-                });
-             }
-          }
-        });
-
-        // ANÁLISE 2: Usuário com Múltiplos Computadores
-        const userAssets = {};
-        assets.forEach(asset => {
-          if (asset.type === 'computador' && asset.funcionario && asset.status === 'Em uso') {
-            const funcLower = asset.funcionario.toLowerCase();
-            if (!userAssets[funcLower]) userAssets[funcLower] = [];
-            userAssets[funcLower].push(asset.tombamento || asset.id);
-          }
-        });
-
-        Object.entries(userAssets).forEach(([user, assetIds]) => {
-          if (assetIds.length > 1) {
-            alerts.push({
-              id: `user_${user}`,
-              type: 'duplicate',
-              title: 'Usuário com Múltiplos Ativos',
-              message: `O funcionário "${user}" possui ${assetIds.length} computadores: ${assetIds.join(', ')}.`,
-              time: now.getTime()
-            });
           }
         });
 
         // Ordena por mais recente
         alerts.sort((a, b) => b.time - a.time);
-        setNotifications(alerts);
+        
+        // Limita a 20 notificações
+        setNotifications(alerts.slice(0, 20));
 
       } catch (error) {
-        console.error("Erro ao gerar notificações:", error);
+        console.error('Erro ao gerar notificações:', error);
       } finally {
         setLoading(false);
       }
@@ -118,80 +185,97 @@ const NotificationMenu = () => {
     generateNotifications();
   }, [isAdmin, allowedUnits, authLoading]);
 
-  // --- RESTO DO CÓDIGO (Sem alterações de lógica) ---
-  const unreadCount = useMemo(() => {
-    return notifications.filter(n => n.time > lastReadTime).length;
-  }, [notifications, lastReadTime]);
-
-  const handleMarkAllAsRead = () => {
-    const now = Date.now();
-    setLastReadTime(now);
-    localStorage.setItem('notifications_last_read', now);
+  // --- 2. MARCAR COMO LIDAS ---
+  const handleMarkAsRead = () => {
+    setLastReadTime(Date.now());
+    localStorage.setItem('notifications_last_read', Date.now().toString());
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  // Counts
+  const unreadCount = notifications.filter(n => n.time > lastReadTime).length;
 
+  // --- 3. RENDER ---
   const getIcon = (type) => {
-    if (type === 'delay') return <Clock size={18} className={styles.iconDelay} />;
-    if (type === 'duplicate') return <Users size={18} className={styles.iconUser} />;
-    return <AlertTriangle size={18} className={styles.iconAlert} />;
+    switch (type) {
+      case 'new': return <Plus size={16} />;
+      case 'move': return <ArrowRight size={16} />;
+      case 'maintenance': return <Wrench size={16} />;
+      case 'return': return <RotateCcw size={16} />;
+      case 'status': return <Clock size={16} />;
+      case 'alert': return <AlertTriangle size={16} />;
+      default: return <Package size={16} />;
+    }
   };
 
-  if (authLoading) return null; // Não mostra nada enquanto carrega auth
+  const getTypeColor = (type) => {
+    const colors = {
+      new: 'var(--color-success)',
+      move: 'var(--color-primary)',
+      maintenance: 'var(--color-warning)',
+      return: 'var(--color-secondary)',
+      status: 'var(--color-text-secondary)',
+      alert: 'var(--color-danger)'
+    };
+    return colors[type] || 'var(--color-text-secondary)';
+  };
+
+  if (authLoading) return null;
 
   return (
     <div className={styles.container} ref={menuRef}>
       <button 
-        className={`${styles.trigger} ${isOpen ? styles.active : ''}`} 
-        onClick={() => setIsOpen(!isOpen)}
-        aria-label="Notificações"
+        className={`${styles.trigger} ${unreadCount > 0 ? styles.hasUnread : ''}`}
+        onClick={() => { setIsOpen(!isOpen); if (!isOpen) handleMarkAsRead(); }}
+        aria-label={`Notificações ${unreadCount > 0 ? `(${unreadCount} não lidas)` : ''}`}
       >
         <Bell size={20} />
         {unreadCount > 0 && (
-          <span className={styles.badge}>
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
+          <span className={styles.badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>
         )}
       </button>
 
       {isOpen && (
-        <div className={styles.dropdown}>
+        <div className={styles.menu} role="menu">
           <div className={styles.header}>
             <h3>Notificações</h3>
             {unreadCount > 0 && (
-              <button onClick={handleMarkAllAsRead} className={styles.markReadButton}>
-                <Check size={14} /> Marcar lidas
+              <button onClick={handleMarkAsRead} className={styles.markReadBtn}>
+                <Check size={14} /> Marcar tudo como lido
               </button>
             )}
           </div>
 
-          <div className={styles.list}>
+          <div className={styles.content}>
             {loading ? (
-               <div className={styles.emptyState}><Loader2 className={styles.spinner} /></div>
+              <div className={styles.loading}>
+                <Loader2 className={styles.spinner} />
+                <span>Carregando...</span>
+              </div>
             ) : notifications.length === 0 ? (
-              <div className={styles.emptyState}>Nenhuma notificação pendente.</div>
+              <div className={styles.empty}>
+                <Bell size={24} />
+                <span>Nenhuma notificação recente</span>
+              </div>
             ) : (
-              notifications.map((notif) => {
-                const isUnread = notif.time > lastReadTime;
-                return (
-                  <div key={notif.id} className={`${styles.item} ${isUnread ? styles.unread : ''}`}>
-                    <div className={styles.itemIcon}>{getIcon(notif.type)}</div>
+              <ul className={styles.list}>
+                {notifications.map((notif, index) => (
+                  <li 
+                    key={notif.id} 
+                    className={`${styles.item} ${notif.time > lastReadTime ? styles.unread : ''}`}
+                    style={{ borderLeftColor: getTypeColor(notif.type) }}
+                  >
+                    <div className={styles.itemIcon} style={{ color: getTypeColor(notif.type) }}>
+                      {getIcon(notif.type)}
+                    </div>
                     <div className={styles.itemContent}>
                       <strong>{notif.title}</strong>
                       <p>{notif.message}</p>
+                      {notif.details && <small>{notif.details}</small>}
+                      <span className={styles.time}>{notif.subMessage || formatDistanceToNow(notif.time, { locale: ptBR, addSuffix: true })}</span>
                     </div>
-                    {isUnread && <div className={styles.unreadDot} />}
-                  </div>
-                );
-              })
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>
