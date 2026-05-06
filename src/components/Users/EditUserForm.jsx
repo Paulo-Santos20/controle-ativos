@@ -86,23 +86,32 @@ const EditUserForm = ({ onClose, userDoc }) => {
 
       const customPerms = data.customPermissions;
       let hasCustomPermissions = false;
+      let cleanCustomPerms = {};
 
       if (customPerms && typeof customPerms === 'object') {
-        hasCustomPermissions = Object.keys(customPerms).some(key => {
+        Object.keys(customPerms).forEach(key => {
           const modulePerms = customPerms[key];
           if (modulePerms && typeof modulePerms === 'object') {
-            return Object.keys(modulePerms).some(action =>
-              modulePerms[action] !== undefined && modulePerms[action] !== null
-            );
+            let hasAnyValue = false;
+            const cleanModulePerms = {};
+            Object.keys(modulePerms).forEach(action => {
+              const value = modulePerms[action];
+              if (value !== undefined && value !== null) {
+                cleanModulePerms[action] = value;
+                hasAnyValue = true;
+              }
+            });
+            if (hasAnyValue) {
+              cleanCustomPerms[key] = cleanModulePerms;
+            }
           }
-          return false;
         });
       }
 
+      hasCustomPermissions = Object.keys(cleanCustomPerms).length > 0;
+
       if (hasCustomPermissions) {
-        updateData.customPermissions = customPerms;
-      } else {
-        updateData.customPermissions = null;
+        updateData.customPermissions = cleanCustomPerms;
       }
 
       await updateDoc(userRef, updateData);
