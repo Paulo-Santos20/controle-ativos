@@ -242,11 +242,11 @@ box-shadow: inset 4px 0 0 var(--color-primary);}
   font-weight: 700;
   white-space: nowrap;
 }
-.statusUsage { background-color: #def7ec; color: #03543f; }
-.statusMaintenance { background-color: #fdf6b2; color: #9f580a; }
-.statusStock { background-color: #e1effe; color: #1e429f; }
-.statusInactive { background-color: #f3f4f6; color: #374151; }
-.statusReturned { background-color: #fee2e2; color: #991b1b; text-decoration: line-through; }
+.statusUsage { background-color: var(--color-status-usage-bg); color: var(--color-status-usage-text); }
+.statusMaintenance { background-color: var(--color-status-maintenance-bg); color: var(--color-status-maintenance-text); }
+.statusStock { background-color: var(--color-status-stock-bg); color: var(--color-status-stock-text); }
+.statusInactive { background-color: var(--color-status-inactive-bg); color: var(--color-status-inactive-text); }
+.statusReturned { background-color: var(--color-status-returned-bg); color: var(--color-status-returned-text); text-decoration: line-through; }
 
 /* --- Action Link --- */
 .actionCell {

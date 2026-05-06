@@ -4,7 +4,7 @@ import { useDocumentData } from 'react-firebase-hooks/firestore';
 import { doc } from 'firebase/firestore'; 
 import { auth, db } from '/src/lib/firebase.js';
 
-const MASTER_EMAIL = import.meta.env.VITE_MASTER_EMAIL || "seu.email@exemplo.com.br";
+const MASTER_EMAIL = import.meta.env.VITE_MASTER_EMAIL;
 
 const defaultPermissions = {
   dashboard: { read: false },
@@ -57,8 +57,8 @@ export const useAuth = () => {
     }
 
     // --- 2. LÓGICA BLINDADA ---
-    // Verifica se é o dono do sistema pelo e-mail
-    const isMaster = authUser.email === MASTER_EMAIL;
+    // Verifica se é o dono do sistema pelo e-mail (only if VITE_MASTER_EMAIL is configured)
+    const isMaster = MASTER_EMAIL && authUser.email === MASTER_EMAIL;
 
     const currentRole = userData?.role ? userData.role.toLowerCase() : 'guest';
     

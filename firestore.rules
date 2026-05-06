@@ -1,0 +1,171 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================
+    // Funções Auxiliares (Helpers)
+    // ============================================
+
+    // Verifica se o usuário está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Verifica se o documento tem um campo 'isActive' e se é true
+    function isActiveUser(userData) {
+      return userData.isActive == true;
+    }
+
+    // Obtém os dados do usuário logado
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Verifica se o usuário é admin (master email ou role admin_geral/gestor)
+    function isAdmin() {
+      let userData = getUserData();
+      let masterEmail = request.auth.token.email == getUserData().email;
+      return userData.role == 'admin_geral' || userData.role == 'gestor';
+    }
+
+    // Obtém as unidades permitidas do usuário
+    function getAllowedUnits() {
+      return getUserData().assignedUnits;
+    }
+
+    // Verifica se o usuário tem uma unidade específica
+    function hasUnit(unitId) {
+      return unitId in getAllowedUnits();
+    }
+
+    // Verifica se o usuário tem a role especificada
+    function hasRole(roleName) {
+      return getUserData().role == roleName;
+    }
+
+    // ============================================
+    // Regras para Coleção 'users'
+    // ============================================
+    match /users/{userId} {
+      // Leitura: qualquer usuário autenticado pode ler (para lista de usuários)
+      allow read: if isAuthenticated();
+
+      // Criação: apenas admins ou o próprio usuário (para criar perfil inicial)
+      allow create: if isAdmin() || request.auth.uid == userId;
+
+      // Atualização: admins podem atualizar qualquer usuário,
+      // usuários comuns podem atualizar apenas seus próprios dados (exceto role)
+      allow update: if (
+        isAdmin() ||
+        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isActive', 'assignedUnits']))
+      );
+
+      // Exclusão: apenas admins podem excluir usuários (não podem excluir a si mesmos)
+      allow delete: if isAdmin() && request.auth.uid != userId;
+    }
+
+    // ============================================
+    // Regras para Coleção 'roles'
+    // ============================================
+    match /roles/{roleId} {
+      // Leitura: qualquer usuário autenticado pode ler perfis
+      allow read: if isAuthenticated();
+
+      // Criação/Atualização/Exclusão: apenas admins
+      allow create, update, delete: if isAdmin();
+
+      // Não permitir excluir perfis críticos
+      allow delete: if isAdmin() && roleId not in ['admin_geral', 'gestor', 'guest'];
+    }
+
+    // ============================================
+    // Regras para Coleção 'assets'
+    // ============================================
+    match /assets/{assetId} {
+      // Leitura: usuários com unidades atribuídas podem ler ativos dessas unidades
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        hasUnit(resource.data.unitId)
+      );
+
+      // Criação: admins podem criar, ou usuários com permissão de create
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        hasUnit(request.resource.data.unitId)
+      );
+
+      // Atualização: admins ou usuários com acesso à unidade
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        hasUnit(resource.data.unitId)
+      );
+
+      // Exclusão: apenas admins (por segurança, operações em massa via Cloud Function)
+      allow delete: if isAdmin();
+    }
+
+    // Subcoleção 'history' de assets
+    match /assets/{assetId}/history/{historyId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        hasUnit(get(/databases/$(database)/documents/assets/$(assetId)).data.unitId)
+      );
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        hasUnit(get(/databases/$(database)/documents/assets/$(assetId)).data.unitId)
+      );
+      allow update, delete: if isAdmin();
+    }
+
+    // ============================================
+    // Regras para Coleção 'units'
+    // ============================================
+    match /units/{unitId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin(); // Considerar restrições adicionais em produção
+    }
+
+    // ============================================
+    // Regras para Coleção 'system_logs'
+    // ============================================
+    match /system_logs/{logType}/{document=**} {
+      // Apenas admins podem criar logs (sistema)
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated(); // Cloud Functions criam logs
+      allow update, delete: if isAdmin();
+    }
+
+    // ============================================
+    // Regras para Coleções de Cadastros
+    // ============================================
+
+    // Modelos de Computadores
+    match /computer_models/{modelId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Modelos de Impressoras
+    match /printer_models/{modelId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Empresas/Fornecedores
+    match /companies/{companyId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Opções do Sistema
+    match /options/{optionId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

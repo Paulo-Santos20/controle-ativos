@@ -107,13 +107,13 @@
   border-radius: 20px;
   font-size: 0.8rem;
   font-weight: 600;
-  background-color: #f3f4f6;
-  color: #374151;
+  background-color: var(--color-status-inactive-bg);
+  color: var(--color-status-inactive-text);
 }
 /* Cores específicas para os status de atenção */
-.statusPill[data-status="Em manutenção"] { background-color: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
+.statusPill[data-status="Em manutenção"] { background-color: var(--color-status-maintenance-bg); color: var(--color-status-maintenance-text); border: 1px solid var(--color-status-maintenance-bg); }
 .statusPill[data-status="Manutenção agendada"] { background-color: #fffbeb; color: #b45309; border: 1px solid #fef3c7; }
-.statusPill[data-status="Devolvido"] { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2; }
+.statusPill[data-status="Devolvido"] { background-color: var(--color-status-returned-bg); color: var(--color-status-returned-text); border: 1px solid var(--color-status-returned-bg); }
 
 .durationBox {
   display: flex;

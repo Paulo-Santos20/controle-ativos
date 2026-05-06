@@ -36,7 +36,19 @@ html {
 
   --color-success-bg: #dcfce7;
   --color-success-text: #166534;
-  
+
+  /* Status Badge Colors */
+  --color-status-usage-bg: #def7ec;
+  --color-status-usage-text: #03543f;
+  --color-status-maintenance-bg: #fdf6b2;
+  --color-status-maintenance-text: #9f580a;
+  --color-status-stock-bg: #e1effe;
+  --color-status-stock-text: #1e429f;
+  --color-status-inactive-bg: #f3f4f6;
+  --color-status-inactive-text: #374151;
+  --color-status-returned-bg: #fee2e2;
+  --color-status-returned-text: #991b1b;
+
   /* --- Tipografia --- */
   --color-text-primary: #1c1c1e;
   --color-text-secondary: #6e6e73;
@@ -118,7 +130,19 @@ html {
 
   --color-success-bg: #064e3b;    /* Verde bem escuro */
   --color-success-text: #a7f3d0;  /* Texto claro */
-  
+
+  /* Status Badge Colors (Dark) */
+  --color-status-usage-bg: #064e3b;
+  --color-status-usage-text: #a7f3d0;
+  --color-status-maintenance-bg: #78350f;
+  --color-status-maintenance-text: #fef08a;
+  --color-status-stock-bg: #1e3a5f;
+  --color-status-stock-text: #93c5fd;
+  --color-status-inactive-bg: #374151;
+  --color-status-inactive-text: #d1d5db;
+  --color-status-returned-bg: #7f1d1d;
+  --color-status-returned-text: #fecaca;
+
   --shadow-color: rgba(0, 0, 0, 0.5);
 }
 

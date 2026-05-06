@@ -14,6 +14,14 @@ const QrCodeModal = ({ assetId, assetName }) => {
   // Esta é a URL que será embutida no QR Code.
   const assetUrl = `https://controle-ativos.vercel.app/scan/${assetId}`;
 
+  // Função para escapar HTML e prevenir XSS
+  const escapeHtml = (str) => {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  };
+
   // Função para imprimir apenas o QR Code
   const handlePrint = () => {
     const qrEl = document.getElementById('qr-code-wrapper');
@@ -25,26 +33,32 @@ const QrCodeModal = ({ assetId, assetName }) => {
       iframe.style.height = '0';
       iframe.style.border = 'none';
       document.body.appendChild(iframe);
-      
+
       const pri = iframe.contentWindow;
-      pri.document.open();
-      pri.document.write('<html><head><title>Imprimir QR Code</title>');
-      pri.document.write('<style>@media print { body { -webkit-print-color-adjust: exact; } h3, p { font-family: sans-serif; text-align: center; } }</style>');
-      pri.document.write('</head><body style="text-align: center; margin-top: 20px;">');
-      
-      // Adiciona o conteúdo
-      pri.document.write(`<h3>${assetName}</h3>`);
-      pri.document.write(`<p>ID: ${assetId}</p>`);
-      pri.document.write(qrEl.innerHTML); // Adiciona o SVG do QR Code
-      
-      pri.document.write('</body></html>');
-      pri.document.close();
-      
+      const doc = pri.document;
+
+      doc.open();
+      doc.write('<!DOCTYPE html><html><head><title>Imprimir QR Code</title>');
+      doc.write('<style>@media print { body { -webkit-print-color-adjust: exact; } h3, p { font-family: sans-serif; text-align: center; margin: 10px 0; } }</style>');
+      doc.write('</head><body style="text-align: center; margin-top: 20px;">');
+
+      // Adiciona o conteúdo com escape para prevenir XSS
+      const safeName = escapeHtml(assetName);
+      const safeId = escapeHtml(assetId);
+      doc.write('<h3>' + safeName + '</h3>');
+      doc.write('<p>ID: ' + safeId + '</p>');
+      doc.write(qrEl.innerHTML);
+
+      doc.write('</body></html>');
+      doc.close();
+
       pri.focus();
       pri.print();
-      
+
       // Remove o iframe após imprimir
-      document.body.removeChild(iframe);
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 100);
     }
   };
 

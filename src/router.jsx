@@ -1,49 +1,56 @@
+import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 // Layouts e Protetores
 import App from "./App";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Loading from "./components/Loading/Loading";
 
-// Páginas Principais
-import Login from "./pages/Auth/Login";
-import Dashboard from "./pages/Dashboard/Dashboard";
-import InventoryList from "./pages/Inventory/InventoryList";
-import AssetDetail from "./pages/Inventory/AssetDetail";
-import Reports from "./pages/Reports/Reports";
-import UserList from "./pages/Users/UserList";
-import UserProfile from "./pages/Users/UserProfile";
-import NotFound from "./pages/NotFound/NotFound";
+// Páginas com Lazy Loading
+const Login = lazy(() => import("./pages/Auth/Login"));
+const Dashboard = lazy(() => import("./pages/Dashboard/Dashboard"));
+const InventoryList = lazy(() => import("./pages/Inventory/InventoryList"));
+const AssetDetail = lazy(() => import("./pages/Inventory/AssetDetail"));
+const Reports = lazy(() => import("./pages/Reports/Reports"));
+const UserList = lazy(() => import("./pages/Users/UserList"));
+const UserProfile = lazy(() => import("./pages/Users/UserProfile"));
+const NotFound = lazy(() => import("./pages/NotFound/NotFound"));
 
 // Páginas de Cadastro
-import UnidadesPage from "./pages/Cadastros/UnidadesPage";
-import AssetModelPage from "./pages/Cadastros/AssetModelPage"; 
-import SuppliersPage from "./pages/Cadastros/SuppliersPage";
-import OptionsPage from "./pages/Cadastros/OptionsPage";
+const UnidadesPage = lazy(() => import("./pages/Cadastros/UnidadesPage"));
+const AssetModelPage = lazy(() => import("./pages/Cadastros/AssetModelPage"));
+const SuppliersPage = lazy(() => import("./pages/Cadastros/SuppliersPage"));
+const OptionsPage = lazy(() => import("./pages/Cadastros/OptionsPage"));
 
 // Página de Atividades
-import ActivityLogPage from "./pages/ActivityLog/ActivityLogPage";
+const ActivityLogPage = lazy(() => import("./pages/ActivityLog/ActivityLogPage"));
 
 // Importação da Página de Importação
-import BulkImportPage from "./pages/Inventory/BulkImportPage";
+const BulkImportPage = lazy(() => import("./pages/Inventory/BulkImportPage"));
 
 // Página de Monitoramento
-import MonitoringPage from "./pages/Monitoring/MonitoringPage";
+const MonitoringPage = lazy(() => import("./pages/Monitoring/MonitoringPage"));
 
 // Páginas de Usuário e Públicas
-import ProfileListPage from "./pages/Users/ProfileListPage";
-import AssetScanPage from "./pages/Public/AssetScanPage";
-import ForceChangePasswordPage from "./pages/Auth/ForceChangePasswordPage";
+const ProfileListPage = lazy(() => import("./pages/Users/ProfileListPage"));
+const AssetScanPage = lazy(() => import("./pages/Public/AssetScanPage"));
+const ForceChangePasswordPage = lazy(() => import("./pages/Auth/ForceChangePasswordPage"));
+
+// Componente de fallback para suspense
+const PageLoader = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+    <Loading />
+  </div>
+);
 
 export const router = createBrowserRouter([
   {
     path: "/login",
-    element: <Login />,
-  },
-  
-  // Rota Pública
-  {
-    path: "/scan/:assetId",
-    element: <AssetScanPage />, 
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <Login />
+      </Suspense>
+    ),
   },
 
   // Troca de Senha
@@ -51,7 +58,9 @@ export const router = createBrowserRouter([
     path: "/force-password",
     element: (
       <ProtectedRoute>
-        <ForceChangePasswordPage />
+        <Suspense fallback={<PageLoader />}>
+          <ForceChangePasswordPage />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -64,38 +73,154 @@ export const router = createBrowserRouter([
         <App />
       </ProtectedRoute>
     ),
-    errorElement: <NotFound />, 
+    errorElement: (
+      <Suspense fallback={<PageLoader />}>
+        <NotFound />
+      </Suspense>
+    ),
     children: [
-      { index: true, element: <Dashboard /> },
-      
+      {
+        index: true,
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <Dashboard />
+          </Suspense>
+        )
+      },
+
       // --- INVENTÁRIO (ORDEM CRÍTICA) ---
-      { path: "inventory", element: <InventoryList /> },
-      
+      {
+        path: "inventory",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <InventoryList />
+          </Suspense>
+        )
+      },
+
       // 1º: Rotas específicas (como importar)
-      { path: "inventory/importar", element: <BulkImportPage /> }, 
-      
+      {
+        path: "inventory/importar",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <BulkImportPage />
+          </Suspense>
+        )
+      },
+
       // 2º: Rota dinâmica (qualquer outra coisa é considerada ID)
-      { path: "inventory/:assetId", element: <AssetDetail /> },
+      {
+        path: "inventory/:assetId",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <AssetDetail />
+          </Suspense>
+        )
+      },
       // -----------------------------------
 
-      { path: "atividades", element: <ActivityLogPage /> },
-      { path: "reports", element: <Reports /> },
-      { path: "profile", element: <UserProfile /> },
-      { path: "monitoramento", element: <MonitoringPage /> },
-      
+      {
+        path: "atividades",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ActivityLogPage />
+          </Suspense>
+        )
+      },
+      {
+        path: "reports",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <Reports />
+          </Suspense>
+        )
+      },
+      {
+        path: "profile",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <UserProfile />
+          </Suspense>
+        )
+      },
+      {
+        path: "monitoramento",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <MonitoringPage />
+          </Suspense>
+        )
+      },
+
       // Cadastros
-      { path: "cadastros/unidades", element: <UnidadesPage /> },
-      { path: "cadastros/computadores", element: <AssetModelPage type="computador" title="Computadores" /> },
-      { path: "cadastros/impressoras", element: <AssetModelPage type="impressora" title="Impressoras" /> },
-      { path: "cadastros/empresas", element: <SuppliersPage /> },
-      { path: "cadastros/opcoes", element: <OptionsPage /> },
-      
+      {
+        path: "cadastros/unidades",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <UnidadesPage />
+          </Suspense>
+        )
+      },
+      {
+        path: "cadastros/computadores",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <AssetModelPage type="computador" title="Computadores" />
+          </Suspense>
+        )
+      },
+      {
+        path: "cadastros/impressoras",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <AssetModelPage type="impressora" title="Impressoras" />
+          </Suspense>
+        )
+      },
+      {
+        path: "cadastros/empresas",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <SuppliersPage />
+          </Suspense>
+        )
+      },
+      {
+        path: "cadastros/opcoes",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <OptionsPage />
+          </Suspense>
+        )
+      },
+
       // Usuários
-      { path: "usuarios/lista", element: <UserList /> },
-      { path: "usuarios/perfis", element: <ProfileListPage /> },
-      
+      {
+        path: "usuarios/lista",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <UserList />
+          </Suspense>
+        )
+      },
+      {
+        path: "usuarios/perfis",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ProfileListPage />
+          </Suspense>
+        )
+      },
+
       { path: "users", element: <Navigate to="/usuarios/lista" replace /> },
     ],
   },
-  { path: "*", element: <NotFound /> },
+  {
+    path: "*",
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <NotFound />
+      </Suspense>
+    )
+  },
 ]);
