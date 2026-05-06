@@ -6,7 +6,7 @@ import {
 import { db } from '../../lib/firebase'; 
 import { 
   Plus, ChevronRight, Package, Loader2, Search, Filter, Archive, 
-  CheckSquare, Square, Truck, ArrowDownCircle, X, Import 
+  CheckSquare, Square, Truck, ArrowDownCircle, X, Import, Trash2 
 } from 'lucide-react'; 
 
 import { useAuth } from '../../hooks/useAuth';
@@ -17,6 +17,7 @@ import AssetTypeSelector from '../../components/Inventory/AssetTypeSelector';
 import AddAssetForm from '../../components/Inventory/AddAssetForm';
 import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
 import BulkMoveForm from '../../components/Inventory/BulkMoveForm';
+import BulkDeleteForm from '../../components/Inventory/BulkDeleteForm';
 import InventoryTableSkeleton from '../../components/Skeletons/InventoryTableSkeleton';
 import { FILTRO_TIPO, FILTRO_STATUS, ITEMS_PER_PAGE } from '../../constants/options';
 
@@ -253,12 +254,18 @@ const InventoryList = () => {
   };
   const handleBulkSuccess = () => { setSelectedIds([]); fetchAssets(false, debouncedSearch); };
 
+  const handleBulkDeleteSuccess = () => {
+    setSelectedIds([]);
+    fetchAssets(false, debouncedSearch);
+  };
+
   const renderModalContent = () => {
     switch (modalView) {
       case 'select': return <AssetTypeSelector onSelectType={setModalView} />;
       case 'computer': return <AddAssetForm onClose={handleCloseModal} />;
       case 'printer': return <AddPrinterForm onClose={handleCloseModal} />;
       case 'bulk_move': return <BulkMoveForm onClose={handleCloseModal} selectedIds={selectedIds} onSuccess={handleBulkSuccess} />;
+      case 'bulk_delete': return <BulkDeleteForm onClose={handleCloseModal} selectedIds={selectedIds} onSuccess={handleBulkDeleteSuccess} />;
       default: return null;
     }
   };
@@ -345,7 +352,7 @@ const InventoryList = () => {
 
   return (
     <div className={styles.page}>
-      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalView === 'bulk_move' ? "Movimentação em Massa" : "Registrar Novo Ativo"}>
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalView === 'bulk_move' ? "Movimentação em Massa" : modalView === 'bulk_delete' ? "Exclusão em Massa" : "Registrar Novo Ativo"}>
         {renderModalContent()}
       </Modal>
 
@@ -353,6 +360,11 @@ const InventoryList = () => {
         <div className={styles.bulkActionBar}>
           <div className={styles.bulkInfo}><strong>{selectedIds.length}</strong> selecionados</div>
           <div className={styles.bulkActions}>
+            {isAdmin && (
+              <button className={styles.bulkButtonDanger} onClick={() => handleOpenModal('bulk_delete')}>
+                <Trash2 size={18} /> Excluir Selecionados
+              </button>
+            )}
             <button className={styles.bulkButton} onClick={() => handleOpenModal('bulk_move')} disabled={!permissions?.ativos?.update}>
               <Truck size={18} /> Mover Selecionados
             </button>

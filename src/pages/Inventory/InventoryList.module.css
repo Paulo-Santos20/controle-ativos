@@ -301,6 +301,20 @@ box-shadow: inset 4px 0 0 var(--color-primary);}
   cursor: pointer;
 }
 .bulkButton:hover { background-color: #2563eb; }
+.bulkButtonDanger {
+  background-color: var(--color-danger, #dc2626);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.bulkButtonDanger:hover { background-color: #b91c1c; }
 .closeBulk {
   background: none;
   border: none;
