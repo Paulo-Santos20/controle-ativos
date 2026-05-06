@@ -19,7 +19,9 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return getUserData().role == 'admin_geral' || getUserData().role == 'gestor';
+      let role = getUserData().role;
+      return role == 'admin_geral' || role == 'Admin_geral' || role == 'ADMIN_GERAL' ||
+             role == 'gestor' || role == 'Gestor' || role == 'GESTOR';
     }
 
     function isOwner(userId) {
@@ -36,7 +38,7 @@ service cloud.firestore {
 
     function hasPermission(module, action) {
       let roleId = getUserData().role;
-      let perms = getRolePermissions(roleId);
+      let perms = get(/databases/$(database)/documents/roles/$(roleId)).data.permissions;
       return perms[module][action] == true;
     }
 
@@ -66,9 +68,9 @@ service cloud.firestore {
     // 4. ASSETS
     // =================================================================
     match /assets/{assetId} {
-      allow read: if isLoggedIn() && (isAdmin() || (hasPermission('ativos', 'read') && hasUnit(resource.data.unitId)));
-      allow create: if isLoggedIn() && (isAdmin() || (hasPermission('ativos', 'create') && hasUnit(request.resource.data.unitId)));
-      allow update: if isLoggedIn() && (isAdmin() || (hasPermission('ativos', 'update') && hasUnit(resource.data.unitId)));
+      allow read: if isLoggedIn() && (isAdmin() || hasPermission('ativos', 'read'));
+      allow create: if isLoggedIn() && (isAdmin() || hasPermission('ativos', 'create'));
+      allow update: if isLoggedIn() && (isAdmin() || hasPermission('ativos', 'update'));
       allow delete: if isLoggedIn() && isAdmin();
 
       match /history/{historyId} {
@@ -78,7 +80,17 @@ service cloud.firestore {
     }
 
     // =================================================================
-    // 5. UNITS
+    // 5. HISTORY (Collection Group for cross-collection queries)
+    // NOTE: collectionGroup queries match ANY 'history' collection at any path
+    // {path=**} matches zero or more segments (e.g., assets/ABC/history e system_logs/audit/history)
+    // =================================================================
+    match /{path=**}/history/{historyId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn();
+    }
+
+    // =================================================================
+    // 6. UNITS
     // =================================================================
     match /units/{unitId} {
       allow read: if isLoggedIn();
@@ -88,7 +100,7 @@ service cloud.firestore {
     }
 
     // =================================================================
-    // 6. ASSET MODELS
+    // 7. ASSET MODELS
     // =================================================================
     match /assetModels/{modelId} {
       allow read: if isLoggedIn();
@@ -98,7 +110,7 @@ service cloud.firestore {
     }
 
     // =================================================================
-    // 7. SUPPLIERS
+    // 8. SUPPLIERS
     // =================================================================
     match /suppliers/{supplierId} {
       allow read: if isLoggedIn();
@@ -108,7 +120,7 @@ service cloud.firestore {
     }
 
     // =================================================================
-    // 8. SYSTEM OPTIONS
+    // 9. SYSTEM OPTIONS
     // =================================================================
     match /systemOptions/{docId} {
       allow read: if isLoggedIn();
@@ -116,7 +128,7 @@ service cloud.firestore {
     }
 
     // =================================================================
-    // 9. SYSTEM LOGS
+    // 10. SYSTEM LOGS
     // =================================================================
     match /system_logs/{logType}/{docId} {
       allow read: if isLoggedIn() && (isAdmin() || hasPermission('usuarios', 'read'));

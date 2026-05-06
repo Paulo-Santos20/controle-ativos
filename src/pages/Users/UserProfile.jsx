@@ -308,7 +308,7 @@ const UserProfile = () => {
                         <span className={styles.dot}>•</span>
                         <span>
                           {isThisDevice 
-                            ? <span style={{color: '#10b981', fontWeight: 600}}>Online agora</span> 
+                            ? <span style={{color: 'var(--color-success)', fontWeight: 600}}>Online agora</span> 
                             : lastActive 
                               ? format(lastActive, "dd/MM HH:mm", { locale: ptBR }) 
                               : "..."

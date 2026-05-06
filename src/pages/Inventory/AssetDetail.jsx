@@ -77,7 +77,7 @@ const AssetDetail = () => {
   if (!isAdmin && asset.unitId && !allowedUnits.includes(asset.unitId)) {
     return (
       <div className={styles.loadingState}>
-        <ShieldAlert size={48} color="#ef4444" />
+        <ShieldAlert size={48} color="var(--color-danger)" />
         <h2>Acesso Negado</h2>
         <Link to="/inventory" className={styles.primaryButton}>Voltar</Link>
       </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, Timestamp, collectionGroup } from 'firebase/firestore';
 import { db } from '/src/lib/firebase.js';
 import { Bell, Check, AlertTriangle, ArrowRight, Wrench, RotateCcw, Package, Loader2, Plus, Clock } from 'lucide-react';
 import { differenceInDays, differenceInHours, formatDistanceToNow } from 'date-fns';
@@ -8,8 +8,7 @@ import styles from './NotificationMenu.module.css';
 
 import { useAuth } from '/src/hooks/useAuth.js';
 
-const BATCH_SIZE = 10; // Processar em lotes para evitar sobrecarga
-const MAX_ASSETS = 100; // Limitar número de ativos por consulta
+const MAX_NOTIFICATIONS = 20;
 const CACHE_DURATION = 1000 * 60 * 2; // 2 minutos de cache
 
 const NotificationMenu = () => {
@@ -37,61 +36,149 @@ const NotificationMenu = () => {
     const now = Date.now();
 
     try {
-      let assetsQuery;
-      const assetsRef = collection(db, 'assets');
+      const historyRef = collectionGroup(db, 'history');
+      const recentHistoryQuery = query(
+        historyRef,
+        orderBy('timestamp', 'desc'),
+        limit(50)
+      );
 
-      if (isAdmin) {
-        assetsQuery = query(assetsRef, limit(MAX_ASSETS));
-      } else if (allowedUnits && allowedUnits.length > 0) {
-        assetsQuery = query(assetsRef, where('unitId', 'in', allowedUnits), limit(MAX_ASSETS));
-      } else {
-        setNotifications([]);
-        setLoading(false);
-        return;
-      }
+      const snapshot = await getDocs(recentHistoryQuery);
+      const historyItems = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const pathParts = doc.ref.path.split('/');
+        const assetIdIndex = pathParts.indexOf('assets') + 1;
+        const assetId = assetIdIndex < pathParts.length ? pathParts[assetIdIndex] : null;
 
-      const snapshot = await getDocs(assetsQuery);
-      const assets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return {
+          id: doc.id,
+          ...data,
+          assetId: assetId,
+          assetName: data.assetName || data.tombamento || assetId,
+          docRef: doc.ref
+        };
+      });
 
-      // Processar em lotes para evitar muitas requisições simultâneas
-      for (let i = 0; i < assets.length; i += BATCH_SIZE) {
-        const batch = assets.slice(i, i + BATCH_SIZE);
-        const batchAlerts = await processBatch(batch, now);
-        alerts.push(...batchAlerts);
+      for (const hist of historyItems) {
+        if (!hist.timestamp) continue;
 
-        // Small delay between batches to avoid Firestore rate limits
-        if (i + BATCH_SIZE < assets.length) {
-          await new Promise(resolve => setTimeout(resolve, 50));
+        const histTime = hist.timestamp instanceof Timestamp
+          ? hist.timestamp.toDate().getTime()
+          : hist.timestamp;
+
+        const hoursAgo = differenceInHours(now, histTime);
+        if (hoursAgo > 48) continue;
+
+        const type = hist.type || '';
+        const assetName = hist.assetName;
+
+        if (type === 'Registro' || type.includes('registrado')) {
+          alerts.push({
+            id: `new_${hist.assetId}_${histTime}`,
+            type: 'new',
+            title: 'Novo Ativo Cadastrado',
+            message: `${assetName} foi adicionado ao sistema.`,
+            subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
+            time: histTime
+          });
         }
-      }
 
-      // Ativos com manutenção atrasada
-      assets.forEach(asset => {
-        if (asset.status === 'Em manutenção' && asset.lastSeen) {
-          const lastSeenDate = asset.lastSeen instanceof Timestamp
-            ? asset.lastSeen.toDate()
-            : new Date(asset.lastSeen);
-          const daysInMaintenance = differenceInDays(now, lastSeenDate);
+        if (type === 'Movimentação' || type.includes('movido') || type.includes('transferência')) {
+          alerts.push({
+            id: `move_${hist.assetId}_${histTime}`,
+            type: 'move',
+            title: 'Ativo Movimentado',
+            message: `${assetName} foi transferido.`,
+            details: hist.details || `De: ${hist.fromSector || '?'} → Para: ${hist.setor || hist.toSector || '?'}`,
+            subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
+            time: histTime
+          });
+        }
 
-          if (daysInMaintenance > 5) {
+        if (type === 'Manutenção' || type.includes('manutenção') || type === 'Atualização de Status') {
+          if (hist.newStatus === 'Em manutenção' || hist.details?.includes('manutenção')) {
             alerts.push({
-              id: `maint_delay_${asset.id}`,
-              type: 'alert',
-              title: 'Manutenção Atrasada',
-              message: `${asset.tombamento || asset.id} em manutenção há ${daysInMaintenance} dias.`,
-              subMessage: 'Verificar necessidade de peças',
-              time: lastSeenDate.getTime()
+              id: `maint_${hist.assetId}_${histTime}`,
+              type: 'maintenance',
+              title: 'Entrada em Manutenção',
+              message: `${assetName} entrou em manutenção.`,
+              details: hist.details,
+              subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
+              time: histTime
             });
           }
         }
-      });
+
+        if (type === 'Devolução' || type.includes('devolu')) {
+          alerts.push({
+            id: `return_${hist.assetId}_${histTime}`,
+            type: 'return',
+            title: 'Ativo Devolvido',
+            message: `${assetName} foi devolvido.`,
+            details: hist.details,
+            subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
+            time: histTime
+          });
+        }
+
+        if (type === 'Atualização de Status' || type.includes('status')) {
+          alerts.push({
+            id: `status_${hist.assetId}_${histTime}`,
+            type: 'status',
+            title: 'Status Atualizado',
+            message: `${assetName}: ${hist.oldStatus || 'Anterior'} → ${hist.newStatus || 'Atual'}`,
+            details: hist.details,
+            subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
+            time: histTime
+          });
+        }
+      }
+
+      const assetsRef = collection(db, 'assets');
+      let assetsQuery;
+
+      if (isAdmin) {
+        assetsQuery = query(assetsRef, where('status', '==', 'Em manutenção'), limit(20));
+      } else if (allowedUnits && allowedUnits.length > 0) {
+        assetsQuery = query(
+          assetsRef,
+          where('status', '==', 'Em manutenção'),
+          where('unitId', 'in', allowedUnits),
+          limit(20)
+        );
+      }
+
+      if (assetsQuery) {
+        const assetsSnapshot = await getDocs(assetsQuery);
+        assetsSnapshot.docs.forEach(doc => {
+          const asset = doc.data();
+          if (asset.lastSeen) {
+            const lastSeenDate = asset.lastSeen instanceof Timestamp
+              ? asset.lastSeen.toDate()
+              : new Date(asset.lastSeen);
+            const daysInMaintenance = differenceInDays(now, lastSeenDate);
+
+            if (daysInMaintenance > 5) {
+              alerts.push({
+                id: `maint_delay_${doc.id}`,
+                type: 'alert',
+                title: 'Manutenção Atrasada',
+                message: `${asset.tombamento || doc.id} em manutenção há ${daysInMaintenance} dias.`,
+                subMessage: 'Verificar necessidade de peças',
+                time: lastSeenDate.getTime()
+              });
+            }
+          }
+        });
+      }
 
       alerts.sort((a, b) => b.time - a.time);
-      setNotifications(alerts.slice(0, 20));
+      setNotifications(alerts.slice(0, MAX_NOTIFICATIONS));
       setLastFetchTime(Date.now());
 
     } catch (error) {
       console.error('Erro ao gerar notificações:', error);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -100,125 +187,6 @@ const NotificationMenu = () => {
   useEffect(() => {
     generateNotifications();
   }, [generateNotifications]);
-
-  const processBatch = async (assets, now) => {
-    const alerts = [];
-
-    // Buscar histórico de todos os ativos do batch em paralelo
-    const historyPromises = assets.map(async (asset) => {
-      try {
-        const historyRef = collection(db, 'assets', asset.id, 'history');
-        const historyQuery = query(
-          historyRef,
-          orderBy('timestamp', 'desc'),
-          limit(5)
-        );
-        const historySnap = await getDocs(historyQuery);
-
-        if (historySnap.empty) return [];
-
-        const historyItems = historySnap.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          assetId: asset.id,
-          assetName: asset.tombamento || asset.id
-        }));
-
-        return historyItems;
-      } catch (e) {
-        console.warn('Erro ao buscar histórico:', asset.id);
-        return [];
-      }
-    });
-
-    const historyResults = await Promise.all(historyPromises);
-    const allHistoryItems = historyResults.flat();
-
-    // Processar itens do histórico
-    for (const hist of allHistoryItems) {
-      if (!hist.timestamp) continue;
-
-      const histTime = hist.timestamp instanceof Timestamp
-        ? hist.timestamp.toDate().getTime()
-        : hist.timestamp;
-
-      const hoursAgo = differenceInHours(now, histTime);
-
-      // Só mostra notificações das últimas 48 horas
-      if (hoursAgo > 48) continue;
-
-      const type = hist.type || '';
-      const assetName = hist.assetName;
-
-      // Novo ativo cadastrado
-      if (type === 'Registro' || type.includes('registrado')) {
-        alerts.push({
-          id: `new_${hist.assetId}_${histTime}`,
-          type: 'new',
-          title: 'Novo Ativo Cadastrado',
-          message: `${assetName} foi adicionado ao sistema.`,
-          subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
-          time: histTime
-        });
-      }
-
-      // Movimentação/Transferência
-      if (type === 'Movimentação' || type.includes('movido') || type.includes('transferência')) {
-        alerts.push({
-          id: `move_${hist.assetId}_${histTime}`,
-          type: 'move',
-          title: 'Ativo Movimentado',
-          message: `${assetName} foi transferido.`,
-          details: hist.details || `De: ${hist.fromSector || '?'} → Para: ${hist.setor || hist.toSector || '?'}`,
-          subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
-          time: histTime
-        });
-      }
-
-      // Entrada em manutenção
-      if (type === 'Manutenção' || type.includes('manutenção') || type === 'Atualização de Status') {
-        if (hist.newStatus === 'Em manutenção' || hist.details?.includes('manutenção')) {
-          alerts.push({
-            id: `maint_${hist.assetId}_${histTime}`,
-            type: 'maintenance',
-            title: 'Entrada em Manutenção',
-            message: `${assetName} entrou em manutenção.`,
-            details: hist.details,
-            subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
-            time: histTime
-          });
-        }
-      }
-
-      // Devolução
-      if (type === 'Devolução' || type.includes('devolu')) {
-        alerts.push({
-          id: `return_${hist.assetId}_${histTime}`,
-          type: 'return',
-          title: 'Ativo Devolvido',
-          message: `${assetName} foi devolvido.`,
-          details: hist.details,
-          subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
-          time: histTime
-        });
-      }
-
-      // Alteração de status
-      if (type === 'Atualização de Status' || type.includes('status')) {
-        alerts.push({
-          id: `status_${hist.assetId}_${histTime}`,
-          type: 'status',
-          title: 'Status Atualizado',
-          message: `${assetName}: ${hist.oldStatus || 'Anterior'} → ${hist.newStatus || 'Atual'}`,
-          details: hist.details,
-          subMessage: formatDistanceToNow(histTime, { locale: ptBR, addSuffix: true }),
-          time: histTime
-        });
-      }
-    }
-
-    return alerts;
-  };
 
   const handleMarkAsRead = () => {
     setLastReadTime(Date.now());
@@ -239,16 +207,16 @@ const NotificationMenu = () => {
     }
   };
 
-  const getTypeColor = (type) => {
-    const colors = {
-      new: 'var(--color-success)',
-      move: 'var(--color-primary)',
-      maintenance: 'var(--color-warning)',
-      return: 'var(--color-secondary)',
-      status: 'var(--color-text-secondary)',
-      alert: 'var(--color-danger)'
-    };
-    return colors[type] || 'var(--color-text-secondary)';
+  const getIconClass = (type) => {
+    switch (type) {
+      case 'new': return styles.iconNew;
+      case 'move': return styles.iconMove;
+      case 'maintenance': return styles.iconMaintenance;
+      case 'return': return styles.iconReturn;
+      case 'status': return styles.iconStatus;
+      case 'alert': return styles.iconAlert;
+      default: return styles.iconStatus;
+    }
   };
 
   if (authLoading) return null;
@@ -256,7 +224,7 @@ const NotificationMenu = () => {
   return (
     <div className={styles.container} ref={menuRef}>
       <button
-        className={`${styles.trigger} ${unreadCount > 0 ? styles.hasUnread : ''}`}
+        className={`${styles.trigger} ${unreadCount > 0 ? styles.active : ''}`}
         onClick={() => { setIsOpen(!isOpen); if (!isOpen) handleMarkAsRead(); }}
         aria-label={`Notificações ${unreadCount > 0 ? `(${unreadCount} não lidas)` : ''}`}
       >
@@ -285,7 +253,7 @@ const NotificationMenu = () => {
               </div>
             ) : notifications.length === 0 ? (
               <div className={styles.empty}>
-                <Bell size={24} />
+                <Bell size={36} />
                 <span>Nenhuma notificação recente</span>
               </div>
             ) : (
@@ -294,9 +262,8 @@ const NotificationMenu = () => {
                   <li
                     key={notif.id}
                     className={`${styles.item} ${notif.time > lastReadTime ? styles.unread : ''}`}
-                    style={{ borderLeftColor: getTypeColor(notif.type) }}
                   >
-                    <div className={styles.itemIcon} style={{ color: getTypeColor(notif.type) }}>
+                    <div className={`${styles.itemIcon} ${getIconClass(notif.type)}`}>
                       {getIcon(notif.type)}
                     </div>
                     <div className={styles.itemContent}>

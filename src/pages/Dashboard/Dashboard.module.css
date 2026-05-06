@@ -1,54 +1,20 @@
 /* Dashboard.module.css */
+/* Modern Dashboard Design */
 
-/* --- Layout do Header Principal --- */
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* --- Page Header --- */
 .header {
   display: flex;
+  flex-wrap: wrap;
   flex-direction: column;
   gap: var(--spacing-md);
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: var(--spacing-lg);
-}
-
-.title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
-}
-
-.quickActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-}
-
-.actionButton, .actionButtonSecondary {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: none;
-  border-radius: var(--border-radius);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.actionButton {
-  background-color: var(--color-primary);
-  color: white;
-}
-.actionButton:hover {
-  background-color: var(--color-primary-dark);
-}
-
-.actionButtonSecondary {
-  background-color: var(--color-bg-component);
-  color: var(--color-primary);
-  border: 1px solid var(--color-border);
-}
-.actionButtonSecondary:hover {
-  background-color: var(--color-bg-page);
 }
 
 @media (min-width: 768px) {
@@ -58,115 +24,181 @@
   }
 }
 
-@media (max-width: 480px) {
-  .title {
-    font-size: 1.5rem;
-  }
-  
-  .actionButton, .actionButtonSecondary {
-    padding: var(--spacing-xs) var(--spacing-sm);
-    font-size: 0.875rem;
-  }
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
 }
 
-/* --- Grid de Cards (Resumo) --- */
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.actionButton,
+.actionButtonSecondary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actionButton {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.actionButton:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+}
+
+.actionButtonSecondary {
+  background-color: var(--color-bg-component);
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+}
+
+.actionButtonSecondary:hover {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-primary);
+}
+
+/* --- Stats Cards Grid --- */
 .cardGrid {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
 }
 
 @media (min-width: 640px) {
-  .cardGrid { grid-template-columns: repeat(2, 1fr); }
+  .cardGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
+
 @media (min-width: 1024px) {
-  .cardGrid { grid-template-columns: repeat(3, 1fr); }
+  .cardGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .card {
-  display: grid;
-  grid-template-areas: "icon title" "icon value";
-  grid-template-columns: auto 1fr;
-  gap: 4px var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
   background-color: var(--color-bg-component);
   padding: var(--spacing-lg);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   border: 1px solid var(--color-border);
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
 .cardIcon {
-  grid-area: icon;
-  font-size: 2rem; /* Ajuste se usar Lucide icons diretamente no tamanho */
-  padding: 10px;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   background-color: var(--color-bg-page);
-  border-radius: 50%;
-  align-self: center;
+  transition: transform 0.2s ease;
+}
+
+.card:hover .cardIcon {
+  transform: scale(1.05);
+}
+
+.cardIcon svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 2px;
+}
+
+.cardText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .cardTitle {
-  grid-area: title;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-text-secondary);
-  align-self: end;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .cardValue {
-  grid-area: value;
-  font-size: 1.75rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--color-text-primary);
   line-height: 1.2;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
-/* --- Layout de Conteúdo (Gráfico e Feed) --- */
+/* --- Content Row (Chart + Feed) --- */
 .contentRow {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--spacing-lg);
+  align-items: start;
 }
 
 @media (min-width: 1024px) {
   .contentRow {
-    grid-template-columns: 2fr 1fr; /* Gráfico maior, feed menor */
-    align-items: start;
+    grid-template-columns: 2fr 1fr;
+  }
+
+  .contentRow.fullWidth {
+    grid-template-columns: 1fr;
   }
 }
 
-.chartContainer, .feedContainer {
+.chartContainer,
+.feedContainer {
   background-color: var(--color-bg-component);
   padding: var(--spacing-lg);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   border: 1px solid var(--color-border);
-  /* Altura mínima para garantir alinhamento */
-  min-height: 400px;
+  min-height: 380px;
   display: flex;
   flex-direction: column;
 }
 
-/* --- Cabeçalhos de Seção (Novo) --- */
+/* --- Section Headers --- */
 .sectionHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
   border-bottom: 1px solid var(--color-border);
-  padding-bottom: var(--spacing-sm);
 }
 
 .sectionTitle {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   margin: 0;
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm); /* Espaço entre Ícone e Texto */
+  gap: var(--spacing-sm);
   color: var(--color-text-primary);
 }
 
@@ -178,31 +210,43 @@
   font-weight: 600;
   color: var(--color-primary);
   text-decoration: none;
-  transition: gap 0.2s ease;
-}
-.viewAllLink:hover {
-  text-decoration: underline;
-  gap: 6px; /* Efeito de mover a seta */
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
 }
 
-/* --- Lista do Feed --- */
+.viewAllLink:hover {
+  background-color: var(--color-primary-light-alpha);
+  text-decoration: none;
+}
+
+/* --- Activity Feed --- */
 .feedList {
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  /* gap removido para usar border-bottom */
+  padding: 0;
+  margin: 0;
+  flex: 1;
 }
 
 .feedItem {
   display: flex;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md) 0;
-  border-bottom: 1px solid var(--color-bg-page);
-  position: relative;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color 0.15s;
 }
+
 .feedItem:last-child {
   border-bottom: none;
   padding-bottom: 0;
+}
+
+.feedItem:hover {
+  background-color: var(--color-bg-hover);
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  border-radius: 8px;
 }
 
 .feedIcon {
@@ -212,21 +256,23 @@
 }
 
 .feedContent {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  padding-right: 60px; /* Espaço para a data absoluta */
+  gap: 4px;
 }
 
 .feedContent strong {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  font-weight: 600;
   color: var(--color-text-primary);
-  margin-bottom: 4px;
+  line-height: 1.3;
 }
 
 .feedContent p {
+  font-size: 0.82rem;
   color: var(--color-text-secondary);
-  font-size: 0.85rem;
   margin: 0;
   line-height: 1.4;
 }
@@ -234,24 +280,20 @@
 .feedContent small {
   font-size: 0.75rem;
   color: var(--color-primary);
-  margin-top: 4px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.feedTime {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
   font-weight: 500;
 }
 
-/* Data no canto superior direito */
-.feedTime {
-  position: absolute;
-  top: var(--spacing-md);
-  right: 0;
-  font-size: 0.7rem;
-  color: var(--color-text-secondary);
-  background-color: var(--color-bg-page);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-/* --- Estados de Carregamento e Vazio --- */
-.loadingState, .emptyFeed {
+/* --- States --- */
+.loadingState {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -260,22 +302,42 @@
   color: var(--color-text-secondary);
   text-align: center;
   min-height: 200px;
+  gap: 12px;
+}
+
+.emptyFeed {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: var(--spacing-xl);
+  gap: 12px;
+}
+
+.emptyFeed svg {
+  opacity: 0.3;
 }
 
 .emptyFeed p {
-  margin-top: var(--spacing-sm);
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.emptyFeed .emptyIcon {
+  opacity: 0.3;
+  margin-bottom: 4px;
 }
 
 .errorText {
   color: var(--color-danger);
   font-weight: 500;
-}
-.errorTextSmall {
-  font-size: 0.8rem;
-  color: var(--color-text-secondary);
+  font-size: 0.9rem;
 }
 
-/* Spinners */
+/* --- Spinners --- */
 .spinner {
   animation: spin 1s linear infinite;
   color: var(--color-primary);
@@ -285,97 +347,46 @@
 
 .spinnerSmall {
   animation: spin 1s linear infinite;
-  /* Herda a cor do texto pai */
 }
 
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-/* --- Grid de Cards (Resumo) --- */
-.cardGrid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
-}
 
-@media (min-width: 640px) {
-  .cardGrid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (min-width: 1024px) {
-  .cardGrid { grid-template-columns: repeat(3, 1fr); }
-}
-
-.card {
-  display: grid;
-  grid-template-areas: 
-    "icon title" 
-    "icon value";
-  grid-template-columns: auto 1fr; /* Auto para o ícone, resto para texto */
-  gap: 4px var(--spacing-md);
-  background-color: var(--color-bg-component);
-  padding: var(--spacing-lg);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  border: 1px solid var(--color-border);
-  align-items: center; /* Centraliza verticalmente */
-}
-
-/* --- CORREÇÃO AQUI: Estilo do Container do Ícone --- */
-.cardIcon {
-  grid-area: icon;
-  display: flex;           /* Garante centralização */
-  align-items: center;
-  justify-content: center;
-  width: 56px;             /* Largura fixa do círculo */
-  height: 56px;            /* Altura fixa do círculo */
-  background-color: var(--color-bg-page); /* Fundo cinza claro */
-  border-radius: 50%;      /* Torna redondo */
-  margin-right: var(--spacing-sm);
-}
-
-/* --- CORREÇÃO AQUI: Estilo do Ícone SVG em si --- */
-.cardIcon svg {
-  width: 28px;  /* Tamanho do ícone */
-  height: 28px;
-  stroke-width: 2px; /* Espessura da linha */
-}
-
-.cardTitle {
-  grid-area: title;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  align-self: end; /* Alinha o texto na parte de baixo da sua célula */
-  line-height: 1;
-}
-
-.cardValue {
-  grid-area: value;
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  line-height: 1.2;
-  align-self: start; /* Alinha o valor na parte de cima */
-  display: flex;
-  align-items: center;
-}
-
-.contentRow {
-  display: grid;
-  grid-template-columns: 1fr; /* Mobile */
-  gap: var(--spacing-lg);
-  align-items: start;
-}
-
-@media (min-width: 1024px) {
-  .contentRow {
-    grid-template-columns: 2fr 1fr; /* Padrão: Gráfico + Feed */
+/* --- Responsive Adjustments --- */
+@media (max-width: 640px) {
+  .title {
+    font-size: 1.5rem;
   }
-  
-  /* Essa classe remove a coluna do feed e estica o gráfico */
-  .contentRow.fullWidth {
-    grid-template-columns: 1fr; 
+
+  .actionButton,
+  .actionButtonSecondary {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  .card {
+    padding: var(--spacing-md);
+  }
+
+  .cardIcon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .cardIcon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .cardValue {
+    font-size: 1.4rem;
+  }
+
+  .feedItem:hover {
+    margin: 0 -12px;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 }

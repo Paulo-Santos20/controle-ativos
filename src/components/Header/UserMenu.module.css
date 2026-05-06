@@ -99,7 +99,7 @@
   border-radius: 0 0 4px 4px;
 }
 .logout:hover {
-  background-color: #fff5f5; /* Vermelho bem claro */
+  background-color: var(--color-error-bg);
 }
 
 .userInfoMobile {

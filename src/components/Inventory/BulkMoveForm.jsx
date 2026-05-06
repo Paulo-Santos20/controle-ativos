@@ -79,7 +79,7 @@ const BulkMoveForm = ({ onClose, selectedIds, onSuccess }) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-      <div className={styles.alertBox} style={{backgroundColor: '#fffbeb', padding: '10px', borderRadius: '8px', border: '1px solid #fcd34d', color: '#92400e', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px'}}>
+      <div className={styles.alertBox} style={{backgroundColor: 'var(--color-warning-bg)', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-warning-border)', color: 'var(--color-warning-text)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px'}}>
         <AlertTriangle size={18} />
         <span>Você está prestes a mover <strong>{selectedIds.length}</strong> itens. Esta ação não pode ser desfeita em lote.</span>
       </div>
@@ -114,7 +114,7 @@ const BulkMoveForm = ({ onClose, selectedIds, onSuccess }) => {
         <div className={styles.formGroup}>
           <label>Responsável (Opcional)</label>
           <input {...register("funcionario")} placeholder="Deixe em branco para remover responsável atual" />
-          <small style={{color:'#666'}}>Se deixar em branco, o campo funcionário será limpo nos ativos.</small>
+          <small style={{color: 'var(--color-text-secondary)'}}>Se deixar em branco, o campo funcionário será limpo nos ativos.</small>
         </div>
 
         <div className={styles.formGroup}>

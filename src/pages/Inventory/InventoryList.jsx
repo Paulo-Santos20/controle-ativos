@@ -299,9 +299,9 @@ const InventoryList = () => {
             <thead>
               <tr>
                 <th style={{width: '50px', textAlign: 'center'}}>
-                  <button onClick={handleSelectAll} className={styles.checkboxButton}>
-                    {isAllSelected ? <CheckSquare size={22} color="#007aff" strokeWidth={2.5} /> : <Square size={22} color="#64748b" strokeWidth={2} />}
-                  </button>
+                    <button onClick={handleSelectAll} className={styles.checkboxButton}>
+                      {isAllSelected ? <CheckSquare size={22} color="var(--color-primary)" strokeWidth={2.5} /> : <Square size={22} color="var(--color-text-secondary)" strokeWidth={2} />}
+                    </button>
                 </th>
                 <th>Tombamento</th>
                 <th>Tipo</th>
@@ -319,7 +319,7 @@ const InventoryList = () => {
                   <tr key={asset.id} className={isSelected ? styles.rowSelected : ''}>
                     <td style={{textAlign: 'center'}}>
                       <button onClick={() => handleSelectOne(asset.id)} className={styles.checkboxButton}>
-                        {isSelected ? <CheckSquare size={22} color="#007aff" strokeWidth={2.5} /> : <Square size={22} color="#94a3b8" strokeWidth={2} />}
+                        {isSelected ? <CheckSquare size={22} color="var(--color-primary)" strokeWidth={2.5} /> : <Square size={22} color="var(--color-text-secondary)" strokeWidth={2} />}
                       </button>
                     </td>
                     <td data-label="Tombamento"><strong>{asset.id}</strong></td>
@@ -396,7 +396,7 @@ const InventoryList = () => {
             value={searchTerm} 
             onChange={(e) => setSearchTerm(e.target.value)} 
           />
-          {searchTerm && (<button onClick={() => setSearchTerm("")} style={{background:'none', border:'none', cursor:'pointer', color:'#999'}}><X size={16} /></button>)}
+          {searchTerm && (<button onClick={() => setSearchTerm("")} style={{background:'none', border:'none', cursor:'pointer', color:'var(--color-text-secondary)'}}><X size={16} /></button>)}
         </div>
         
         <div className={styles.filterRow}>

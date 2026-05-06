@@ -80,7 +80,7 @@
 
 /* Estado Ativo */
 .navLink.active {
-  background-color: #eff6ff; /* Azul muito claro */
+  background-color: var(--color-primary-light-alpha);
   color: var(--color-primary);
   font-weight: 600;
 }
@@ -212,6 +212,6 @@
 }
 
 .logoutButton:hover {
-  background-color: #fee2e2;
-  color: #dc2626;
+  background-color: var(--color-error-bg);
+  color: var(--color-danger);
 }

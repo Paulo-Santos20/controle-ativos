@@ -132,8 +132,8 @@ const PasswordResetPage = () => {
       <div className={styles.pageContainer}>
         <div className={styles.formContainer} style={{ maxWidth: 450 }}>
           <div className={styles.header}>
-            <div className={styles.logoCircle} style={{ backgroundColor: '#fef2f2' }}>
-              <XCircle size={40} color="#991b1b" />
+            <div className={styles.logoCircle} style={{ backgroundColor: 'var(--color-error-bg)' }}>
+              <XCircle size={40} color="var(--color-danger)" />
             </div>
             <h1 className={styles.title}>Link Inválido</h1>
             <p className={styles.subtitle}>{errorMessage}</p>
@@ -163,8 +163,8 @@ const PasswordResetPage = () => {
       <div className={styles.pageContainer}>
         <div className={styles.formContainer} style={{ maxWidth: 450 }}>
           <div className={styles.header}>
-            <div className={styles.logoCircle} style={{ backgroundColor: '#dcfce7' }}>
-              <CheckCircle size={40} color="#166534" />
+            <div className={styles.logoCircle} style={{ backgroundColor: 'var(--color-success-bg)' }}>
+              <CheckCircle size={40} color="var(--color-success)" />
             </div>
             <h1 className={styles.title}>Senha Redefinida!</h1>
             <p className={styles.subtitle}>

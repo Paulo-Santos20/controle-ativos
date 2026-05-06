@@ -452,64 +452,64 @@ const BulkImportPage = () => {
 
       {/* RELATÓRIO FINAL ESTILIZADO PARA LEGIBILIDADE NO DARK MODE */}
       {uploadReport && (
-        <div 
-            className={styles.reportContainer} 
+        <div
+            className={styles.reportContainer}
             style={{
-                marginBottom: 20, 
-                padding: 24, 
-                borderRadius: 12, 
-                backgroundColor: '#ffffff', // Força fundo branco
-                color: '#1f2937', // Força texto escuro
+                marginBottom: 20,
+                padding: 24,
+                borderRadius: 12,
+                backgroundColor: 'var(--color-bg-component)',
+                color: 'var(--color-text-primary)',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                border: '1px solid #e5e7eb'
+                border: '1px solid var(--color-border)'
             }}
         >
-            <h2 style={{display:'flex', alignItems:'center', gap: 10, fontSize: '1.25rem', fontWeight: 600, color: '#111827'}}>
-                {uploadReport.failures.length === 0 ? <CheckCircle color="#10b981" /> : <AlertTriangle color="#f59e0b" />}
+            <h2 style={{display:'flex', alignItems:'center', gap: 10, fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-text-primary)'}}>
+                {uploadReport.failures.length === 0 ? <CheckCircle color="var(--color-success)" /> : <AlertTriangle color="var(--color-warning)" />}
                 Resumo da Operação
             </h2>
-            
+
             <div style={{display:'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginTop: 20}}>
-                <div style={{padding: 16, backgroundColor: '#ecfdf5', borderRadius: 8, border: '1px solid #d1fae5'}}>
-                    <div style={{fontSize: '0.875rem', color: '#065f46'}}>Novos Itens</div>
-                    <div style={{fontSize: '1.5rem', fontWeight: 700, color: '#059669'}}>{uploadReport.newCount}</div>
+                <div style={{padding: 16, backgroundColor: 'var(--color-success-bg)', borderRadius: 8, border: '1px solid var(--color-success)'}}>
+                    <div style={{fontSize: '0.875rem', color: 'var(--color-success-text)'}}>Novos Itens</div>
+                    <div style={{fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-success)'}}>{uploadReport.newCount}</div>
                 </div>
-                <div style={{padding: 16, backgroundColor: '#eff6ff', borderRadius: 8, border: '1px solid #dbeafe'}}>
-                    <div style={{fontSize: '0.875rem', color: '#1e40af'}}>Atualizados</div>
-                    <div style={{fontSize: '1.5rem', fontWeight: 700, color: '#2563eb'}}>{uploadReport.updatedCount}</div>
+                <div style={{padding: 16, backgroundColor: 'var(--color-primary-light-alpha)', borderRadius: 8, border: '1px solid var(--color-primary)'}}>
+                    <div style={{fontSize: '0.875rem', color: 'var(--color-primary)'}}>Atualizados</div>
+                    <div style={{fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-primary)'}}>{uploadReport.updatedCount}</div>
                 </div>
-                <div style={{padding: 16, backgroundColor: '#fff7ed', borderRadius: 8, border: '1px solid #ffedd5'}}>
-                    <div style={{fontSize: '0.875rem', color: '#9a3412'}}>Total Processado</div>
-                    <div style={{fontSize: '1.5rem', fontWeight: 700, color: '#ea580c'}}>{uploadReport.newCount + uploadReport.updatedCount}</div>
+                <div style={{padding: 16, backgroundColor: 'var(--color-warning-bg)', borderRadius: 8, border: '1px solid var(--color-warning-border)'}}>
+                    <div style={{fontSize: '0.875rem', color: 'var(--color-warning-text)'}}>Total Processado</div>
+                    <div style={{fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-warning)'}}>{uploadReport.newCount + uploadReport.updatedCount}</div>
                 </div>
                 {uploadReport.duplicates > 0 && (
-                     <div style={{padding: 16, backgroundColor: '#fef2f2', borderRadius: 8, border: '1px solid #fee2e2'}}>
-                        <div style={{fontSize: '0.875rem', color: '#991b1b'}}>Ignorados (Duplicados)</div>
-                        <div style={{fontSize: '1.5rem', fontWeight: 700, color: '#dc2626'}}>{uploadReport.duplicates}</div>
+                     <div style={{padding: 16, backgroundColor: 'var(--color-error-bg)', borderRadius: 8, border: '1px solid var(--color-error-border)'}}>
+                        <div style={{fontSize: '0.875rem', color: 'var(--color-error-text)'}}>Ignorados (Duplicados)</div>
+                        <div style={{fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-danger)'}}>{uploadReport.duplicates}</div>
                     </div>
                 )}
             </div>
 
             {uploadReport.failures.length > 0 && (
                 <div style={{marginTop: 24}}>
-                    <h4 style={{fontSize: '1rem', fontWeight: 600, marginBottom: 12, color: '#374151'}}>Detalhes dos Itens Ignorados:</h4>
+                    <h4 style={{fontSize: '1rem', fontWeight: 600, marginBottom: 12, color: 'var(--color-text-primary)'}}>Detalhes dos Itens Ignorados:</h4>
                     <div style={{overflowX: 'auto'}}>
                         <table style={{width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600}}>
                             <thead>
-                                <tr style={{backgroundColor: '#f3f4f6', borderBottom: '2px solid #e5e7eb'}}>
-                                    <th style={{padding: '10px', textAlign:'left', color: '#4b5563'}}>Unidade</th>
-                                    <th style={{padding: '10px', textAlign:'left', color: '#4b5563'}}>ID (Serial)</th>
-                                    <th style={{padding: '10px', textAlign:'left', color: '#4b5563'}}>Tombamento</th>
-                                    <th style={{padding: '10px', textAlign:'left', color: '#4b5563'}}>Motivo</th>
+                                <tr style={{backgroundColor: 'var(--color-bg-alt)', borderBottom: '2px solid var(--color-border)'}}>
+                                    <th style={{padding: '10px', textAlign:'left', color: 'var(--color-text-secondary)'}}>Unidade</th>
+                                    <th style={{padding: '10px', textAlign:'left', color: 'var(--color-text-secondary)'}}>ID (Serial)</th>
+                                    <th style={{padding: '10px', textAlign:'left', color: 'var(--color-text-secondary)'}}>Tombamento</th>
+                                    <th style={{padding: '10px', textAlign:'left', color: 'var(--color-text-secondary)'}}>Motivo</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {uploadReport.failures.map((fail, idx) => (
-                                    <tr key={idx} style={{borderBottom: '1px solid #e5e7eb', backgroundColor: idx % 2 === 0 ? '#fff' : '#f9fafb'}}>
-                                        <td style={{padding: '10px', color: '#374151', fontWeight: 500}}>{fail.unit}</td>
-                                        <td style={{padding: '10px', color: '#111827', fontFamily: 'monospace'}}>{fail.id}</td>
-                                        <td style={{padding: '10px', color: '#6b7280'}}>{fail.tombamento || '-'}</td>
-                                        <td style={{padding: '10px', color: '#dc2626'}}>{fail.reason}</td>
+                                    <tr key={idx} style={{borderBottom: '1px solid var(--color-border)', backgroundColor: idx % 2 === 0 ? 'var(--color-bg-component)' : 'var(--color-bg-alt)'}}>
+                                        <td style={{padding: '10px', color: 'var(--color-text-primary)', fontWeight: 500}}>{fail.unit}</td>
+                                        <td style={{padding: '10px', color: 'var(--color-text-primary)', fontFamily: 'monospace'}}>{fail.id}</td>
+                                        <td style={{padding: '10px', color: 'var(--color-text-secondary)'}}>{fail.tombamento || '-'}</td>
+                                        <td style={{padding: '10px', color: 'var(--color-danger)'}}>{fail.reason}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -581,7 +581,7 @@ const BulkImportPage = () => {
                             {r.serial}
                         </td>
                         <td>
-                          {r.tombamento === "" ? <em style={{color:'#ccc'}}>-- Vazio --</em> : r.tombamento}
+                          {r.tombamento === "" ? <em style={{color: 'var(--color-text-secondary)'}}>-- Vazio --</em> : r.tombamento}
                         </td>
                         <td>{r.setor}</td>
                         <td>{r.status}</td>

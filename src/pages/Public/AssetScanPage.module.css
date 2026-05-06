@@ -1,13 +1,15 @@
 /* AssetScanPage.module.css */
+/* Dark Mode Ready - Uses CSS Variables */
 
 .container {
-  max-width: 600px; /* Um pouco mais largo para tablets */
+  max-width: 600px;
   margin: 0 auto;
   min-height: 100vh;
-  background-color: #f3f4f6;
+  background-color: var(--color-bg-page, #f3f4f6);
   padding: 20px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   padding-bottom: 80px;
+  color: var(--color-text-primary, #1f2937);
 }
 
 .centerScreen {
@@ -17,18 +19,18 @@
   justify-content: center;
   height: 100vh;
   text-align: center;
-  color: #6b7280;
+  color: var(--color-text-secondary, #6b7280);
   gap: 16px;
 }
 
 /* --- Header --- */
 .header {
-  background-color: white;
+  background-color: var(--color-bg-component, white);
   padding: 24px 20px;
   border-radius: 16px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 6px var(--shadow-color, rgba(0, 0, 0, 0.05));
   text-align: center;
-  border-top: 6px solid #ccc;
+  border-top: 6px solid var(--color-border, #ccc);
   margin-bottom: 24px;
   position: relative;
 }
@@ -50,13 +52,13 @@
 .title {
   font-size: 1.5rem;
   font-weight: 800;
-  color: #111827;
+  color: var(--color-text-primary, #111827);
   margin: 12px 0 4px 0;
   line-height: 1.2;
 }
 
 .subtitle {
-  color: #6b7280;
+  color: var(--color-text-secondary, #6b7280);
   font-size: 0.95rem;
   font-weight: 500;
 }
@@ -64,33 +66,33 @@
 .hostnameBadge {
   display: inline-block;
   margin-top: 8px;
-  background-color: #eff6ff;
-  color: #1d4ed8;
+  background-color: var(--color-primary-light-alpha, #eff6ff);
+  color: var(--color-primary, #1d4ed8);
   font-family: monospace;
   font-size: 0.9rem;
   padding: 4px 8px;
   border-radius: 6px;
-  border: 1px solid #dbeafe;
+  border: 1px solid var(--color-primary, #dbeafe);
 }
 
 /* --- Cards --- */
 .card {
-  background-color: white;
+  background-color: var(--color-bg-component, white);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px var(--shadow-color, rgba(0,0,0,0.05));
+  border: 1px solid var(--color-border, #e5e7eb);
 }
 
 .cardTitle {
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #9ca3af;
+  color: var(--color-text-secondary, #9ca3af);
   margin-bottom: 12px;
   font-weight: 700;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-bg-alt, #f3f4f6);
   padding-bottom: 8px;
 }
 
@@ -109,19 +111,19 @@
 }
 
 .rowIcon {
-  color: #9ca3af;
+  color: var(--color-text-secondary, #9ca3af);
   margin-top: 2px;
 }
 
 .rowData {
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Evita quebra de layout */
+  overflow: hidden;
 }
 
 .label {
   font-size: 0.7rem;
-  color: #6b7280;
+  color: var(--color-text-secondary, #6b7280);
   text-transform: uppercase;
   font-weight: 600;
   margin-bottom: 2px;
@@ -129,17 +131,17 @@
 
 .value {
   font-size: 0.95rem;
-  color: #1f2937;
+  color: var(--color-text-primary, #1f2937);
   font-weight: 500;
-  word-break: break-word; /* Quebra serial/mac longos */
+  word-break: break-word;
 }
 
 /* --- Caixa de Localização (Destaque) --- */
 .locationBox {
-  background-color: #f8fafc;
+  background-color: var(--color-bg-alt, #f8fafc);
   border-radius: 8px;
   padding: 12px;
-  border-left: 4px solid #3b82f6;
+  border-left: 4px solid var(--color-primary, #3b82f6);
 }
 
 .locRow {
@@ -148,26 +150,27 @@
   margin-bottom: 8px;
   font-size: 0.95rem;
 }
+
 .locRow:last-child { margin-bottom: 0; }
-.locRow span { color: #6b7280; }
-.locRow strong { color: #111827; text-align: right; }
+.locRow span { color: var(--color-text-secondary, #6b7280); }
+.locRow strong { color: var(--color-text-primary, #111827); text-align: right; }
 
 .divider {
   border: none;
-  border-top: 1px dashed #d1d5db;
+  border-top: 1px dashed var(--color-border, #d1d5db);
   margin: 8px 0;
 }
 
 /* --- Observação --- */
 .obsText {
   font-style: italic;
-  color: #4b5563;
+  color: var(--color-warning-text, #92400e);
   font-size: 0.9rem;
   line-height: 1.5;
-  background-color: #fffbeb;
+  background-color: var(--color-warning-bg, #fffbeb);
   padding: 12px;
   border-radius: 8px;
-  border: 1px solid #fcd34d;
+  border: 1px solid var(--color-warning-border, #fcd34d);
 }
 
 /* --- Footer e Ações --- */
@@ -181,34 +184,63 @@
   align-items: center;
   gap: 8px;
   text-decoration: none;
-  color: #4b5563;
+  color: var(--color-text-secondary, #4b5563);
   font-size: 0.9rem;
   font-weight: 600;
   padding: 10px 20px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border, #d1d5db);
   border-radius: 24px;
-  background-color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  background-color: var(--color-bg-component, white);
+  box-shadow: 0 2px 4px var(--shadow-color, rgba(0,0,0,0.05));
   transition: all 0.2s;
 }
+
 .adminLink:hover {
-  background-color: #f9fafb;
-  color: #111827;
+  background-color: var(--color-bg-hover, #f9fafb);
+  color: var(--color-text-primary, #111827);
   transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 6px var(--shadow-color, rgba(0,0,0,0.1));
 }
 
 .footer {
   text-align: center;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-text-secondary, #9ca3af);
   margin-top: 40px;
 }
 
 .spinner {
   animation: spin 1s linear infinite;
-  color: #3b82f6;
+  color: var(--color-primary, #3b82f6);
 }
 
-
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 480px) {
+  .container {
+    padding: 12px;
+  }
+
+  .grid2 {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .header {
+    padding: 20px 16px;
+  }
+
+  .title {
+    font-size: 1.25rem;
+  }
+
+  .locRow {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .locRow strong {
+    text-align: left;
+  }
+}

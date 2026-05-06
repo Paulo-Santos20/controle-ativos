@@ -169,7 +169,7 @@ const UserList = () => {
 
           return (
             <div key={doc.id} className={`${styles.listItem} ${!isActive ? styles.itemInactive : ''}`}>
-              <div className={styles.listItemIcon} style={{ color: !isActive ? '#999' : (isAdmin ? 'var(--color-warning)' : 'var(--color-primary)') }}>
+              <div className={styles.listItemIcon} style={{ color: !isActive ? 'var(--color-text-secondary)' : (isAdmin ? 'var(--color-warning)' : 'var(--color-primary)') }}>
                 {isAdmin ? <UserCheck size={24} /> : <User size={24} />}
               </div>
               
@@ -201,7 +201,7 @@ const UserList = () => {
                   onClick={() => handleToggleStatus(doc)}
                   disabled={!permissions?.usuarios?.update}
                   title={isActive ? "Desativar Usuário" : "Reativar Usuário"}
-                  style={{ color: isActive ? '#ef4444' : '#22c55e' }} 
+                  style={{ color: isActive ? 'var(--color-danger)' : 'var(--color-success)' }} 
                 >
                   {isActive ? <Ban size={18} /> : <CheckCircle size={18} />}
                 </button>

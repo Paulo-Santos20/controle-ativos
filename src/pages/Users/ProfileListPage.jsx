@@ -86,7 +86,7 @@ const ProfileListPage = () => {
     if (error) {
       if (error.code === 'permission-denied') {
         return (
-          <div className={styles.loadingState} style={{color: '#ef4444'}}>
+          <div className={styles.loadingState} style={{color: 'var(--color-danger)'}}>
              <ShieldAlert size={48} />
              <h3>Acesso Negado</h3>
              <p>Você não tem permissão para visualizar a lista de perfis.</p>

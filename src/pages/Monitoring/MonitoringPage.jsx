@@ -133,7 +133,7 @@ const MonitoringPage = () => {
     if (error.code === 'failed-precondition') {
        return (
          <div className={styles.errorPage}>
-            <AlertTriangle size={64} color="#ef4444" />
+             <AlertTriangle size={64} color="var(--color-danger)" />
             <h2>Índice Necessário</h2>
             <p>O banco de dados precisa ser otimizado para esta consulta.</p>
             <p className={styles.techInfo}>Abra o Console (F12) e clique no link do Firebase.</p>
@@ -143,7 +143,7 @@ const MonitoringPage = () => {
 
     return (
       <div className={styles.errorPage}>
-        <ShieldAlert size={64} color="#ef4444" />
+         <ShieldAlert size={64} color="var(--color-danger)" />
         <h2>Erro de Acesso</h2>
         <p>{error.message}</p>
       </div>
@@ -195,7 +195,7 @@ const MonitoringPage = () => {
       <div className={styles.content}>
         {processedAssets.length === 0 ? (
           <div className={styles.emptyState}>
-            <CheckCircle size={48} color="#10b981" />
+            <CheckCircle size={48} color="var(--color-success)" />
             <h3>Nenhum item encontrado</h3>
             <p>Nenhum ativo corresponde aos filtros selecionados.</p>
           </div>

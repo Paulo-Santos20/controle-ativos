@@ -472,9 +472,9 @@
 .unitCheckboxCard.disabledCard {
   opacity: 0.5;
   cursor: not-allowed;
-  background-color: #f3f4f6;
-  border-color: #e5e7eb;
-  color: #9ca3af;
+  background-color: var(--color-bg-alt);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
 }
 
 .lockIcon {

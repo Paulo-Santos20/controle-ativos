@@ -28,6 +28,8 @@ html {
   --color-success: #34c759;
   --color-warning: #ff9500;
   --color-danger: #ff3b30;
+  --color-danger-dark: #dc2626;
+  --color-primary-rgb: 0, 122, 255;
   
   /* Feedback Backgrounds (Alertas/Badges) */
   --color-error-bg: #fef2f2;
@@ -36,6 +38,10 @@ html {
 
   --color-success-bg: #dcfce7;
   --color-success-text: #166534;
+
+  --color-warning-bg: #fffbeb;
+  --color-warning-text: #92400e;
+  --color-warning-border: #fcd34d;
 
   /* Status Badge Colors */
   --color-status-usage-bg: #def7ec;
@@ -97,6 +103,12 @@ html {
   --color-primary-dark: #409cff;
   --color-primary-light-alpha: rgba(10, 132, 255, 0.15);
   
+  /* --- Cores de Status/Feedback (Dark) --- */
+  --color-danger: #ff453a;
+  --color-danger-dark: #ff6b6b;
+  --color-warning: #ff9f0a;
+  --color-success: #30d158;
+
   /* Texto */
   --color-text-primary: #f5f5f7; /* Branco gelo */
   --color-text-secondary: #98989d; /* Cinza médio */
@@ -130,6 +142,10 @@ html {
 
   --color-success-bg: #064e3b;    /* Verde bem escuro */
   --color-success-text: #a7f3d0;  /* Texto claro */
+
+  --color-warning-bg: #451a03;      /* Amarelo escuro */
+  --color-warning-text: #fef08a;    /* Texto claro */
+  --color-warning-border: #78350f;
 
   /* Status Badge Colors (Dark) */
   --color-status-usage-bg: #064e3b;

@@ -111,7 +111,7 @@ const CreateUserForm = ({ onClose }) => {
         </div>
       ) : (
         <>
-          <div className={styles.alertBox} style={{backgroundColor: '#fffbeb', padding: '10px', borderRadius: '8px', border: '1px solid #fcd34d', color: '#92400e', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px'}}>
+          <div className={styles.alertBox} style={{backgroundColor: 'var(--color-warning-bg)', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-warning-border)', color: 'var(--color-warning-text)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px'}}>
             <AlertTriangle size={16} />
             <span>O usuário será obrigado a redefinir a senha no primeiro acesso.</span>
           </div>
@@ -152,7 +152,7 @@ const CreateUserForm = ({ onClose }) => {
                 placeholder="Defina uma senha inicial"
               />
               {errors.password && <p className={styles.errorMessage}>{errors.password.message}</p>}
-              <small style={{color: '#666', fontSize: '0.8rem', marginTop: '4px'}}>
+              <small style={{color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginTop: '4px'}}>
                 Copie e envie esta senha para o usuário.
               </small>
             </div>

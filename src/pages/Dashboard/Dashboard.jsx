@@ -221,20 +221,22 @@ const Dashboard = () => {
         
         <div className={styles.chartContainer}>
           <h2 className={styles.sectionTitle}>Ativos por Unidade</h2>
-          {/* Aqui usamos a variável loadingAllAssets que estava faltando */}
-          {(loadingAllAssets || loadingUnits) ? <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div> : (
-            <ResponsiveContainer width="100%" height={300}>
-              {pieChartData.length > 0 ? (
-                <PieChart>
-                  <Pie data={pieChartData} cx="50%" cy="50%" labelLine={false} outerRadius={110} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
-                    {pieChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.fill} />))}
-                  </Pie>
-                  <Tooltip /> <Legend />
-                </PieChart>
-              ) : (
-                <div className={styles.emptyFeed}><p>Nenhum dado para exibir.</p></div>
-              )}
+          {(loadingAllAssets || loadingUnits) ? (
+            <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>
+          ) : pieChartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={pieChartData} cx="50%" cy="50%" labelLine={false} outerRadius={110} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                  {pieChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.fill} />))}
+                </Pie>
+                <Tooltip /> <Legend />
+              </PieChart>
             </ResponsiveContainer>
+          ) : (
+            <div className={styles.emptyFeed}>
+              <PackageSearch size={36} className={styles.emptyIcon} />
+              <p>Nenhum ativo encontrado.</p>
+            </div>
           )}
         </div>
 

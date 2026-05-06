@@ -1,102 +1,128 @@
 /* NotificationMenu.module.css */
-/* Princípios: Mobile-First, UI/UX de Excelência, Dark Mode Ready */
+/* Modernized: Dropdown below button, better positioning */
 
 .container {
   position: relative;
+  z-index: 100;
 }
 
-/* --- Botão do Sino --- */
+/* --- Bell Button --- */
 .trigger {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 40px;
+  height: 40px;
   background: transparent;
   border: none;
-  padding: 8px;
-  border-radius: 50%;
+  border-radius: 10px;
   cursor: pointer;
   color: var(--color-text-secondary);
-  transition: background-color 0.2s, color 0.2s;
+  transition: all 0.2s ease;
 }
 
-.trigger:hover, .trigger.active {
-  background-color: var(--color-bg-page); /* Adapta ao tema */
+.trigger:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.trigger.active {
+  background-color: var(--color-primary-light-alpha);
   color: var(--color-primary);
 }
 
-/* Bolinha Vermelha (Badge) */
+/* Red Notification Badge */
 .badge {
   position: absolute;
   top: 2px;
   right: 2px;
-  background-color: var(--color-danger); /* Usa a variável de erro/perigo */
+  min-width: 18px;
+  height: 18px;
+  background-color: var(--color-danger);
   color: white;
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  min-width: 16px;
-  height: 16px;
-  border-radius: 8px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 3px;
-  /* Borda da cor do componente para criar "recorte" visual */
-  border: 2px solid var(--color-bg-component); 
+  padding: 0 5px;
+  border: 2px solid var(--color-bg-component);
   box-sizing: content-box;
 }
 
-/* --- Dropdown --- */
-.dropdown {
+/* --- Dropdown Menu (appears BELOW button) --- */
+.menu {
   position: absolute;
-  top: calc(100% + 10px);
-  right: -70px; /* Centraliza melhor em relação ao ícone */
-  width: 360px;
-  background-color: var(--color-bg-component); /* Fundo adaptável */
+  top: calc(100% + 8px);
+  right: 0;
+  width: 380px;
+  max-height: 500px;
+  background-color: var(--color-bg-component);
   border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  z-index: 50;
-  animation: fadeIn 0.2s ease-out;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  z-index: 200;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  animation: slideDown 0.2s ease-out;
 }
 
-/* Ajuste para mobile */
-@media (max-width: 480px) {
-  .dropdown {
-    position: fixed;
-    top: 64px; /* Altura do Header */
-    left: 10px;
-    right: 10px;
-    width: auto;
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Mobile: Full width bottom sheet */
+@media (max-width: 480px) {
+  .menu {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 70vh;
+    border-radius: 16px 16px 0 0;
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
 }
 
-/* --- Cabeçalho do Dropdown --- */
+/* --- Menu Header --- */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-md);
+  padding: 16px 20px;
   border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-bg-page); /* Levemente diferente do fundo do card */
+  background-color: var(--color-bg-alt);
 }
 
 .header h3 {
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   margin: 0;
   color: var(--color-text-primary);
 }
 
-.markReadButton {
+.markReadBtn {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -104,52 +130,51 @@
   border: none;
   color: var(--color-primary);
   font-size: 0.8rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
-}
-.markReadButton:hover {
-  text-decoration: underline;
-  opacity: 0.8;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: all 0.2s;
 }
 
-/* --- Lista de Notificações --- */
-.list {
-  max-height: 350px;
+.markReadBtn:hover {
+  background-color: var(--color-primary-light-alpha);
+}
+
+/* --- Notification List --- */
+.content {
+  flex: 1;
   overflow-y: auto;
-  /* Scrollbar bonita */
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
+  max-height: 400px;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .list::-webkit-scrollbar {
   width: 6px;
 }
+
 .list::-webkit-scrollbar-thumb {
   background-color: var(--color-border);
   border-radius: 3px;
 }
 
-/* --- Estado Vazio --- */
-.emptyState {
-  padding: var(--spacing-xl);
-  text-align: center;
-  color: var(--color-text-secondary);
-  font-size: 0.9rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+.list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-/* --- Item da Lista --- */
+/* --- Individual Notification Item --- */
 .item {
   display: flex;
   align-items: flex-start;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md);
+  gap: 14px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--color-border);
-  transition: background-color 0.2s;
+  transition: background-color 0.15s ease;
   position: relative;
   background-color: var(--color-bg-component);
 }
@@ -159,61 +184,155 @@
 }
 
 .item:hover {
-  background-color: var(--color-bg-page); /* Feedback de hover sutil */
+  background-color: var(--color-bg-hover);
 }
 
-/* Item Não Lido */
-.unread {
-  /* CORREÇÃO: Usar rgba com a cor primária. Funciona bem no Light e no Dark */
-  background-color: rgba(0, 122, 255, 0.08); 
-}
-.unread:hover {
-  background-color: rgba(0, 122, 255, 0.12);
+/* Unread indicator - left colored border */
+.item.unread {
+  background-color: var(--color-bg-alt);
+  border-left: 3px solid var(--color-primary);
+  padding-left: 17px;
 }
 
-.unreadDot {
-  width: 8px;
-  height: 8px;
-  background-color: var(--color-primary);
-  border-radius: 50%;
-  position: absolute;
-  top: 16px;
-  right: 16px;
+.item.unread:hover {
+  background-color: var(--color-bg-hover);
 }
 
-/* Ícones e Conteúdo */
+/* --- Item Icon (colored circle) --- */
 .itemIcon {
-  margin-top: 2px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  transition: transform 0.2s ease;
 }
-/* Usamos variáveis para garantir que fiquem legíveis no modo escuro */
-.iconDelay { color: var(--color-warning); } 
-.iconUser { color: var(--color-danger); }
-.iconAlert { color: var(--color-text-secondary); }
 
+.item:hover .itemIcon {
+  transform: scale(1.05);
+}
+
+/* Icon color variants */
+.iconNew {
+  background-color: rgba(52, 199, 89, 0.15);
+  color: var(--color-success);
+}
+
+.iconMove {
+  background-color: var(--color-primary-light-alpha);
+  color: var(--color-primary);
+}
+
+.iconMaintenance {
+  background-color: rgba(255, 149, 0, 0.15);
+  color: var(--color-warning);
+}
+
+.iconReturn {
+  background-color: rgba(90, 200, 250, 0.15);
+  color: var(--color-secondary);
+}
+
+.iconStatus {
+  background-color: var(--color-bg-page);
+  color: var(--color-text-secondary);
+}
+
+.iconAlert {
+  background-color: rgba(255, 59, 48, 0.15);
+  color: var(--color-danger);
+}
+
+/* --- Item Content --- */
 .itemContent {
   flex: 1;
-  padding-right: 16px; /* Espaço para o ponto de unread */
+  min-width: 0;
 }
 
 .itemContent strong {
   display: block;
   font-size: 0.9rem;
+  font-weight: 600;
   color: var(--color-text-primary);
-  margin-bottom: 4px;
-  line-height: 1.2;
+  margin-bottom: 2px;
+  line-height: 1.3;
 }
 
 .itemContent p {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--color-text-secondary);
   margin: 0;
   line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Spinner */
+.itemContent small {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.time {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* --- Empty State --- */
+.empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.empty svg {
+  color: var(--color-text-secondary);
+  opacity: 0.4;
+}
+
+.empty span {
+  font-size: 0.9rem;
+}
+
+/* --- Loading State --- */
+.loading {
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-text-secondary);
+}
+
 .spinner {
   animation: spin 1s linear infinite;
   color: var(--color-primary);
 }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* --- Mobile Adjustments --- */
+@media (max-width: 480px) {
+  .item {
+    padding: 16px 20px;
+  }
+
+  .itemContent p {
+    white-space: normal;
+  }
+}

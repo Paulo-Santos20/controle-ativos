@@ -203,7 +203,7 @@ const AssetModelPage = ({ type, title }) => {
   if (!authLoading && !isAdmin && allowedUnits.length === 0) {
       return (
           <div className={styles.loadingState}>
-              <ShieldAlert size={48} color="#ef4444" />
+              <ShieldAlert size={48} color="var(--color-danger)" />
               <h3>Acesso Negado</h3>
               <p>Você não tem permissão para visualizar ativos.</p>
           </div>

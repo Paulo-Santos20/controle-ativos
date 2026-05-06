@@ -66,8 +66,8 @@ const ForceChangePasswordPage = () => {
     <div className={styles.pageContainer}>
       <div className={styles.formContainer} style={{maxWidth: 450}}>
         <div className={styles.header}>
-          <div className={styles.logoCircle} style={{backgroundColor: '#fff7ed'}}>
-             <ShieldAlert size={40} color="#ea580c" />
+        <div className={styles.logoCircle} style={{backgroundColor: 'var(--color-warning-bg)'}}>
+              <ShieldAlert size={40} color="var(--color-warning)" />
           </div>
           <h1 className={styles.title}>Redefinição Obrigatória</h1>
           <p className={styles.subtitle}>
@@ -106,10 +106,10 @@ const ForceChangePasswordPage = () => {
           </button>
         </form>
 
-        <div style={{marginTop: 20, textAlign: 'center', borderTop: '1px solid #eee', paddingTop: 20}}>
-          <button 
+        <div style={{marginTop: 20, textAlign: 'center', borderTop: '1px solid var(--color-border)', paddingTop: 20}}>
+          <button
             onClick={handleLogout}
-            style={{background: 'none', border: 'none', color: '#666', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, margin: '0 auto', fontSize: '0.9rem'}}
+            style={{background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, margin: '0 auto', fontSize: '0.9rem'}}
           >
             <LogOut size={16} /> Cancelar e Sair
           </button>
