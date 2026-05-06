@@ -2,170 +2,218 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ============================================
-    // Funções Auxiliares (Helpers)
-    // ============================================
+    // =================================================================
+    // 1. FUNÇÕES AUXILIARES
+    // =================================================================
 
-    // Verifica se o usuário está autenticado
-    function isAuthenticated() {
+    function isLoggedIn() {
       return request.auth != null;
     }
 
-    // Verifica se o documento tem um campo 'isActive' e se é true
-    function isActiveUser(userData) {
-      return userData.isActive == true;
+    function currentUid() {
+      return request.auth.uid;
     }
 
-    // Obtém os dados do usuário logado
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(currentUid())).data;
     }
 
-    // Verifica se o usuário é admin (master email ou role admin_geral/gestor)
+    function userRole() {
+      return userData().role;
+    }
+
+    function userAssignedUnits() {
+      return userData().assignedUnits;
+    }
+
     function isAdmin() {
-      let userData = getUserData();
-      let masterEmail = request.auth.token.email == getUserData().email;
-      return userData.role == 'admin_geral' || userData.role == 'gestor';
+      let role = userRole();
+      return role == 'admin_geral' || role == 'gestor';
     }
 
-    // Obtém as unidades permitidas do usuário
-    function getAllowedUnits() {
-      return getUserData().assignedUnits;
+    function isOwner(userId) {
+      return currentUid() == userId;
     }
 
-    // Verifica se o usuário tem uma unidade específica
     function hasUnit(unitId) {
-      return unitId in getAllowedUnits();
+      return unitId in (userAssignedUnits() || []);
     }
 
-    // Verifica se o usuário tem a role especificada
-    function hasRole(roleName) {
-      return getUserData().role == roleName;
+    function hasRolePermission(module, action) {
+      let roleId = userRole();
+      if (roleId == null) return false;
+
+      let roleDoc = get(/databases/$(database)/documents/roles/$(roleId));
+      if (!roleDoc.exists) return false;
+
+      let perms = roleDoc.data.permissions;
+      if (perms == null) return false;
+
+      let modulePerms = perms[module];
+      if (modulePerms == null) return false;
+
+      return modulePerms[action] == true;
     }
 
-    // ============================================
-    // Regras para Coleção 'users'
-    // ============================================
+    // =================================================================
+    // 2. USERS
+    // =================================================================
     match /users/{userId} {
-      // Leitura: qualquer usuário autenticado pode ler (para lista de usuários)
-      allow read: if isAuthenticated();
+      allow create: if isLoggedIn();
 
-      // Criação: apenas admins ou o próprio usuário (para criar perfil inicial)
-      allow create: if isAdmin() || request.auth.uid == userId;
-
-      // Atualização: admins podem atualizar qualquer usuário,
-      // usuários comuns podem atualizar apenas seus próprios dados (exceto role)
-      allow update: if (
+      allow read: if isLoggedIn() && (
+        isOwner(userId) ||
         isAdmin() ||
-        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isActive', 'assignedUnits']))
+        hasRolePermission('usuarios', 'read')
       );
 
-      // Exclusão: apenas admins podem excluir usuários (não podem excluir a si mesmos)
-      allow delete: if isAdmin() && request.auth.uid != userId;
+      allow update: if isLoggedIn() && (
+        isOwner(userId) ||
+        isAdmin() ||
+        hasRolePermission('usuarios', 'update')
+      );
+
+      allow delete: if isLoggedIn() && isAdmin();
+
+      match /sessions/{sessionId} {
+        allow read, write, delete: if isLoggedIn() && isOwner(userId);
+      }
     }
 
-    // ============================================
-    // Regras para Coleção 'roles'
-    // ============================================
+    // =================================================================
+    // 3. ROLES (Perfis de Permissão)
+    // =================================================================
     match /roles/{roleId} {
-      // Leitura: qualquer usuário autenticado pode ler perfis
-      allow read: if isAuthenticated();
-
-      // Criação/Atualização/Exclusão: apenas admins
-      allow create, update, delete: if isAdmin();
-
-      // Não permitir excluir perfis críticos
-      allow delete: if isAdmin() && roleId not in ['admin_geral', 'gestor', 'guest'];
+      allow read: if isLoggedIn();
+      allow write: if isLoggedIn() && isAdmin();
     }
 
-    // ============================================
-    // Regras para Coleção 'assets'
-    // ============================================
+    // =================================================================
+    // 4. ASSETS (Ativos)
+    // =================================================================
     match /assets/{assetId} {
-      // Leitura: usuários com unidades atribuídas podem ler ativos dessas unidades
-      allow read: if isAuthenticated() && (
+      allow read: if isLoggedIn() && (
         isAdmin() ||
-        hasUnit(resource.data.unitId)
+        (hasRolePermission('ativos', 'read') && hasUnit(resource.data.unitId))
       );
 
-      // Criação: admins podem criar, ou usuários com permissão de create
-      allow create: if isAuthenticated() && (
+      allow create: if isLoggedIn() && (
         isAdmin() ||
-        hasUnit(request.resource.data.unitId)
+        (hasRolePermission('ativos', 'create') && hasUnit(request.resource.data.unitId))
       );
 
-      // Atualização: admins ou usuários com acesso à unidade
-      allow update: if isAuthenticated() && (
+      allow update: if isLoggedIn() && (
         isAdmin() ||
-        hasUnit(resource.data.unitId)
+        (hasRolePermission('ativos', 'update') && hasUnit(resource.data.unitId))
       );
 
-      // Exclusão: apenas admins (por segurança, operações em massa via Cloud Function)
-      allow delete: if isAdmin();
+      allow delete: if isLoggedIn() && isAdmin();
+
+      match /history/{historyId} {
+        allow read: if isLoggedIn() && (
+          isAdmin() ||
+          (hasRolePermission('ativos', 'read') && hasUnit(get(/databases/$(database)/documents/assets/$(assetId)).data.unitId))
+        );
+        allow create: if isLoggedIn() && (
+          isAdmin() ||
+          (hasRolePermission('ativos', 'update') && hasUnit(get(/databases/$(database)/documents/assets/$(assetId)).data.unitId))
+        );
+      }
     }
 
-    // Subcoleção 'history' de assets
-    match /assets/{assetId}/history/{historyId} {
-      allow read: if isAuthenticated() && (
-        isAdmin() ||
-        hasUnit(get(/databases/$(database)/documents/assets/$(assetId)).data.unitId)
-      );
-      allow create: if isAuthenticated() && (
-        isAdmin() ||
-        hasUnit(get(/databases/$(database)/documents/assets/$(assetId)).data.unitId)
-      );
-      allow update, delete: if isAdmin();
-    }
-
-    // ============================================
-    // Regras para Coleção 'units'
-    // ============================================
+    // =================================================================
+    // 5. UNITS (Unidades)
+    // =================================================================
     match /units/{unitId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAdmin();
-      allow delete: if isAdmin(); // Considerar restrições adicionais em produção
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && (
+        isAdmin() ||
+        hasRolePermission('cadastros_unidades', 'create')
+      );
+      allow update: if isLoggedIn() && (
+        isAdmin() ||
+        hasRolePermission('cadastros_unidades', 'update')
+      );
+      allow delete: if isLoggedIn() && isAdmin();
     }
 
-    // ============================================
-    // Regras para Coleção 'system_logs'
-    // ============================================
-    match /system_logs/{logType}/{document=**} {
-      // Apenas admins podem criar logs (sistema)
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated(); // Cloud Functions criam logs
-      allow update, delete: if isAdmin();
+    // =================================================================
+    // 6. ASSET MODELS (Modelos de Computadores/Impressoras)
+    // =================================================================
+    match /assetModels/{modelId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && (
+        isAdmin() ||
+        hasRolePermission('cadastros_modelos', 'create')
+      );
+      allow update: if isLoggedIn() && (
+        isAdmin() ||
+        hasRolePermission('cadastros_modelos', 'update')
+      );
+      allow delete: if isLoggedIn() && (
+        isAdmin() ||
+        hasRolePermission('cadastros_modelos', 'delete')
+      );
     }
 
-    // ============================================
-    // Regras para Coleções de Cadastros
-    // ============================================
-
-    // Modelos de Computadores
-    match /computer_models/{modelId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAdmin();
-      allow delete: if isAdmin();
+    // =================================================================
+    // 7. SUPPLIERS (Empresas/Fornecedores)
+    // =================================================================
+    match /suppliers/{supplierId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && (
+        isAdmin() ||
+        hasRolePermission('cadastros_empresas', 'create')
+      );
+      allow update: if isLoggedIn() && (
+        isAdmin() ||
+        hasRolePermission('cadastros_empresas', 'update')
+      );
+      allow delete: if isLoggedIn() && (
+        isAdmin() ||
+        hasRolePermission('cadastros_empresas', 'delete')
+      );
     }
 
-    // Modelos de Impressoras
-    match /printer_models/{modelId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAdmin();
-      allow delete: if isAdmin();
+    // =================================================================
+    // 8. SYSTEM OPTIONS (Opções do Sistema)
+    // =================================================================
+    match /systemOptions/{docId} {
+      allow read: if isLoggedIn();
+      allow write: if isLoggedIn() && (
+        isAdmin() ||
+        hasRolePermission('cadastros_opcoes', 'update') ||
+        hasRolePermission('cadastros_opcoes', 'create')
+      );
     }
 
-    // Empresas/Fornecedores
-    match /companies/{companyId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAdmin();
-      allow delete: if isAdmin();
+    // =================================================================
+    // 9. SYSTEM LOGS (Logs de Auditoria)
+    // =================================================================
+    match /system_logs/{logType}/{docId} {
+      allow read: if isLoggedIn() && (
+        isAdmin() ||
+        hasRolePermission('usuarios', 'read')
+      );
+      allow create: if isLoggedIn();
+      allow update, delete: if isLoggedIn() && isAdmin();
     }
 
-    // Opções do Sistema
-    match /options/{optionId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAdmin();
-      allow delete: if isAdmin();
+    // =================================================================
+    // 10. DASHBOARD & MONITORING
+    // =================================================================
+    match /dashboard/{anything} {
+      allow read: if isLoggedIn() && (
+        isAdmin() ||
+        hasRolePermission('dashboard', 'read')
+      );
+    }
+
+    match /monitoring/{anything} {
+      allow read: if isLoggedIn() && (
+        isAdmin() ||
+        hasRolePermission('monitoramento', 'read')
+      );
     }
   }
 }
