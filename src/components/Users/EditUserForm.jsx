@@ -17,7 +17,7 @@ const userSchema = z.object({
   role: z.string().min(1, "A 'Role' é obrigatória"),
   isActive: z.boolean(),
   assignedUnits: z.array(z.string()).optional(),
-  customPermissions: z.record(z.record(z.boolean())).optional(),
+  customPermissions: z.any().optional(),
 });
 
 const EditUserForm = ({ onClose, userDoc }) => {
@@ -41,7 +41,7 @@ const EditUserForm = ({ onClose, userDoc }) => {
         email: data.email || "",
         role: data.role || "",
         isActive: data.isActive !== false,
-        assignedUnits: data.assignedUnits || [],
+        assignedUnits: Array.isArray(data.assignedUnits) ? data.assignedUnits : [],
         customPermissions: data.customPermissions || {}
       });
     }
@@ -50,7 +50,7 @@ const EditUserForm = ({ onClose, userDoc }) => {
   useEffect(() => {
     const loadProfilePermissions = async () => {
       if (!selectedRole) return;
-      
+
       setLoadingProfile(true);
       try {
         const roleDocRef = doc(db, 'roles', selectedRole);
@@ -81,27 +81,35 @@ const EditUserForm = ({ onClose, userDoc }) => {
         email: data.email,
         role: data.role,
         isActive: data.isActive,
-        assignedUnits: data.assignedUnits,
+        assignedUnits: Array.isArray(data.assignedUnits) ? data.assignedUnits : [],
       };
 
-      const hasCustomPermissions = data.customPermissions &&
-        Object.keys(data.customPermissions).some(key =>
-          data.customPermissions[key] && Object.keys(data.customPermissions[key]).some(action =>
-            data.customPermissions[key][action] !== undefined && data.customPermissions[key][action] !== null
-          )
-        );
+      const customPerms = data.customPermissions;
+      let hasCustomPermissions = false;
+
+      if (customPerms && typeof customPerms === 'object') {
+        hasCustomPermissions = Object.keys(customPerms).some(key => {
+          const modulePerms = customPerms[key];
+          if (modulePerms && typeof modulePerms === 'object') {
+            return Object.keys(modulePerms).some(action =>
+              modulePerms[action] !== undefined && modulePerms[action] !== null
+            );
+          }
+          return false;
+        });
+      }
 
       if (hasCustomPermissions) {
-        updateData.customPermissions = data.customPermissions;
+        updateData.customPermissions = customPerms;
       } else {
         updateData.customPermissions = null;
       }
 
       await updateDoc(userRef, updateData);
-      
+
       const oldData = userDoc.data();
       let details = "Dados do usuário atualizados.";
-      
+
       if (oldData.role !== data.role) details = `Perfil alterado de "${oldData.role}" para "${data.role}".`;
       if (oldData.isActive !== data.isActive) details = `Status alterado para ${data.isActive ? 'Ativo' : 'Inativo'}.`;
 
@@ -112,19 +120,21 @@ const EditUserForm = ({ onClose, userDoc }) => {
       );
 
       toast.success("Dados do usuário atualizados!", { id: toastId });
+
       if (data.email !== userDoc.data().email) {
         toast.info("Nota: O e-mail de login deve ser alterado pelo próprio usuário.", { duration: 5000 });
       }
 
-      setTimeout(() => onClose(), 300);
+      setTimeout(() => onClose(), 500);
     } catch (error) {
       toast.error("Erro ao salvar: " + error.message, { id: toastId });
-      console.error(error);
+      console.error("Erro ao salvar usuário:", error);
     }
   };
 
   const handleResetAllPermissions = () => {
-    Object.keys(watch('customPermissions') || {}).forEach(key => {
+    const currentPerms = watch('customPermissions') || {};
+    Object.keys(currentPerms).forEach(key => {
       setValue(`customPermissions.${key}`, null);
     });
     setValue('customPermissions', {});
@@ -134,7 +144,7 @@ const EditUserForm = ({ onClose, userDoc }) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-      
+
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
           <Loader2 className={styles.spinner} />
@@ -190,15 +200,15 @@ const EditUserForm = ({ onClose, userDoc }) => {
                   <>
                     {units?.docs.map(unitDoc => (
                       <div key={unitDoc.id} className={styles.checkboxGroup}>
-                        <input 
-                          type="checkbox" 
-                          id={unitDoc.id} 
-                          checked={field.value.includes(unitDoc.id)} 
+                        <input
+                          type="checkbox"
+                          id={unitDoc.id}
+                          checked={field.value.includes(unitDoc.id)}
                           onChange={(e) => {
-                              const selectedUnits = field.value;
+                              const selectedUnits = field.value || [];
                               if (e.target.checked) field.onChange([...selectedUnits, unitDoc.id]);
                               else field.onChange(selectedUnits.filter(id => id !== unitDoc.id));
-                            }} 
+                            }}
                         />
                         <label htmlFor={unitDoc.id}>{unitDoc.data().name}</label>
                       </div>
@@ -220,8 +230,8 @@ const EditUserForm = ({ onClose, userDoc }) => {
                 <span style={{marginLeft: '8px'}}>Carregando permissões do perfil...</span>
               </div>
             ) : (
-              <PermissionMatrix 
-                control={control} 
+              <PermissionMatrix
+                control={control}
                 profilePermissions={profilePermissions}
                 onResetAll={handleResetAllPermissions}
               />
@@ -232,7 +242,9 @@ const EditUserForm = ({ onClose, userDoc }) => {
 
       <div className={styles.buttonContainer}>
         <button type="button" onClick={onClose} className={styles.secondaryButton}>Cancelar</button>
-        <button type="submit" className={styles.primaryButton} disabled={isSubmitting || isLoading}>Salvar</button>
+        <button type="submit" className={styles.primaryButton} disabled={isSubmitting || isLoading}>
+          {isSubmitting ? "Salvando..." : "Salvar"}
+        </button>
       </div>
     </form>
   );
