@@ -14,45 +14,30 @@ service cloud.firestore {
       return request.auth.uid;
     }
 
-    function userData() {
-      return get(/databases/$(database)/documents/users/$(currentUid())).data;
-    }
-
-    function userRole() {
-      return userData().role;
-    }
-
-    function userAssignedUnits() {
-      return userData().assignedUnits;
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isAdmin() {
-      let role = userRole();
-      return role == 'admin_geral' || role == 'gestor';
+      return getUserData().role == 'admin_geral' || getUserData().role == 'gestor';
     }
 
     function isOwner(userId) {
-      return currentUid() == userId;
+      return request.auth.uid == userId;
     }
 
     function hasUnit(unitId) {
-      return unitId in (userAssignedUnits() || []);
+      return unitId in (getUserData().assignedUnits || []);
     }
 
-    function hasRolePermission(module, action) {
-      let roleId = userRole();
-      if (roleId == null) return false;
+    function getRolePermissions(roleId) {
+      return get(/databases/$(database)/documents/roles/$(roleId)).data.permissions;
+    }
 
-      let roleDoc = get(/databases/$(database)/documents/roles/$(roleId));
-      if (!roleDoc.exists) return false;
-
-      let perms = roleDoc.data.permissions;
-      if (perms == null) return false;
-
-      let modulePerms = perms[module];
-      if (modulePerms == null) return false;
-
-      return modulePerms[action] == true;
+    function hasPermission(module, action) {
+      let roleId = getUserData().role;
+      let perms = getRolePermissions(roleId);
+      return perms[module][action] == true;
     }
 
     // =================================================================
@@ -60,19 +45,8 @@ service cloud.firestore {
     // =================================================================
     match /users/{userId} {
       allow create: if isLoggedIn();
-
-      allow read: if isLoggedIn() && (
-        isOwner(userId) ||
-        isAdmin() ||
-        hasRolePermission('usuarios', 'read')
-      );
-
-      allow update: if isLoggedIn() && (
-        isOwner(userId) ||
-        isAdmin() ||
-        hasRolePermission('usuarios', 'update')
-      );
-
+      allow read: if isLoggedIn() && (isOwner(userId) || isAdmin() || hasPermission('usuarios', 'read'));
+      allow update: if isLoggedIn() && (isOwner(userId) || isAdmin() || hasPermission('usuarios', 'update'));
       allow delete: if isLoggedIn() && isAdmin();
 
       match /sessions/{sessionId} {
@@ -81,7 +55,7 @@ service cloud.firestore {
     }
 
     // =================================================================
-    // 3. ROLES (Perfis de Permissão)
+    // 3. ROLES
     // =================================================================
     match /roles/{roleId} {
       allow read: if isLoggedIn();
@@ -89,131 +63,65 @@ service cloud.firestore {
     }
 
     // =================================================================
-    // 4. ASSETS (Ativos)
+    // 4. ASSETS
     // =================================================================
     match /assets/{assetId} {
-      allow read: if isLoggedIn() && (
-        isAdmin() ||
-        (hasRolePermission('ativos', 'read') && hasUnit(resource.data.unitId))
-      );
-
-      allow create: if isLoggedIn() && (
-        isAdmin() ||
-        (hasRolePermission('ativos', 'create') && hasUnit(request.resource.data.unitId))
-      );
-
-      allow update: if isLoggedIn() && (
-        isAdmin() ||
-        (hasRolePermission('ativos', 'update') && hasUnit(resource.data.unitId))
-      );
-
+      allow read: if isLoggedIn() && (isAdmin() || (hasPermission('ativos', 'read') && hasUnit(resource.data.unitId)));
+      allow create: if isLoggedIn() && (isAdmin() || (hasPermission('ativos', 'create') && hasUnit(request.resource.data.unitId)));
+      allow update: if isLoggedIn() && (isAdmin() || (hasPermission('ativos', 'update') && hasUnit(resource.data.unitId)));
       allow delete: if isLoggedIn() && isAdmin();
 
       match /history/{historyId} {
-        allow read: if isLoggedIn() && (
-          isAdmin() ||
-          (hasRolePermission('ativos', 'read') && hasUnit(get(/databases/$(database)/documents/assets/$(assetId)).data.unitId))
-        );
-        allow create: if isLoggedIn() && (
-          isAdmin() ||
-          (hasRolePermission('ativos', 'update') && hasUnit(get(/databases/$(database)/documents/assets/$(assetId)).data.unitId))
-        );
+        allow read: if isLoggedIn() && (isAdmin() || hasPermission('ativos', 'read'));
+        allow create: if isLoggedIn() && (isAdmin() || hasPermission('ativos', 'update'));
       }
     }
 
     // =================================================================
-    // 5. UNITS (Unidades)
+    // 5. UNITS
     // =================================================================
     match /units/{unitId} {
       allow read: if isLoggedIn();
-      allow create: if isLoggedIn() && (
-        isAdmin() ||
-        hasRolePermission('cadastros_unidades', 'create')
-      );
-      allow update: if isLoggedIn() && (
-        isAdmin() ||
-        hasRolePermission('cadastros_unidades', 'update')
-      );
+      allow create: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_unidades', 'create'));
+      allow update: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_unidades', 'update'));
       allow delete: if isLoggedIn() && isAdmin();
     }
 
     // =================================================================
-    // 6. ASSET MODELS (Modelos de Computadores/Impressoras)
+    // 6. ASSET MODELS
     // =================================================================
     match /assetModels/{modelId} {
       allow read: if isLoggedIn();
-      allow create: if isLoggedIn() && (
-        isAdmin() ||
-        hasRolePermission('cadastros_modelos', 'create')
-      );
-      allow update: if isLoggedIn() && (
-        isAdmin() ||
-        hasRolePermission('cadastros_modelos', 'update')
-      );
-      allow delete: if isLoggedIn() && (
-        isAdmin() ||
-        hasRolePermission('cadastros_modelos', 'delete')
-      );
+      allow create: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_modelos', 'create'));
+      allow update: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_modelos', 'update'));
+      allow delete: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_modelos', 'delete'));
     }
 
     // =================================================================
-    // 7. SUPPLIERS (Empresas/Fornecedores)
+    // 7. SUPPLIERS
     // =================================================================
     match /suppliers/{supplierId} {
       allow read: if isLoggedIn();
-      allow create: if isLoggedIn() && (
-        isAdmin() ||
-        hasRolePermission('cadastros_empresas', 'create')
-      );
-      allow update: if isLoggedIn() && (
-        isAdmin() ||
-        hasRolePermission('cadastros_empresas', 'update')
-      );
-      allow delete: if isLoggedIn() && (
-        isAdmin() ||
-        hasRolePermission('cadastros_empresas', 'delete')
-      );
+      allow create: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_empresas', 'create'));
+      allow update: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_empresas', 'update'));
+      allow delete: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_empresas', 'delete'));
     }
 
     // =================================================================
-    // 8. SYSTEM OPTIONS (Opções do Sistema)
+    // 8. SYSTEM OPTIONS
     // =================================================================
     match /systemOptions/{docId} {
       allow read: if isLoggedIn();
-      allow write: if isLoggedIn() && (
-        isAdmin() ||
-        hasRolePermission('cadastros_opcoes', 'update') ||
-        hasRolePermission('cadastros_opcoes', 'create')
-      );
+      allow write: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_opcoes', 'update') || hasPermission('cadastros_opcoes', 'create'));
     }
 
     // =================================================================
-    // 9. SYSTEM LOGS (Logs de Auditoria)
+    // 9. SYSTEM LOGS
     // =================================================================
     match /system_logs/{logType}/{docId} {
-      allow read: if isLoggedIn() && (
-        isAdmin() ||
-        hasRolePermission('usuarios', 'read')
-      );
+      allow read: if isLoggedIn() && (isAdmin() || hasPermission('usuarios', 'read'));
       allow create: if isLoggedIn();
       allow update, delete: if isLoggedIn() && isAdmin();
-    }
-
-    // =================================================================
-    // 10. DASHBOARD & MONITORING
-    // =================================================================
-    match /dashboard/{anything} {
-      allow read: if isLoggedIn() && (
-        isAdmin() ||
-        hasRolePermission('dashboard', 'read')
-      );
-    }
-
-    match /monitoring/{anything} {
-      allow read: if isLoggedIn() && (
-        isAdmin() ||
-        hasRolePermission('monitoramento', 'read')
-      );
     }
   }
 }
