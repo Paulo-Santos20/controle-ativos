@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,8 +10,8 @@ import {
   browserSessionPersistence,
   sendPasswordResetEmail 
 } from 'firebase/auth';
-import { auth } from '/src/lib/firebase.js'; 
-import { toast } from 'sonner';
+import { auth } from '/src/lib/firebase.js';
+import { toast, Toaster } from 'sonner';
 import { Hospital, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react'; 
 
 import styles from './Login.module.css';
@@ -29,10 +29,21 @@ const loginSchema = z.object({
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [isResetting, setIsResetting] = useState(false); // Loading do reset
+
+  // Verifica se veio de redefinição de senha bem sucedida
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('reset') === 'success') {
+      toast.success("Senha redefinida com sucesso! Faça login com sua nova senha.");
+      // Limpa a URL removendo o parametro
+      navigate('/login', { replace: true });
+    }
+  }, [location, navigate]);
 
   const { 
     register, 
@@ -96,24 +107,28 @@ const Login = () => {
     }
 
     setIsResetting(true);
-    const toastId = toast.loading("Enviando e-mail de recuperação...");
 
     try {
       // 2. Envia o link do Firebase
-      await sendPasswordResetEmail(auth, email);
-      
-      toast.success("E-mail enviado! Verifique sua caixa de entrada e spam.", { id: toastId, duration: 5000 });
-      setLoginError(""); // Limpa erro se houver
+      await sendPasswordResetEmail(auth, email, {
+        url: window.location.origin + '/login',
+        handleCodeInApp: true,
+      });
+
+      toast.success("E-mail de recuperação enviado!", {
+        description: "Verifique sua caixa de entrada e spam. O link expira em 1 hora.",
+        duration: 8000,
+      });
+      setLoginError("");
     } catch (error) {
       console.error("Reset Error:", error.code);
       let msg = getFriendlyErrorMessage(error.code);
-      
-      // Tratamento específico para user-not-found no reset (opcional, por segurança às vezes não se diz)
+
       if (error.code === 'auth/user-not-found') {
         msg = "Este e-mail não está cadastrado no sistema.";
       }
-      
-      toast.error(msg, { id: toastId });
+
+      toast.error(msg);
     } finally {
       setIsResetting(false);
     }
@@ -121,6 +136,7 @@ const Login = () => {
 
   return (
     <div className={styles.pageContainer}>
+      <Toaster position="top-right" richColors closeButton />
       <div className={styles.formContainer}>
         <div className={styles.header}>
           <div className={styles.logoCircle}>

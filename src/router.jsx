@@ -35,6 +35,7 @@ const MonitoringPage = lazy(() => import("./pages/Monitoring/MonitoringPage"));
 const ProfileListPage = lazy(() => import("./pages/Users/ProfileListPage"));
 const AssetScanPage = lazy(() => import("./pages/Public/AssetScanPage"));
 const ForceChangePasswordPage = lazy(() => import("./pages/Auth/ForceChangePasswordPage"));
+const PasswordResetPage = lazy(() => import("./pages/Auth/PasswordResetPage"));
 
 // Componente de fallback para suspense
 const PageLoader = () => (
@@ -62,6 +63,16 @@ export const router = createBrowserRouter([
           <ForceChangePasswordPage />
         </Suspense>
       </ProtectedRoute>
+    ),
+  },
+
+  // Redefinição de Senha via Email (pública - não precisa estar logado)
+  {
+    path: "/reset-password",
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <PasswordResetPage />
+      </Suspense>
     ),
   },
 
