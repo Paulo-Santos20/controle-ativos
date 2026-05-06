@@ -337,12 +337,12 @@
   }
 }
 
-/* Adicione ao final do arquivo */
 
-/* --- Seletor de Unidade (Conflito) --- */
+
+/* --- Seletor de Unidade --- */
 .unitSelectorBox {
-  background-color: #fffbeb; /* Amarelo claro */
-  border: 1px solid #fcd34d;
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
@@ -353,81 +353,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #92400e;
-  margin-bottom: 10px;
-}
-
-.unitSelectorBox p {
-  color: var(--color-text-secondary);
-  margin-bottom: 16px;
-  font-size: 0.95rem;
-}
-
-.unitGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.unitButton {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background-color: white;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  transition: all 0.2s;
-}
-
-.unitButton:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.unitButtonActive {
-  background-color: var(--color-primary);
-  color: white;
-  border-color: var(--color-primary);
-  box-shadow: 0 4px 6px rgba(0, 122, 255, 0.2);
-}
-.unitButtonActive:hover {
-  background-color: var(--color-primary-dark);
-  color: white;
-}
-
-/* Dark Mode para o box amarelo */
-:global([data-theme="dark"]) .unitSelectorBox {
-  background-color: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.3);
-}
-:global([data-theme="dark"]) .alertHeader {
-  color: #fbbf24;
-}
-:global([data-theme="dark"]) .unitButton {
-  background-color: var(--color-bg-component);
-  border-color: var(--color-border);
-}
-/* Adicione ao final do seu CSS existente */
-
-/* --- Seletor de Unidade --- */
-.unitSelectorBox {
-  background-color: var(--color-bg-component);
-  border: 2px solid var(--color-primary-light-alpha);
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 20px;
-  animation: fadeIn 0.3s ease;
-}
-
-.alertHeader {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--color-primary);
+  color: var(--color-warning-text);
   margin-bottom: 10px;
 }
 

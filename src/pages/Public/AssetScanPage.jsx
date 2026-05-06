@@ -17,12 +17,12 @@ const AssetScanPage = () => {
   // Busca apenas os dados do documento (sem histórico)
   const [asset, loading, error] = useDocumentData(doc(db, 'assets', assetId));
 
-  const getStatusColor = (status) => {
-    if (status === 'Em uso') return '#10b981'; // Verde
-    if (status === 'Em manutenção') return '#f59e0b'; // Laranja
-    if (status === 'Devolvido' || status === 'Descartado') return '#ef4444'; // Vermelho
-    if (status === 'Estoque') return '#3b82f6'; // Azul
-    return '#6b7280'; // Cinza
+  const getStatusClass = (status) => {
+    if (status === 'Em uso') return styles.statusBadgeBg;
+    if (status === 'Em manutenção') return styles.statusBadgeMaintenance;
+    if (status === 'Devolvido' || status === 'Descartado') return styles.statusBadgeDanger;
+    if (status === 'Estoque') return styles.statusBadgeInfo;
+    return styles.statusBadgeDefault;
   };
 
   if (loading) {
@@ -37,14 +37,14 @@ const AssetScanPage = () => {
   if (error || !asset) {
     return (
       <div className={styles.centerScreen}>
-        <PackageSearch size={64} color="#9ca3af" />
+        <PackageSearch size={64} color="var(--color-text-secondary)" />
         <h2>Ativo não encontrado</h2>
         <p>Verifique se o código está correto ou se o item foi excluído.</p>
       </div>
     );
   }
 
-  const statusColor = getStatusColor(asset.status);
+  const statusClass = getStatusClass(asset.status);
   const isComputer = asset.type === 'computador';
   const isPrinter = asset.type === 'impressora';
 
@@ -66,8 +66,8 @@ const AssetScanPage = () => {
     <div className={styles.container}>
       
       {/* --- CABEÇALHO VISUAL --- */}
-      <div className={styles.header} style={{ borderTopColor: statusColor }}>
-        <div className={styles.statusBadge} style={{ backgroundColor: statusColor }}>
+      <div className={styles.header} style={{ borderTopColor: 'var(--color-primary)' }}>
+        <div className={`${styles.statusBadge} ${statusClass}`}>
           {asset.status}
         </div>
         <h1 className={styles.title}>{asset.modelo || "Modelo Desconhecido"}</h1>

@@ -82,11 +82,12 @@ service cloud.firestore {
     // =================================================================
     // 5. HISTORY (Collection Group for cross-collection queries)
     // NOTE: collectionGroup queries match ANY 'history' collection at any path
-    // {path=**} matches zero or more segments (e.g., assets/ABC/history e system_logs/audit/history)
+    // For collectionGroup, we restrict to admin only since we can't easily check ownership
+    // The specific /assets/{assetId}/history/{historyId} rules handle normal access
     // =================================================================
     match /{path=**}/history/{historyId} {
-      allow read: if isLoggedIn();
-      allow create: if isLoggedIn();
+      allow read: if isLoggedIn() && isAdmin();
+      allow create: if isLoggedIn() && isAdmin();
     }
 
     // =================================================================

@@ -281,7 +281,7 @@ const Reports = () => {
               <XAxis dataKey="name" tick={{fontSize: 12}} />
               <YAxis allowDecimals={false} />
               <Tooltip cursor={{fill: 'transparent'}} />
-              <Bar dataKey="value" fill="#007aff" radius={[4, 4, 0, 0]} label={{ position: 'top' }} />
+              <Bar dataKey="value" fill="var(--color-primary)" radius={[4, 4, 0, 0]} label={{ position: 'top' }} />
             </BarChart>
           </ResponsiveContainer>
         </div>

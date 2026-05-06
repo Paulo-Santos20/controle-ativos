@@ -26,7 +26,7 @@ const UpdatePrompt = () => {
           label: 'Atualizar Agora',
           onClick: () => updateServiceWorker(true), // Recarrega a página
         },
-        icon: <RefreshCw size={18} color="#007aff" />,
+        icon: <RefreshCw size={18} color="var(--color-primary)" />,
       });
     }
   }, [needRefresh, updateServiceWorker]);

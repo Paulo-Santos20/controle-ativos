@@ -47,7 +47,11 @@ const QrCodeModal = ({ assetId, assetName }) => {
       const safeId = escapeHtml(assetId);
       doc.write('<h3>' + safeName + '</h3>');
       doc.write('<p>ID: ' + safeId + '</p>');
-      doc.write(qrEl.innerHTML);
+      // Clone o SVG do QR Code para evitar XSS (defense in depth)
+      const qrSvg = qrEl.querySelector('svg');
+      if (qrSvg) {
+        doc.write('<div style="display:flex;justify-content:center;">' + qrSvg.outerHTML + '</div>');
+      }
 
       doc.write('</body></html>');
       doc.close();
