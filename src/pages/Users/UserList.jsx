@@ -4,7 +4,7 @@ import { collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '/src/lib/firebase.js';
 import { 
   Loader2, Search, User, UserCheck, Pencil, PackageSearch, 
-  Plus, Ban, CheckCircle, Filter 
+  Plus, Ban, CheckCircle, Filter, Shield
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -161,7 +161,11 @@ const UserList = () => {
         {filteredUsers.map(doc => {
           const user = doc.data();
           const isAdmin = user.role === 'admin_geral' || user.role === 'gestor';
-          const isActive = user.isActive !== false; 
+          const isActive = user.isActive !== false;
+          const hasCustomPermissions = user.customPermissions && 
+            Object.keys(user.customPermissions).some(key => 
+              user.customPermissions[key] && Object.keys(user.customPermissions[key]).length > 0
+            );
 
           return (
             <div key={doc.id} className={`${styles.listItem} ${!isActive ? styles.itemInactive : ''}`}>
@@ -170,8 +174,13 @@ const UserList = () => {
               </div>
               
               <div className={styles.listItemContent}>
-                <strong style={{ textDecoration: !isActive ? 'line-through' : 'none' }}>
+                <strong style={{ textDecoration: !isActive ? 'line-through' : 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {user.displayName || 'Usuário sem nome'}
+                  {hasCustomPermissions && (
+                    <span title="Possui permissões customizadas" style={{color: 'var(--color-primary)', display: 'flex', alignItems: 'center'}}>
+                      <Shield size={14} />
+                    </span>
+                  )}
                 </strong>
                 {!isActive && <span className={styles.badgeInactive}>DESATIVADO</span>}
                 

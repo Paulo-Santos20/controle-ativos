@@ -68,7 +68,7 @@ export const useAuth = () => {
     const allowedUnits = userData?.assignedUnits || [];
 
     // Se for Master ou Admin, usa permissões totais. Senão, usa as do banco.
-    const finalPermissions = (isMaster || isAdmin) ? masterPermissions : {
+    let finalPermissions = (isMaster || isAdmin) ? masterPermissions : {
         ...defaultPermissions,
         ...roleData?.permissions,
         dashboard: { ...defaultPermissions.dashboard, ...roleData?.permissions?.dashboard },
@@ -83,6 +83,36 @@ export const useAuth = () => {
         usuarios: { ...defaultPermissions.usuarios, ...roleData?.permissions?.usuarios },
         perfis: { ...defaultPermissions.perfis, ...roleData?.permissions?.perfis },
     };
+
+    // Apply custom permissions override (complete replacement per module)
+    // For master email: masterPermissions only (no override)
+    // For admin roles (admin_geral/gestor): masterPermissions + custom overrides can restrict
+    // For regular users: role permissions + custom overrides
+    if (userData?.customPermissions) {
+      if (isMaster) {
+        // Master gets full permissions, no override
+      } else if (isAdmin) {
+        // Admin gets masterPermissions but can have restrictions via custom
+        Object.keys(userData.customPermissions).forEach(module => {
+          if (finalPermissions[module]) {
+            finalPermissions[module] = {
+              ...finalPermissions[module],
+              ...userData.customPermissions[module]
+            };
+          }
+        });
+      } else {
+        // Regular user: custom overrides apply on top of role permissions
+        Object.keys(userData.customPermissions).forEach(module => {
+          if (finalPermissions[module]) {
+            finalPermissions[module] = {
+              ...finalPermissions[module],
+              ...userData.customPermissions[module]
+            };
+          }
+        });
+      }
+    }
 
     return {
       user: authUser,

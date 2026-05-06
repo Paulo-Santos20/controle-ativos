@@ -269,6 +269,171 @@
   cursor: not-allowed;
 }
 
+/* --- Permission Matrix (User Custom) --- */
+.permissionsMatrix {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.permissionsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.permissionsTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.customizedBadge {
+  background-color: var(--color-primary);
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.resetAllButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--border-radius);
+  transition: all 0.2s;
+}
+.resetAllButton:hover {
+  color: var(--color-danger);
+  background-color: var(--color-bg-page);
+}
+
+.permissionsHint {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.permissionsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-sm);
+}
+
+@media (min-width: 768px) {
+  .permissionsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.permissionModule {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-sm);
+  background-color: var(--color-bg-page);
+  transition: all 0.2s;
+}
+
+.permissionModuleCustom {
+  border-color: var(--color-primary);
+  background-color: rgba(0, 122, 255, 0.05);
+}
+
+.moduleHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+}
+
+.moduleName {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+}
+
+.lockIcon {
+  color: var(--color-primary);
+}
+
+.resetModuleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.resetModuleButton:hover {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+  background-color: var(--color-bg-component);
+}
+
+.moduleActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.permissionAction {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.permissionAction:hover {
+  background-color: var(--color-bg-component);
+  border-color: var(--color-border);
+}
+
+.permissionAction input {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.permissionActionCustom {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.inheritedTag {
+  font-size: 0.65rem;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-component);
+  padding: 1px 4px;
+  border-radius: 3px;
+  opacity: 0.7;
+}
+
 /* --- Botões de Ação --- */
 .buttonContainer {
   display: flex;
