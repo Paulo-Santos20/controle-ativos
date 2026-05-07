@@ -4,19 +4,13 @@ import { useDocumentData } from 'react-firebase-hooks/firestore';
 import { db } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
 import { logAudit } from '../../utils/AuditLogger';
-import { Plus, Trash2, Loader2, List } from 'lucide-react';
-import styles from './OptionManager.module.css'; // Vamos criar este CSS abaixo
+import { Plus, Trash2, Loader2, List, Check, Square, X } from 'lucide-react';
+import styles from './OptionManager.module.css';
 
-/**
- * Gerencia uma lista de strings dentro de um documento do Firestore.
- * @param {string} docId - O ID do documento na coleção 'systemOptions' (ex: 'setores', 'os')
- * @param {string} title - O título amigável (ex: 'Setores do Hospital')
- * @param {string} placeholder - Texto de ajuda do input
- */
 const OptionManager = ({ docId, title, placeholder }) => {
-  const [newItem, setNewItem] = useState("");
+  const [newItem, setNewItem] = useState('');
+  const [selectedItems, setSelectedItems] = useState([]);
   
-  // Referência ao documento: systemOptions/{docId}
   const docRef = doc(db, 'systemOptions', docId);
   const [data, loading, error] = useDocumentData(docRef);
 
@@ -26,14 +20,12 @@ const OptionManager = ({ docId, title, placeholder }) => {
 
     const itemToAdd = newItem.trim();
 
-    // Evita duplicatas visualmente (o arrayUnion também evita no backend)
     if (data?.values?.includes(itemToAdd)) {
       toast.error("Este item já existe na lista.");
       return;
     }
 
     try {
-      // Verifica se o documento existe, se não, cria
       const docSnap = await getDoc(docRef);
       
       if (!docSnap.exists()) {
@@ -70,22 +62,58 @@ const OptionManager = ({ docId, title, placeholder }) => {
         title
       );
       toast.success("Item removido.");
+      setSelectedItems(prev => prev.filter(i => i !== item));
     } catch (error) {
       toast.error("Erro ao remover item.");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedItems.length === 0) return;
+    if (!window.confirm(`Deseja remover ${selectedItems.length} itens selecionados?`)) return;
+
+    try {
+      await updateDoc(docRef, {
+        values: arrayRemove(...selectedItems)
+      });
+      await logAudit(
+        "Remoção em Massa de Opções",
+        `${selectedItems.length} opções removidas da lista "${title}".`,
+        title
+      );
+      toast.success(`${selectedItems.length} itens removidos.`);
+      setSelectedItems([]);
+    } catch (error) {
+      toast.error("Erro ao remover itens.");
+    }
+  };
+
+  const toggleItem = (item) => {
+    setSelectedItems(prev => 
+      prev.includes(item) 
+        ? prev.filter(i => i !== item)
+        : [...prev, item]
+    );
+  };
+
+  const toggleAll = () => {
+    if (selectedItems.length === items.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems([...items]);
     }
   };
 
   if (loading) return <div className={styles.loading}><Loader2 className={styles.spinner} /> Carregando lista...</div>;
   if (error) return <p className={styles.error}>Erro ao carregar lista.</p>;
 
-  // Ordena a lista alfabeticamente
   const items = data?.values?.sort() || [];
+  const allSelected = items.length > 0 && selectedItems.length === items.length;
 
   return (
     <div className={styles.container}>
       <h3 className={styles.title}>{title}</h3>
       
-      {/* Formulário de Adição */}
       <form onSubmit={handleAdd} className={styles.form}>
         <input 
           type="text" 
@@ -99,7 +127,18 @@ const OptionManager = ({ docId, title, placeholder }) => {
         </button>
       </form>
 
-      {/* Lista de Itens */}
+      {selectedItems.length > 0 && (
+        <div className={styles.bulkActions}>
+          <span>{selectedItems.length} selecionado(s)</span>
+          <button onClick={handleBulkDelete} className={styles.bulkDeleteButton}>
+            <Trash2 size={16} /> Excluir Selecionados
+          </button>
+          <button onClick={() => setSelectedItems([])} className={styles.cancelButton}>
+            <X size={16} /> Cancelar
+          </button>
+        </div>
+      )}
+
       <div className={styles.listContainer}>
         {items.length === 0 ? (
           <div className={styles.emptyState}>
@@ -108,9 +147,24 @@ const OptionManager = ({ docId, title, placeholder }) => {
           </div>
         ) : (
           <ul className={styles.list}>
+            <li className={styles.headerRow}>
+              <input 
+                type="checkbox" 
+                checked={allSelected}
+                onChange={toggleAll}
+                className={styles.checkbox}
+              />
+              <span className={styles.headerLabel}>Selecionar todos</span>
+            </li>
             {items.map((item, index) => (
-              <li key={index} className={styles.listItem}>
-                <span>{item}</span>
+              <li key={index} className={`${styles.listItem} ${selectedItems.includes(item) ? styles.selected : ''}`}>
+                <input 
+                  type="checkbox" 
+                  checked={selectedItems.includes(item)}
+                  onChange={() => toggleItem(item)}
+                  className={styles.checkbox}
+                />
+                <span className={styles.itemText}>{item}</span>
                 <button 
                   onClick={() => handleDelete(item)} 
                   className={styles.deleteButton}

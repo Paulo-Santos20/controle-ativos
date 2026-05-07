@@ -1,151 +1,180 @@
 /* OptionsPage.module.css */
 /* Princípios: Mobile-First, UI/UX de Excelência, Dark Mode Ready */
 
-/* --- Layout da Página --- */
 .page {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
   width: 100%;
-  max-width: 1000px; 
-  margin: 0 auto;    
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
 }
 
 .header {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--spacing-md);
-  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-md) 0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .title {
-  font-size: 1.75rem; 
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--color-text-primary);
-  margin-bottom: 4px;
-  letter-spacing: -0.02em;
+  margin: 0;
 }
 
-.header p {
+.subtitle {
   color: var(--color-text-secondary);
-  font-size: 0.95rem;
-  line-height: 1.5;
+  font-size: 0.9rem;
+  margin: 4px 0 0 0;
 }
 
-/* --- Botões --- */
-.secondaryButton {
+.seedButton {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
-  background-color: var(--color-bg-component); /* Adapta ao Dark Mode */
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
+  padding: 10px 20px;
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
   border-radius: var(--border-radius);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 0.9rem;
-  white-space: nowrap;
 }
 
-.secondaryButton:hover {
-  background-color: var(--color-bg-page); /* Contraste sutil no hover */
-  border-color: var(--color-text-secondary);
+.seedButton:hover {
+  background-color: var(--color-primary-dark);
 }
 
-.secondaryButton:disabled {
+.seedButton:disabled {
   opacity: 0.6;
   cursor: wait;
 }
 
-/* --- Container de Tabs (Abas) --- */
-.tabsContainer {
+/* Layout Principal com Sidebar */
+.layout {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  
-  /* Scroll Horizontal para Mobile */
-  overflow-x: auto; 
-  padding-bottom: 8px; 
-  margin-top: 10px;
-  margin-bottom: 20px;
-  
-  /* Esconde a barra de rolagem */
-  scrollbar-width: none; 
-  -ms-overflow-style: none;  
-  
-  padding-left: 2px;
-  padding-right: 2px;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  min-height: calc(100vh - 180px);
 }
 
-.tabsContainer::-webkit-scrollbar {
-  display: none; 
+/* Sidebar */
+.sidebar {
+  background-color: var(--color-bg-component);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-sm);
+  order: 1;
 }
 
-/* Botão da Aba Individual */
-.tabButton {
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.navButton {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
-  
-  /* Cores Adaptáveis */
-  background-color: var(--color-bg-component);
+  padding: 10px 14px;
+  background-color: transparent;
   color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
-  
-  border-radius: 20px; 
+  border: 1px solid transparent;
+  border-radius: var(--border-radius);
   cursor: pointer;
   white-space: nowrap;
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   transition: all 0.2s ease;
-  
-  /* Garante que o botão não amasse no mobile */
-  flex-shrink: 0; 
-  
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  width: 100%;
+  text-align: left;
 }
 
-/* Hover no botão INATIVO */
-.tabButton:hover {
+.navButton:hover {
   background-color: var(--color-bg-page);
-  color: var(--color-text-primary); /* Texto acende */
-  border-color: var(--color-text-secondary);
-  transform: translateY(-1px);
+  color: var(--color-text-primary);
 }
 
-/* Ícones dentro do botão (Herda a cor do texto) */
-.tabButton svg {
-  color: currentColor; 
-  transition: color 0.2s;
-}
-
-/* --- Estado Ativo da Aba (Selecionado) --- */
-.active {
+.navButton.active {
   background-color: var(--color-primary);
-  color: white !important; /* Força branco mesmo no Dark Mode para contraste com azul */
+  color: white;
   border-color: var(--color-primary);
-  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3); /* Glow azul */
 }
 
-.active:hover {
-  background-color: var(--color-primary-dark);
-  border-color: var(--color-primary-dark);
-  transform: translateY(-1px);
+.navButton svg {
+  flex-shrink: 0;
 }
 
-/* --- Responsividade --- */
+/* Conteúdo Principal */
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.contentHeader {
+  margin-bottom: var(--spacing-md);
+}
+
+.contentTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.contentTitle svg {
+  color: var(--color-primary);
+}
+
+/* Responsividade Desktop */
 @media (min-width: 768px) {
-  .header {
-    align-items: center; 
+  .page {
+    padding: 0 var(--spacing-lg);
   }
-  
-  .tabsContainer {
-    flex-wrap: wrap; /* No desktop, quebra linha em vez de scrollar */
-    overflow-x: visible;
+
+  .layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    position: sticky;
+    top: var(--spacing-lg);
+    order: 0;
+  }
+
+  .nav {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .navButton {
+    width: 100%;
+    padding: 12px 14px;
+  }
+
+  .content {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sidebar {
+    width: 280px;
   }
 }

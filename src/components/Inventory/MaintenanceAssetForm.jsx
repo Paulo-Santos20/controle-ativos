@@ -6,19 +6,20 @@ import { doc, collection, writeBatch, serverTimestamp } from 'firebase/firestore
 import { db, auth } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
 import styles from './AssetForms.module.css';
-import { OPCOES_STATUS } from '../../constants/options';
+import { useOptions } from '../../hooks/useOptions';
 
-// Schema simples
 const maintenanceSchema = z.object({
-  newStatus: z.string().min(1, "O novo status é obrigatório"),
+  newStatus: z.string().optional(),
   details: z.string().min(5, "Os detalhes são obrigatórios"),
 });
 
 const MaintenanceAssetForm = ({ onClose, assetId, currentData }) => {
+  const { options } = useOptions(['status']);
+
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(maintenanceSchema),
     defaultValues: {
-      newStatus: "Em manutenção" // Padrão
+      newStatus: currentData.status || ""
     }
   });
 
@@ -61,7 +62,8 @@ const MaintenanceAssetForm = ({ onClose, assetId, currentData }) => {
         <div className={styles.formGroup}>
           <label htmlFor="newStatus">Novo Status do Ativo</label>
           <select id="newStatus" {...register("newStatus")} className={errors.newStatus ? styles.inputError : ''}>
-            {OPCOES_STATUS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            <option value="">Selecione...</option>
+            {(options.status || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
           </select>
           {errors.newStatus && <p className={styles.errorMessage}>{errors.newStatus.message}</p>}
         </div>

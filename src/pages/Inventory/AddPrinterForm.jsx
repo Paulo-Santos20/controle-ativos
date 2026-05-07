@@ -4,104 +4,90 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, doc, setDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { db } from '/src/lib/firebase.js'; // Caminho absoluto
+import { db } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
-// Reutiliza o CSS do formulário de computador (Código de Alta Qualidade)
-import styles from './AssetForms.module.css'; 
-import {
-  OPCOES_POSSE,
-  OPCOES_STATUS,
-  OPCOES_CONECTIVIDADE,
-  OPCOES_FRENTE_VERSO,
-  OPCOES_CARTUCHO,
-  OPCOES_COLORIDO,
-  OPCOES_PAVIMENTO,
-  OPCOES_SETOR,
-  OPCOES_SALA,
-  TIPOS_ATIVO_IMPRESSORA_PAGE
-} from '../../constants/options';
+import styles from './AssetForms.module.css';
+import { useOptions } from '../../hooks/useOptions';
 
-/**
- * Schema de validação Zod para uma nova Impressora.
- */
 const printerSchema = z.object({
-  // --- Seção "Dados" ---
-  tipoAtivo: z.string().min(1, "O Tipo de Ativo é obrigatório"),
-  marca: z.string().min(1, "A Marca é obrigatória"),
-  modelo: z.string().min(1, "O Modelo é obrigatório"),
-  serial: z.string().min(3, "O Serial é obrigatório"),
-  tombamento: z.string().min(3, "O Tombamento (ID do Doc) é obrigatório"),
-  propriedade: z.string().min(1, "A Propriedade é obrigatória"),
-  status: z.string().min(1, "O Status é obrigatório"),
-  
-  // --- Seção "Configuração" ---
-  conectividade: z.string().min(1, "A Conectividade é obrigatória"),
-  frenteVerso: z.string().min(1, "Frente e Verso é obrigatório"),
-  
-  // --- Seção "Insumos" ---
-  cartucho: z.string().min(1, "O tipo de Insumo é obrigatório"),
-  colorido: z.string().min(1, "Informe se é colorido"),
+  tipoAtivo: z.string().optional().or(z.literal('')),
+  marca: z.string().optional().or(z.literal('')),
+  modelo: z.string().optional().or(z.literal('')),
+  serial: z.string().optional().or(z.literal('')),
+  tombamento: z.string().optional().or(z.literal('')),
+  propriedade: z.string().optional().or(z.literal('')),
+  status: z.string().optional().or(z.literal('')),
+
+  conectividade: z.string().optional().or(z.literal('')),
+  frenteVerso: z.string().optional().or(z.literal('')),
+
+  cartucho: z.string().optional().or(z.literal('')),
+  colorido: z.string().optional().or(z.literal('')),
   cartuchoColorido: z.string().optional().or(z.literal('')),
   cartuchoPreto: z.string().optional().or(z.literal('')),
   drCilindro: z.string().optional().or(z.literal('')),
-  
-  // --- Seção "Localização" ---
-  unitId: z.string().min(1, "A Unidade é obrigatória"),
-  pavimento: z.string().min(1, "O Pavimento é obrigatório"),
-  setor: z.string().min(1, "O Setor é obrigatório"),
-  sala: z.string().min(1, "A Sala é obrigatória"),
+
+  unitId: z.string().optional().or(z.literal('')),
+  pavimento: z.string().optional().or(z.literal('')),
+  setor: z.string().optional().or(z.literal('')),
+  sala: z.string().optional().or(z.literal('')),
   funcionario: z.string().optional().or(z.literal('')),
   observacao: z.string().optional().or(z.literal('')),
 });
 
-/**
- * Formulário para registrar um novo ativo (Impressora).
- * @param {object} props
- * @param {() => void} props.onClose - Função para fechar o modal.
- * @param {() => void} props.onBack - Função para voltar ao seletor de tipo.
- */
 const AddPrinterForm = ({ onClose, onBack }) => {
-  // Busca 'units' (Hospitais) para o dropdown de Localização
   const [units, loadingUnits] = useCollection(
     query(collection(db, 'units'), orderBy('name', 'asc'))
   );
 
-  const { 
-    register, 
-    handleSubmit, 
+  const { options: opts } = useOptions([
+    'tipos_ativos_impressora',
+    'marcas_impressora',
+    'modelos_impressora',
+    'propriedade',
+    'conectividade',
+    'frente_verso',
+    'tipos_insumo',
+    'setores',
+    'pavimentos',
+    'salas',
+    'status'
+  ]);
+
+  const {
+    register,
+    handleSubmit,
     reset,
-    watch, // Para observar o campo "Colorido"
-    formState: { errors, isSubmitting } 
+    watch,
+    formState: { errors, isSubmitting }
   } = useForm({
     resolver: zodResolver(printerSchema),
     defaultValues: {
-      colorido: "Não", // Define "Não" como padrão
+      colorido: "Não",
       frenteVerso: "Não se aplica"
     }
   });
 
-  // UI/UX: Observa o campo 'colorido' para mostrar/ocultar o input
   const isColorida = watch("colorido") === "Sim";
 
-  // Salva no backend do Firebase
   const onSubmit = async (data) => {
     const toastId = toast.loading("Registrando impressora...");
     try {
-      // Usamos o 'tombamento' como ID único do documento
-      const assetRef = doc(db, 'assets', data.tombamento);
-      
+      const docId = data.tombamento || data.serial || null;
+      const assetRef = docId ? doc(db, 'assets', docId) : doc(db, 'assets');
+
       const newAsset = {
         ...data,
+        tombamento: data.tombamento || "",
         createdAt: serverTimestamp(),
         lastSeen: serverTimestamp(),
-        // Adiciona o tipo "pai" explicitamente
-        type: 'impressora' 
+        type: 'impressora'
       };
 
       await setDoc(assetRef, newAsset);
-      
-      toast.success(`Impressora ${data.tombamento} registrada!`, { id: toastId });
-      onClose(); // Fecha o modal
+
+      toast.success(`Impressora ${docId || 'sem identificação'} registrada!`, { id: toastId });
+      onClose();
     } catch (error) {
       console.error("Erro ao registrar ativo:", error);
       toast.error("Erro ao registrar ativo: " + error.message, { id: toastId });
@@ -109,113 +95,105 @@ const AddPrinterForm = ({ onClose, onBack }) => {
   };
 
   const handleClear = () => {
-    reset(); // Limpa o formulário
+    reset();
     toast.info("Formulário limpo.");
   };
 
   return (
-    // Reutiliza o CSS (AssetForms.module.css)
     <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-      
-      {/* === SEÇÃO DADOS (UI/UX) === */}
+
       <fieldset className={styles.fieldset}>
         <legend className={styles.subtitle}>Dados da Impressora</legend>
-        
+
         <div className={styles.grid3}>
           <div className={styles.formGroup}>
             <label htmlFor="tipoAtivo">Tipo Ativo</label>
             <select id="tipoAtivo" {...register("tipoAtivo")} className={errors.tipoAtivo ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {TIPOS_ATIVO_IMPRESSORA_PAGE.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+              {(opts.tipos_ativos_impressora || []).map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
             </select>
-            {errors.tipoAtivo && <p className={styles.errorMessage}>{errors.tipoAtivo.message}</p>}
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="marca">Marca</label>
-            <input id="marca" {...register("marca")} placeholder="Ex: BROTHER, HP, Epson" className={errors.marca ? styles.inputError : ''} />
-            {errors.marca && <p className={styles.errorMessage}>{errors.marca.message}</p>}
+            <select id="marca" {...register("marca")} className={errors.marca ? styles.inputError : ''}>
+              <option value="">Selecione...</option>
+              {(opts.marcas_impressora || []).map(marca => <option key={marca} value={marca}>{marca}</option>)}
+            </select>
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="modelo">Modelo</label>
-            <input id="modelo" {...register("modelo")} placeholder="Ex: HL-L5102DW" className={errors.modelo ? styles.inputError : ''} />
-            {errors.modelo && <p className={styles.errorMessage}>{errors.modelo.message}</p>}
+            <select id="modelo" {...register("modelo")} className={errors.modelo ? styles.inputError : ''}>
+              <option value="">Selecione...</option>
+              {(opts.modelos_impressora || []).map(modelo => <option key={modelo} value={modelo}>{modelo}</option>)}
+            </select>
           </div>
         </div>
 
         <div className={styles.grid3}>
-           <div className={styles.formGroup}>
-            <label htmlFor="tombamento">Tombamento (ID)</label>
-            <input id="tombamento" {...register("tombamento")} placeholder="Digite o tombamento..." className={errors.tombamento ? styles.inputError : ''} />
-            {errors.tombamento && <p className={styles.errorMessage}>{errors.tombamento.message}</p>}
+          <div className={styles.formGroup}>
+            <label htmlFor="tombamento">Tombamento (Opcional)</label>
+            <input id="tombamento" {...register("tombamento")} placeholder="Se vazio, será gerado automaticamente" />
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="serial">Serial</label>
-            <input id="serial" {...register("serial")} placeholder="Digite o serial..." className={errors.serial ? styles.inputError : ''} />
-            {errors.serial && <p className={styles.errorMessage}>{errors.serial.message}</p>}
+            <input id="serial" {...register("serial")} placeholder="Digite o serial..." />
           </div>
-           <div className={styles.formGroup}>
+          <div className={styles.formGroup}>
             <label htmlFor="propriedade">Propriedade</label>
             <select id="propriedade" {...register("propriedade")} className={errors.propriedade ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_POSSE.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.propriedade || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
-            {errors.propriedade && <p className={styles.errorMessage}>{errors.propriedade.message}</p>}
           </div>
         </div>
-        
+
         <div className={styles.formGroup}>
-            <label htmlFor="status">Status</label>
-            <select id="status" {...register("status")} className={errors.status ? styles.inputError : ''}>
-              <option value="">Selecione...</option>
-              {OPCOES_STATUS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-            {errors.status && <p className={styles.errorMessage}>{errors.status.message}</p>}
+          <label htmlFor="status">Status</label>
+          <select id="status" {...register("status")} className={errors.status ? styles.inputError : ''}>
+            <option value="">Selecione...</option>
+            {(opts.status || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+          </select>
         </div>
       </fieldset>
 
-      {/* === SEÇÃO CONFIGURAÇÃO (UI/UX) === */}
       <fieldset className={styles.fieldset}>
         <legend className={styles.subtitle}>Configuração</legend>
-        
+
         <div className={styles.grid2}>
           <div className={styles.formGroup}>
             <label htmlFor="conectividade">Conectividade</label>
             <select id="conectividade" {...register("conectividade")} className={errors.conectividade ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_CONECTIVIDADE.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.conectividade || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
-            {errors.conectividade && <p className={styles.errorMessage}>{errors.conectividade.message}</p>}
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="frenteVerso">Frente e Verso (Duplex)</label>
             <select id="frenteVerso" {...register("frenteVerso")} className={errors.frenteVerso ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_FRENTE_VERSO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.frente_verso || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
-            {errors.frenteVerso && <p className={styles.errorMessage}>{errors.frenteVerso.message}</p>}
           </div>
         </div>
       </fieldset>
 
-      {/* === SEÇÃO INSUMOS (UI/UX) === */}
       <fieldset className={styles.fieldset}>
         <legend className={styles.subtitle}>Insumos</legend>
-        
+
         <div className={styles.grid2}>
           <div className={styles.formGroup}>
-            <label htmlFor="cartucho">Tipo de Insumo (Cartucho)</label>
+            <label htmlFor="cartucho">Tipo de Insumo</label>
             <select id="cartucho" {...register("cartucho")} className={errors.cartucho ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_CARTUCHO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.tipos_insumo || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
-            {errors.cartucho && <p className={styles.errorMessage}>{errors.cartucho.message}</p>}
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="colorido">Colorido?</label>
             <select id="colorido" {...register("colorido")} className={errors.colorido ? styles.inputError : ''}>
-              {OPCOES_COLORIDO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              <option value="Não">Não</option>
+              <option value="Sim">Sim</option>
             </select>
-            {errors.colorido && <p className={styles.errorMessage}>{errors.colorido.message}</p>}
           </div>
         </div>
 
@@ -224,15 +202,14 @@ const AddPrinterForm = ({ onClose, onBack }) => {
             <label htmlFor="cartuchoPreto">Modelo Cartucho Preto</label>
             <input id="cartuchoPreto" {...register("cartuchoPreto")} placeholder="Ex: TN-3472" />
           </div>
-          
-          {/* UI/UX: Campo condicional */}
+
           {isColorida && (
             <div className={styles.formGroup}>
               <label htmlFor="cartuchoColorido">Modelo Cartucho Colorido</label>
               <input id="cartuchoColorido" {...register("cartuchoColorido")} placeholder="Ex: TN-3472C/M/Y" />
             </div>
           )}
-          
+
           <div className={styles.formGroup}>
             <label htmlFor="drCilindro">Modelo DR/Cilindro</label>
             <input id="drCilindro" {...register("drCilindro")} placeholder="Ex: DR-3440" />
@@ -240,7 +217,6 @@ const AddPrinterForm = ({ onClose, onBack }) => {
         </div>
       </fieldset>
 
-      {/* === SEÇÃO LOCALIZAÇÃO (UI/UX) === */}
       <fieldset className={styles.fieldset}>
         <legend className={styles.subtitle}>Localização</legend>
 
@@ -254,23 +230,20 @@ const AddPrinterForm = ({ onClose, onBack }) => {
                 <option key={doc.id} value={doc.id}>{doc.data().name} ({doc.data().sigla})</option>
               ))}
             </select>
-            {errors.unitId && <p className={styles.errorMessage}>{errors.unitId.message}</p>}
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="pavimento">Pavimento</label>
             <select id="pavimento" {...register("pavimento")} className={errors.pavimento ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_PAVIMENTO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.pavimentos || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
-            {errors.pavimento && <p className={styles.errorMessage}>{errors.pavimento.message}</p>}
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="setor">Setor</label>
             <select id="setor" {...register("setor")} className={errors.setor ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_SETOR.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.setores || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
-            {errors.setor && <p className={styles.errorMessage}>{errors.setor.message}</p>}
           </div>
         </div>
 
@@ -279,9 +252,8 @@ const AddPrinterForm = ({ onClose, onBack }) => {
             <label htmlFor="sala">Sala</label>
             <select id="sala" {...register("sala")} className={errors.sala ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_SALA.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.salas || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
-            {errors.sala && <p className={styles.errorMessage}>{errors.sala.message}</p>}
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="funcionario">Funcionário (Usuário)</label>
@@ -295,9 +267,7 @@ const AddPrinterForm = ({ onClose, onBack }) => {
         </div>
       </fieldset>
 
-      {/* --- Botões de Ação --- */}
       <div className={styles.buttonContainer}>
-        {/* O 'onBack' é crucial para a UI/UX de seleção */}
         <button type="button" onClick={onBack} className={styles.secondaryButton}>
           Voltar
         </button>

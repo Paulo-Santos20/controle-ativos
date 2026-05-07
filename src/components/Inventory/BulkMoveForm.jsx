@@ -7,17 +7,19 @@ import { db, auth } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import styles from './AssetForms.module.css';
-import { OPCOES_PAVIMENTO, OPCOES_SETOR, OPCOES_SALA } from '../../constants/options';
+import { useOptions } from '../../hooks/useOptions';
 
 const bulkMoveSchema = z.object({
-  pavimento: z.string().min(1, "O novo pavimento é obrigatório"),
-  setor: z.string().min(1, "O novo setor é obrigatório"),
-  sala: z.string().min(1, "A nova sala é obrigatória"),
+  pavimento: z.string().optional(),
+  setor: z.string().optional(),
+  sala: z.string().optional(),
   funcionario: z.string().optional(),
   details: z.string().min(5, "Justificativa é obrigatória para ações em massa"),
 });
 
 const BulkMoveForm = ({ onClose, selectedIds, onSuccess }) => {
+  const { options } = useOptions(['pavimentos', 'setores', 'salas']);
+
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(bulkMoveSchema)
   });
@@ -92,21 +94,21 @@ const BulkMoveForm = ({ onClose, selectedIds, onSuccess }) => {
             <label>Novo Pavimento</label>
             <select {...register("pavimento")} className={errors.pavimento ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_PAVIMENTO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(options.pavimentos || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div className={styles.formGroup}>
             <label>Novo Setor</label>
             <select {...register("setor")} className={errors.setor ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_SETOR.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(options.setores || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div className={styles.formGroup}>
             <label>Nova Sala</label>
             <select {...register("sala")} className={errors.sala ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_SALA.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(options.salas || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
         </div>

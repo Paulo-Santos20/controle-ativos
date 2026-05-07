@@ -15,47 +15,36 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 import { db, auth } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
 import styles from './AssetForms.module.css';
-import {
-  TIPOS_ATIVO_COMPUTADOR,
-  OPCOES_POSSE,
-  OPCOES_STATUS,
-  OPCOES_SO,
-  OPCOES_PAVIMENTO,
-  OPCOES_SETOR,
-  OPCOES_SALA
-} from '../../constants/options';
+import { useOptions } from '../../hooks/useOptions';
 
 /**
  * Schema de validação Zod para editar um Computador.
  * (Não valida 'tombamento' pois é o ID e não é editável).
  */
 const assetSchema = z.object({
-  // Seção "Dados"
-  tipoAtivo: z.string().min(1, "O Tipo de Ativo é obrigatório"),
-  marca: z.string().min(1, "A Marca é obrigatória"),
-  modelo: z.string().min(1, "O Modelo é obrigatório"),
+  tipoAtivo: z.string().optional().or(z.literal('')),
+  marca: z.string().optional().or(z.literal('')),
+  modelo: z.string().optional().or(z.literal('')),
   hostname: z.string().optional().or(z.literal('')), 
-  serial: z.string().min(3, "O Serial é obrigatório"), 
+  serial: z.string().optional().or(z.literal('')), 
   serviceTag: z.string().optional().or(z.literal('')), 
   macAddress: z.string()
     .regex(/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/, "Formato de MAC inválido (ex: 00:1A:2B:3C:4D:5E)")
     .optional().or(z.literal('')),
-  posse: z.string().min(1, "A posse é obrigatória"), 
-  status: z.string().min(1, "O status é obrigatório"), 
+  posse: z.string().optional().or(z.literal('')), 
+  status: z.string().optional().or(z.literal('')), 
   
-  // Seção "Configuração"
   memoria: z.string().optional().or(z.literal('')), 
   hdSsd: z.string().optional().or(z.literal('')), 
   processador: z.string().optional().or(z.literal('')), 
   antivirus: z.string().optional().or(z.literal('')), 
-  so: z.string().min(1, "O S.O. é obrigatório"),
+  so: z.string().optional().or(z.literal('')),
   soVersao: z.string().optional().or(z.literal('')), 
   
-  // Seção "Localização"
-  unitId: z.string().min(1, "A Unidade é obrigatória"), 
-  pavimento: z.string().min(1, "O Pavimento é obrigatório"),
-  setor: z.string().min(1, "O Setor é obrigatório"), 
-  sala: z.string().min(1, "A Sala é obrigatória"),
+  unitId: z.string().optional().or(z.literal('')), 
+  pavimento: z.string().optional().or(z.literal('')),
+  setor: z.string().optional().or(z.literal('')), 
+  sala: z.string().optional().or(z.literal('')),
   funcionario: z.string().optional().or(z.literal('')), 
   observacao: z.string().optional().or(z.literal('')),
 });
@@ -72,6 +61,22 @@ const EditAssetForm = ({ onClose, assetId, existingData }) => {
   const [units, loadingUnits] = useCollection(
     query(collection(db, 'units'), orderBy('name', 'asc'))
   );
+
+  const { options } = useOptions([
+    'tipos_ativos_computador',
+    'marcas',
+    'modelos',
+    'memorias',
+    'hd_ssd',
+    'processadores',
+    'sistemas_operacionais',
+    'versoes_so',
+    'setores',
+    'pavimentos',
+    'salas',
+    'posse',
+    'status'
+  ]);
 
   const { 
     register, 
@@ -153,18 +158,24 @@ const EditAssetForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="tipoAtivo">Tipo Ativo</label>
             <select id="tipoAtivo" {...register("tipoAtivo")} className={errors.tipoAtivo ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {TIPOS_ATIVO_COMPUTADOR.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+              {(options.tipos_ativos_computador || []).map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
             </select>
             {errors.tipoAtivo && <p className={styles.errorMessage}>{errors.tipoAtivo.message}</p>}
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="marca">Marca</label>
-            <input id="marca" {...register("marca")} placeholder="Ex: Dell, HP, Lenovo" className={errors.marca ? styles.inputError : ''} />
+            <select id="marca" {...register("marca")} className={errors.marca ? styles.inputError : ''}>
+              <option value="">Selecione...</option>
+              {(options.marcas || []).map(marca => <option key={marca} value={marca}>{marca}</option>)}
+            </select>
             {errors.marca && <p className={styles.errorMessage}>{errors.marca.message}</p>}
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="modelo">Modelo</label>
-            <input id="modelo" {...register("modelo")} placeholder="Ex: Optiplex 3080" className={errors.modelo ? styles.inputError : ''} />
+            <select id="modelo" {...register("modelo")} className={errors.modelo ? styles.inputError : ''}>
+              <option value="">Selecione...</option>
+              {(options.modelos || []).map(modelo => <option key={modelo} value={modelo}>{modelo}</option>)}
+            </select>
             {errors.modelo && <p className={styles.errorMessage}>{errors.modelo.message}</p>}
           </div>
         </div>
@@ -197,14 +208,14 @@ const EditAssetForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="posse">Posse</label>
             <select id="posse" {...register("posse")} className={errors.posse ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_POSSE.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(options.posse || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="status">Status</label>
             <select id="status" {...register("status")} className={errors.status ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_STATUS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(options.status || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
         </div>
@@ -216,15 +227,24 @@ const EditAssetForm = ({ onClose, assetId, existingData }) => {
          <div className={styles.grid3}>
           <div className={styles.formGroup}>
             <label htmlFor="processador">Processador</label>
-            <input id="processador" {...register("processador")} />
+            <select id="processador" {...register("processador")}>
+              <option value="">Selecione...</option>
+              {(options.processadores || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="memoria">Memória</label>
-            <input id="memoria" {...register("memoria")} />
+            <select id="memoria" {...register("memoria")}>
+              <option value="">Selecione...</option>
+              {(options.memorias || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="hdSsd">HD/SSD</label>
-            <input id="hdSsd" {...register("hdSsd")} />
+            <select id="hdSsd" {...register("hdSsd")}>
+              <option value="">Selecione...</option>
+              {(options.hd_ssd || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
           </div>
         </div>
         <div className={styles.grid3}>
@@ -232,12 +252,15 @@ const EditAssetForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="so">Sistema Operacional</label>
             <select id="so" {...register("so")} className={errors.so ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_SO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(options.sistemas_operacionais || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="soVersao">Versão do S.O.</label>
-            <input id="soVersao" {...register("soVersao")} />
+            <select id="soVersao" {...register("soVersao")}>
+              <option value="">Selecione...</option>
+              {(options.versoes_so || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="antivirus">Anti-virus</label>
@@ -264,14 +287,14 @@ const EditAssetForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="pavimento">Pavimento</label>
             <select id="pavimento" {...register("pavimento")} className={errors.pavimento ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_PAVIMENTO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(options.pavimentos || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="setor">Setor</label>
             <select id="setor" {...register("setor")} className={errors.setor ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_SETOR.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(options.setores || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
         </div>
@@ -280,7 +303,7 @@ const EditAssetForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="sala">Sala</label>
             <select id="sala" {...register("sala")} className={errors.sala ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_SALA.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(options.salas || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div className={styles.formGroup}>

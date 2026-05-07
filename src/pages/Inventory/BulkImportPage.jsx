@@ -115,17 +115,13 @@ const BulkImportPage = () => {
       if (!row.unitId) errors.push(`${ref}: Unidade não identificada.`);
       else if (!canImportToUnit(row.unitId)) errors.push(`${ref}: Sem permissão na unidade '${getUnitLabel(row.unitId)}'.`);
       
-      if (!row.serial) {
-        errors.push(`${ref}: Falta Serial (Necessário para identificação única).`);
-      }
-
-      if (!row.status) errors.push(`${ref}: Falta Status`);
-      else if (!currentValidStatuses.includes(row.status.toUpperCase())) {
+      if (!row.status) {
+        row.status = 'Estoque';
+      } else if (!currentValidStatuses.includes(row.status.toUpperCase())) {
           errors.push(`${ref}: Status '${row.status}' inválido.`);
       }
 
-      if (!row.setor) errors.push(`${ref}: Falta Setor.`);
-      else if (!validSetores.includes(row.setor)) {
+      if (row.setor && !validSetores.includes(row.setor)) {
           detectedNewSetores.add(row.setor);
       }
 
@@ -137,15 +133,9 @@ const BulkImportPage = () => {
       }
 
       if (importType === 'computador') {
-          if (!row.hostname) errors.push(`${ref}: Falta Hostname`);
-          if (!row.processador) errors.push(`${ref}: Falta Processador`);
           if (row.so && !validSOs.includes(row.so)) {
               detectedNewSOs.add(row.so);
           }
-      }
-
-      if (importType === 'impressora' && !row.conectividade) {
-          errors.push(`${ref}: Falta Conectividade`);
       }
       
       return errors.filter(e => e.startsWith(ref)).length === 0;
@@ -329,14 +319,15 @@ const BulkImportPage = () => {
     setIsUploading(true);
     const toastId = toast.loading("Verificando dados...");
 
-    // 1. CHECAGEM DE DUPLICIDADE DENTRO DO ARQUIVO
     const seenIds = new Set();
     const duplicatesInFile = [];
     const cleanData = [];
 
     fileData.forEach(item => {
-        const idToCheck = item.serial; 
-        if (seenIds.has(idToCheck)) {
+        const idToCheck = item.tombamento || item.serial;
+        if (!idToCheck) {
+            cleanData.push(item);
+        } else if (seenIds.has(idToCheck)) {
             duplicatesInFile.push(item);
         } else {
             seenIds.add(idToCheck);
@@ -354,11 +345,12 @@ const BulkImportPage = () => {
 
     if (duplicatesInFile.length > 0) {
          duplicatesInFile.forEach(d => {
+             const id = d.tombamento || d.serial || 'sem-id';
              report.failures.push({
-                 id: d.serial,
+                 id,
                  unit: getUnitLabel(d.unitId),
                  tombamento: d.tombamento,
-                 reason: "Serial duplicado na planilha (ignorado)."
+                 reason: "Duplicado na planilha (ignorado)."
              });
          });
     }
@@ -368,43 +360,54 @@ const BulkImportPage = () => {
         
         toast.loading("Comparando com o banco...", { id: toastId });
 
-        // 2. VERIFICAÇÃO DE EXISTÊNCIA (Lotes de 30 para usar 'in')
-        const allSerials = cleanData.map(d => d.serial);
-        const existingSerials = new Set();
+        const itemsWithIds = cleanData.filter(d => d.tombamento || d.serial);
+        const itemsWithoutIds = cleanData.filter(d => !d.tombamento && !d.serial);
+        const existingIds = new Set();
 
-        // O Firestore limita 'in' a 30. Vamos quebrar em pedaços.
-        const checkChunkSize = 30;
-        for (let i = 0; i < allSerials.length; i += checkChunkSize) {
-            const chunkSerials = allSerials.slice(i, i + checkChunkSize);
-            const q = query(collection(db, 'assets'), where(documentId(), 'in', chunkSerials));
-            const snap = await getDocs(q);
-            snap.forEach(doc => existingSerials.add(doc.id));
+        if (itemsWithIds.length > 0) {
+            const allIds = itemsWithIds.map(d => d.tombamento || d.serial);
+            const checkChunkSize = 30;
+            for (let i = 0; i < allIds.length; i += checkChunkSize) {
+                const chunkIds = allIds.slice(i, i + checkChunkSize);
+                const q = query(collection(db, 'assets'), where(documentId(), 'in', chunkIds));
+                const snap = await getDocs(q);
+                snap.forEach(doc => existingIds.add(doc.id));
+            }
         }
 
         toast.loading("Enviando dados...", { id: toastId });
 
         const chunkSize = 400; 
-        for (let i = 0; i < cleanData.length; i += chunkSize) {
+        const allChunks = [...itemsWithIds, ...itemsWithoutIds];
+        
+        for (let i = 0; i < allChunks.length; i += chunkSize) {
             const batch = writeBatch(db);
-            const chunk = cleanData.slice(i, i + chunkSize);
+            const chunk = allChunks.slice(i, i + chunkSize);
             
             chunk.forEach(item => {
-                const docId = item.serial; 
-                if (existingSerials.has(docId)) {
-                    report.updatedCount++;
+                const docId = item.tombamento || item.serial || null;
+                if (docId) {
+                    if (existingIds.has(docId)) {
+                        report.updatedCount++;
+                    } else {
+                        report.newCount++;
+                    }
+                    const assetRef = doc(db, 'assets', docId);
+                    batch.set(assetRef, item, { merge: true });
                 } else {
                     report.newCount++;
+                    const assetRef = doc(db, 'assets');
+                    batch.set(assetRef, item, { merge: true });
                 }
-                const assetRef = doc(db, 'assets', docId);
-                batch.set(assetRef, item, { merge: true });
             });
             
             try {
                 await batch.commit();
             } catch (batchError) {
                 chunk.forEach(item => {
+                    const id = item.tombamento || item.serial || 'sem-id';
                     report.failures.push({
-                        id: item.serial,
+                        id,
                         unit: getUnitLabel(item.unitId),
                         tombamento: item.tombamento,
                         reason: `Erro no lote: ${batchError.message}`

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'; 
 
 import { useAuth } from '../../hooks/useAuth';
+import { useOptions } from '../../hooks/useOptions';
 import styles from './InventoryList.module.css';
 
 import Modal from '../../components/Modal/Modal';
@@ -22,30 +23,29 @@ import InventoryTableSkeleton from '../../components/Skeletons/InventoryTableSke
 import { FILTRO_TIPO, FILTRO_STATUS, ITEMS_PER_PAGE } from '../../constants/options';
 
 const InventoryList = () => {
-  // useAuth traz os dados do usuário logado
   const { permissions, isAdmin, allowedUnits, loading: authLoading, user } = useAuth();
+  const { options } = useOptions(['memorias', 'hd_ssd', 'processadores']);
 
-  
-  // Estados de UI
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalView, setModalView] = useState('select'); 
+  const [modalView, setModalView] = useState('select');
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // Estados de Dados
   const [assets, setAssets] = useState([]);
   const [lastDoc, setLastDoc] = useState(null);
-  const [loading, setLoading] = useState(false); 
-  const [loadingMore, setLoadingMore] = useState(false); 
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterUnit, setFilterUnit] = useState("all");
-  const [showReturned, setShowReturned] = useState(false); 
+  const [filterMemoria, setFilterMemoria] = useState("all");
+  const [filterHdSsd, setFilterHdSsd] = useState("all");
+  const [filterProcessador, setFilterProcessador] = useState("all");
+  const [showReturned, setShowReturned] = useState(false);
   const [unitsList, setUnitsList] = useState([]);
 
   // Helper de Limpeza de String (Remove espaços invisíveis)
@@ -180,39 +180,34 @@ const InventoryList = () => {
   useEffect(() => {
     setLastDoc(null);
     fetchAssets(false, debouncedSearch);
-  }, [filterType, filterStatus, filterUnit, isAdmin, JSON.stringify(allowedUnits), debouncedSearch, showReturned]);
+  }, [filterType, filterStatus, filterUnit, isAdmin, JSON.stringify(allowedUnits), debouncedSearch, showReturned, filterMemoria, filterHdSsd, filterProcessador]);
 
 
   // --- 5. FILTRAGEM VISUAL BLINDADA (CLIENT-SIDE) ---
   const displayedAssets = useMemo(() => {
     if (!assets) return [];
 
-    // Lista limpa de IDs permitidos
     const safeAllowedUnits = allowedUnits.map(u => cleanId(u));
     const hasSpecificUnits = safeAllowedUnits.length > 0;
 
     return assets.filter(asset => {
       const assetUnitId = cleanId(asset.unitId);
 
-      // --- NOVA REGRA DE SEGURANÇA ---
-      // 1. Se o usuário tem unidades específicas na lista, ele SÓ pode ver essas unidades.
-      //    Isso vale MESMO se ele for Admin.
       if (hasSpecificUnits) {
          if (!safeAllowedUnits.includes(assetUnitId)) {
-            return false; // Bloqueia visualmente
+            return false;
          }
       } 
-      // 2. Se não tem unidades na lista:
-      //    - Se for Admin, vê tudo (passa).
-      //    - Se não for Admin, não vê nada (já bloqueado na query, mas reforça aqui).
       else if (!isAdmin) {
          return false;
       }
 
-      // Filtro Devolvido
       if (!showReturned && asset.status === 'Devolvido') return false;
 
-      // Filtro de Texto (Reforço para busca específica)
+      if (filterMemoria !== "all" && asset.memoria !== filterMemoria) return false;
+      if (filterHdSsd !== "all" && asset.hdSsd !== filterHdSsd) return false;
+      if (filterProcessador !== "all" && asset.processador !== filterProcessador) return false;
+
       if (debouncedSearch) {
          const search = debouncedSearch.toLowerCase();
          return (
@@ -225,7 +220,7 @@ const InventoryList = () => {
       }
       return true;
     });
-  }, [assets, isAdmin, allowedUnits, showReturned, debouncedSearch]);
+  }, [assets, isAdmin, allowedUnits, showReturned, debouncedSearch, filterMemoria, filterHdSsd, filterProcessador]);
 
   const getStatusClass = (status) => {
     if (status === 'Em uso') return styles.statusUsage;
@@ -405,6 +400,9 @@ const InventoryList = () => {
             <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={styles.filterSelect}>{FILTRO_TIPO.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select>
             <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={styles.filterSelect}>{FILTRO_STATUS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select>
             <select value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)} className={styles.filterSelect}><option value="all">Todas as Unidades</option>{unitsList.map(d=><option key={d.id} value={d.id}>{d.data().sigla || d.data().name}</option>)}</select>
+            <select value={filterMemoria} onChange={(e) => setFilterMemoria(e.target.value)} className={styles.filterSelect}><option value="all">Todas as Memórias</option>{(options.memorias || []).map(o => <option key={o} value={o}>{o}</option>)}</select>
+            <select value={filterHdSsd} onChange={(e) => setFilterHdSsd(e.target.value)} className={styles.filterSelect}><option value="all">Todos os HD/SSD</option>{(options.hd_ssd || []).map(o => <option key={o} value={o}>{o}</option>)}</select>
+            <select value={filterProcessador} onChange={(e) => setFilterProcessador(e.target.value)} className={styles.filterSelect}><option value="all">Todos os Processadores</option>{(options.processadores || []).map(o => <option key={o} value={o}>{o}</option>)}</select>
           </div>
           <label className={styles.checkboxFilter}><input type="checkbox" checked={showReturned} onChange={(e) => setShowReturned(e.target.checked)} /> <Archive size={16} /> Mostrar Devolvidos</label>
         </div>

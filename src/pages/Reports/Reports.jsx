@@ -13,11 +13,13 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable'; 
 
 import { useAuth } from '../../hooks/useAuth';
-import { OPCOES_STATUS, COLORS } from '../../constants/options';
+import { useOptions } from '../../hooks/useOptions';
+import { COLORS } from '../../constants/options';
 import styles from './Reports.module.css';
 
 const Reports = () => {
   const { isAdmin, allowedUnits, loading: authLoading } = useAuth();
+  const { options } = useOptions(['status']);
 
   const [filterUnit, setFilterUnit] = useState('all');
   const [filterType, setFilterType] = useState('all');
@@ -238,7 +240,7 @@ const Reports = () => {
         </select>
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={styles.filterSelect}>
           <option value="all">Todos os Status</option>
-          {OPCOES_STATUS.map(status => (<option key={status} value={status}>{status}</option>))}
+          {(options.status || []).map(status => (<option key={status} value={status}>{status}</option>))}
         </select>
       </div>
 

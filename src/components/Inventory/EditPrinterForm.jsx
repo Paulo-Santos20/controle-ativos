@@ -14,20 +14,7 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 import { db, auth } from '/src/lib/firebase.js'; 
 import { toast } from 'sonner';
 import styles from './AssetForms.module.css';
-import {
-  TIPOS_ATIVO_IMPRESSORA,
-  OPCOES_MARCA_IMPRESSORA,
-  OPCOES_PROPRIEDADE,
-  OPCOES_STATUS,
-  OPCOES_CONECTIVIDADE,
-  OPCOES_FRENTE_VERSO,
-  OPCOES_CARTUCHO,
-  OPCOES_COLORIDO,
-  OPCOES_PAVIMENTO,
-  OPCOES_SETOR,
-  OPCOES_SALA,
-  COLORS
-} from '../../constants/options';
+import { useOptions } from '../../hooks/useOptions';
 
 /**
  * Schema de validação Zod para EDITAR.
@@ -35,30 +22,26 @@ import {
  * e não deve ser alterado na edição, apenas visualizado.
  */
 const printerSchema = z.object({
-  // Seção "Dados"
-  tipoAtivo: z.string().min(1, "O Tipo de Ativo é obrigatório"),
-  marca: z.string().min(1, "A Marca é obrigatória"),
-  modelo: z.string().min(1, "O Modelo é obrigatório"),
-  serial: z.string().min(3, "O Serial é obrigatório"),
-  propriedade: z.string().min(1, "A Propriedade é obrigatória"),
-  status: z.string().min(1, "O Status é obrigatório"),
+  tipoAtivo: z.string().optional().or(z.literal('')),
+  marca: z.string().optional().or(z.literal('')),
+  modelo: z.string().optional().or(z.literal('')),
+  serial: z.string().optional().or(z.literal('')),
+  propriedade: z.string().optional().or(z.literal('')),
+  status: z.string().optional().or(z.literal('')),
   
-  // Seção "Configuração"
-  conectividade: z.string().min(1, "A Conectividade é obrigatória"),
-  frenteVerso: z.string().min(1, "Frente e Verso é obrigatório"),
+  conectividade: z.string().optional().or(z.literal('')),
+  frenteVerso: z.string().optional().or(z.literal('')),
   
-  // Seção "Insumos"
-  cartucho: z.string().min(1, "O tipo de Insumo é obrigatório"),
-  colorido: z.string().min(1, "Informe se é colorido"),
+  cartucho: z.string().optional().or(z.literal('')),
+  colorido: z.string().optional().or(z.literal('')),
   cartuchoColorido: z.string().optional().or(z.literal('')),
   cartuchoPreto: z.string().optional().or(z.literal('')),
   drCilindro: z.string().optional().or(z.literal('')),
   
-  // Seção "Localização"
-  unitId: z.string().min(1, "A Unidade é obrigatória"),
-  pavimento: z.string().min(1, "O Pavimento é obrigatório"),
-  setor: z.string().min(1, "O Setor é obrigatório"),
-  sala: z.string().min(1, "A Sala é obrigatória"),
+  unitId: z.string().optional().or(z.literal('')),
+  pavimento: z.string().optional().or(z.literal('')),
+  setor: z.string().optional().or(z.literal('')),
+  sala: z.string().optional().or(z.literal('')),
   funcionario: z.string().optional().or(z.literal('')),
   observacao: z.string().optional().or(z.literal('')),
 });
@@ -71,6 +54,20 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
   const [units, loadingUnits] = useCollection(
     query(collection(db, 'units'), orderBy('name', 'asc'))
   );
+
+  const { options: opts } = useOptions([
+    'tipos_ativos_impressora',
+    'marcas_impressora',
+    'modelos_impressora',
+    'propriedade',
+    'conectividade',
+    'frente_verso',
+    'tipos_insumo',
+    'setores',
+    'pavimentos',
+    'salas',
+    'status'
+  ]);
 
   const { 
     register, 
@@ -157,7 +154,7 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="tipoAtivo">Tipo Ativo</label>
             <select id="tipoAtivo" {...register("tipoAtivo")} className={errors.tipoAtivo ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {TIPOS_ATIVO_IMPRESSORA.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+              {(opts.tipos_ativos_impressora || []).map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
             </select>
             {errors.tipoAtivo && <p className={styles.errorMessage}>{errors.tipoAtivo.message}</p>}
           </div>
@@ -165,13 +162,16 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="marca">Marca</label>
             <select id="marca" {...register("marca")} className={errors.marca ? styles.inputError : ''}>
               <option value="">Selecione a marca...</option>
-              {OPCOES_MARCA_IMPRESSORA.map(marca => <option key={marca} value={marca}>{marca}</option>)}
+              {(opts.marcas_impressora || []).map(marca => <option key={marca} value={marca}>{marca}</option>)}
             </select>
             {errors.marca && <p className={styles.errorMessage}>{errors.marca.message}</p>}
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="modelo">Modelo</label>
-            <input id="modelo" {...register("modelo")} placeholder="Ex: HL-L5102DW" className={errors.modelo ? styles.inputError : ''} />
+            <select id="modelo" {...register("modelo")} className={errors.modelo ? styles.inputError : ''}>
+              <option value="">Selecione...</option>
+              {(opts.modelos_impressora || []).map(modelo => <option key={modelo} value={modelo}>{modelo}</option>)}
+            </select>
             {errors.modelo && <p className={styles.errorMessage}>{errors.modelo.message}</p>}
           </div>
         </div>
@@ -186,7 +186,7 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="propriedade">Propriedade</label>
             <select id="propriedade" {...register("propriedade")} className={errors.propriedade ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_PROPRIEDADE.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.propriedade || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.propriedade && <p className={styles.errorMessage}>{errors.propriedade.message}</p>}
           </div>
@@ -194,7 +194,7 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="status">Status</label>
             <select id="status" {...register("status")} className={errors.status ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_STATUS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.status || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.status && <p className={styles.errorMessage}>{errors.status.message}</p>}
           </div>
@@ -209,7 +209,7 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="conectividade">Conectividade</label>
             <select id="conectividade" {...register("conectividade")} className={errors.conectividade ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_CONECTIVIDADE.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.conectividade || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.conectividade && <p className={styles.errorMessage}>{errors.conectividade.message}</p>}
           </div>
@@ -217,7 +217,7 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="frenteVerso">Frente e Verso (Duplex)</label>
             <select id="frenteVerso" {...register("frenteVerso")} className={errors.frenteVerso ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_FRENTE_VERSO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.frente_verso || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.frenteVerso && <p className={styles.errorMessage}>{errors.frenteVerso.message}</p>}
           </div>
@@ -232,14 +232,15 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="cartucho">Tipo de Insumo (Cartucho)</label>
             <select id="cartucho" {...register("cartucho")} className={errors.cartucho ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_CARTUCHO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.tipos_insumo || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.cartucho && <p className={styles.errorMessage}>{errors.cartucho.message}</p>}
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="colorido">Colorido?</label>
             <select id="colorido" {...register("colorido")} className={errors.colorido ? styles.inputError : ''}>
-              {OPCOES_COLORIDO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              <option value="Não">Não</option>
+              <option value="Sim">Sim</option>
             </select>
             {errors.colorido && <p className={styles.errorMessage}>{errors.colorido.message}</p>}
           </div>
@@ -281,7 +282,7 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="pavimento">Pavimento</label>
             <select id="pavimento" {...register("pavimento")} className={errors.pavimento ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_PAVIMENTO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.pavimentos || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.pavimento && <p className={styles.errorMessage}>{errors.pavimento.message}</p>}
           </div>
@@ -289,7 +290,7 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="setor">Setor</label>
             <select id="setor" {...register("setor")} className={errors.setor ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_SETOR.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.setores || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.setor && <p className={styles.errorMessage}>{errors.setor.message}</p>}
           </div>
@@ -299,7 +300,7 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
             <label htmlFor="sala">Sala</label>
             <select id="sala" {...register("sala")} className={errors.sala ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_SALA.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(opts.salas || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.sala && <p className={styles.errorMessage}>{errors.sala.message}</p>}
           </div>

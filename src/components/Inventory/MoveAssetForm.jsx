@@ -6,21 +6,21 @@ import { doc, collection, writeBatch, serverTimestamp } from 'firebase/firestore
 import { db, auth } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
 import styles from './AssetForms.module.css';
-import { OPCOES_PAVIMENTO, OPCOES_SETOR, OPCOES_SALA } from '../../constants/options';
+import { useOptions } from '../../hooks/useOptions';
 
-// Schema Zod atualizado
 const moveSchema = z.object({
-  pavimento: z.string().min(1, "O novo pavimento é obrigatório"),
-  setor: z.string().min(1, "O novo setor é obrigatório"),
-  sala: z.string().min(1, "A nova sala é obrigatória"),
+  pavimento: z.string().optional(),
+  setor: z.string().optional(),
+  sala: z.string().optional(),
   funcionario: z.string().optional().or(z.literal('')),
   details: z.string().min(5, "Detalhes/Motivo são obrigatórios"),
 });
 
 const MoveAssetForm = ({ onClose, assetId, currentData }) => {
+  const { options } = useOptions(['pavimentos', 'setores', 'salas']);
+
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(moveSchema),
-    // UI/UX de Excelência: Pré-preenche o formulário com os dados atuais
     defaultValues: {
       pavimento: currentData.pavimento || "",
       setor: currentData.setor || "",
@@ -106,7 +106,7 @@ const MoveAssetForm = ({ onClose, assetId, currentData }) => {
             <label htmlFor="pavimento">Novo Pavimento</label>
             <select id="pavimento" {...register("pavimento")} className={errors.pavimento ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_PAVIMENTO.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(options.pavimentos || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.pavimento && <p className={styles.errorMessage}>{errors.pavimento.message}</p>}
           </div>
@@ -115,7 +115,7 @@ const MoveAssetForm = ({ onClose, assetId, currentData }) => {
             <label htmlFor="setor">Novo Setor</label>
             <select id="setor" {...register("setor")} className={errors.setor ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_SETOR.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(options.setores || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.setor && <p className={styles.errorMessage}>{errors.setor.message}</p>}
           </div>
@@ -124,7 +124,7 @@ const MoveAssetForm = ({ onClose, assetId, currentData }) => {
             <label htmlFor="sala">Nova Sala</label>
             <select id="sala" {...register("sala")} className={errors.sala ? styles.inputError : ''}>
               <option value="">Selecione...</option>
-              {OPCOES_SALA.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {(options.salas || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             {errors.sala && <p className={styles.errorMessage}>{errors.sala.message}</p>}
           </div>
