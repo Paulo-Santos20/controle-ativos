@@ -57,7 +57,7 @@ const AdvancedAssetList = ({ assets, onSelect }) => {
           </tbody>
         </table>
       </div>
-      <p style={{fontSize:'0.8rem', color:'#666', marginTop:'5px'}}>
+      <p style={{fontSize:'0.8rem', color:'var(--color-inline-text)', marginTop:'5px'}}>
         Clique em um item para selecionar.
       </p>
     </div>

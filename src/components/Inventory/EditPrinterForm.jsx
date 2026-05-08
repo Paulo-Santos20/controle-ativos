@@ -146,7 +146,7 @@ const EditPrinterForm = ({ onClose, assetId, existingData }) => {
         <div className={styles.formGroup}>
             <label>Tombamento (ID)</label>
             <input defaultValue={assetId} disabled className={styles.inputDisabled} />
-            <small style={{color: '#666', fontSize: '0.8em'}}>O Tombamento (ID) não pode ser alterado na edição.</small>
+            <small style={{color: 'var(--color-inline-text)', fontSize: '0.8em'}}>O Tombamento (ID) não pode ser alterado na edição.</small>
         </div>
 
         <div className={styles.grid3}>

@@ -101,16 +101,13 @@
 
 /* 3. Botão Preventiva (Amarelo Translúcido) */
 .actionButtonSecondary {
-  background-color: rgba(245, 158, 11, 0.15); 
-  color: #d97706; /* Âmbar */
-  border-color: rgba(245, 158, 11, 0.2);
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border-color: var(--color-warning-border);
 }
 .actionButtonSecondary:hover {
-  background-color: rgba(245, 158, 11, 0.25);
-}
-/* Ajuste de texto para Dark Mode (Amarelo mais claro) */
-:global([data-theme="dark"]) .actionButtonSecondary {
-  color: #fbbf24; 
+  background-color: var(--color-warning-bg);
+  opacity: 0.9;
 }
 
 /* 4. Botão Excluir (Vermelho Translúcido) */
@@ -310,11 +307,11 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-.statusUsage { background-color: rgba(52, 199, 89, 0.15); color: #28a745; }
-.statusMaintenance { background-color: rgba(255, 149, 0, 0.15); color: #d97706; }
-.statusStock { background-color: rgba(0, 122, 255, 0.15); color: #007aff; }
+.statusUsage { background-color: var(--color-status-usage-bg); color: var(--color-status-usage-text); }
+.statusMaintenance { background-color: var(--color-status-maintenance-bg); color: var(--color-status-maintenance-text); }
+.statusStock { background-color: var(--color-status-stock-bg); color: var(--color-status-stock-text); }
 .statusInactive { background-color: var(--color-bg-page); color: var(--color-text-secondary); border: 1px solid var(--color-border); }
-.statusReturned { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; text-decoration: line-through; }
+.statusReturned { background-color: var(--color-status-returned-bg); color: var(--color-status-returned-text); text-decoration: line-through; }
 
 /* --- Estados (Loading / Empty) --- */
 .loadingState {

@@ -314,7 +314,7 @@ const Reports = () => {
               ))}
               {filteredData.length > 50 && (
                 <tr>
-                  <td colSpan="5" style={{textAlign: 'center', color: '#666', fontStyle: 'italic'}}>
+                  <td colSpan="5" style={{textAlign: 'center', color: 'var(--color-inline-text)', fontStyle: 'italic'}}>
                     ... e mais {filteredData.length - 50} itens. Use "Exportar" para ver todos.
                   </td>
                 </tr>

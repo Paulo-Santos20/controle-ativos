@@ -63,7 +63,7 @@ const BulkDeleteForm = ({ onClose, selectedIds, onSuccess }) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-      <div className={styles.alertBox} style={{backgroundColor: 'var(--color-danger-light, #fee2e2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-danger, #dc2626)', color: 'var(--color-danger)', fontSize: '0.9rem', display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px'}}>
+      <div className={styles.alertBox} style={{backgroundColor: 'var(--color-error-bg)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-error-border)', color: 'var(--color-error-text)', fontSize: '0.9rem', display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px'}}>
         <AlertTriangle size={20} style={{flexShrink: 0, marginTop: 2}} />
         <div>
           <strong>Atenção!</strong> Você está prestes a excluir <strong>{selectedIds.length}</strong> ativo(s) permanentemente. Esta ação <strong>não pode ser desfeita</strong>.

@@ -38,8 +38,8 @@ const BulkImportPage = () => {
 
   const unitsQuery = useMemo(() => {
     if (authLoading) return null;
-    if (isAdmin) return query(collection(db, 'units'), orderBy('name', 'asc'));
     if (allowedUnits.length > 0) return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
+    if (isAdmin) return query(collection(db, 'units'), orderBy('name', 'asc'));
     return null;
   }, [isAdmin, allowedUnits, authLoading]);
 
@@ -65,9 +65,9 @@ const BulkImportPage = () => {
 
   const canImportToUnit = useCallback((unitId) => {
     if (!unitId) return false;
-    if (isAdmin) return true;
+    if (allowedUnits.length === 0) return true;
     return allowedUnits.includes(unitId.trim());
-  }, [isAdmin, allowedUnits]);
+  }, [allowedUnits]);
 
   const getUnitLabel = useCallback((unitId) => {
      const unitDoc = unitsSnapshot?.docs.find(d => d.id === unitId);

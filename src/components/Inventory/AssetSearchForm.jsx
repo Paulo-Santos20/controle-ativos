@@ -188,7 +188,7 @@ const AssetSearchForm = ({ onAssetFound, onCancel }) => {
             </div>
             
             {/* Status Text */}
-            {loadingAssets && <small style={{display:'block', marginTop:4, color:'#666'}}>Carregando ativos...</small>}
+            {loadingAssets && <small style={{display:'block', marginTop:4, color:'var(--color-inline-text)'}}>Carregando ativos...</small>}
           </div>
 
         </fieldset>

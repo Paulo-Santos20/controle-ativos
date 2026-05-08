@@ -24,7 +24,7 @@
 
 .separator {
   margin: 0 6px;
-  color: #9ca3af; /* Cinza claro */
+  color: var(--color-text-secondary);
 }
 
 .link {
