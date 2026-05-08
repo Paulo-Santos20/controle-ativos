@@ -31,17 +31,20 @@ service cloud.firestore {
     }
 
     function getUserAssignedUnits() {
-      return getUserData().assignedUnits;
-    }
-
-    function userHasUnitAccess(unitId) {
       let userData = getUserData();
       let allowedUnits = userData.assignedUnits;
-      return isAdmin() || isMasterEmail() || (allowedUnits != null && allowedUnits.hasAny([unitId]));
+      return allowedUnits != null ? allowedUnits : [];
     }
 
-    function userCanWriteAssetAsset(unitId) {
-      return isAdmin() || isMasterEmail() || (unitId != null && unitId != '' && userHasUnitAccess(unitId));
+    function canAccessAssetUnit(unitId) {
+      if (isAdmin() || isMasterEmail()) return true;
+      if (unitId == null || unitId == '') return true;
+      return getUserAssignedUnits().hasAny([unitId]);
+    }
+
+    function isValidUnit(unitId) {
+      if (unitId == null || unitId == '') return true;
+      return getUserAssignedUnits().hasAny([unitId]);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -100,20 +103,14 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════════════════════
 
     match /assets/{assetId} {
-      allow read: if isAuthenticated() && (
-        isAdmin() || isMasterEmail() ||
-        (resource.data.unitId != null && resource.data.unitId in getUserAssignedUnits())
-      );
+      allow read: if isAuthenticated() && canAccessAssetUnit(resource.data.unitId);
       allow create: if isAuthenticated() && (
         isAdmin() || isMasterEmail() ||
         request.resource.data.unitId == null ||
         request.resource.data.unitId == '' ||
-        request.resource.data.unitId in getUserAssignedUnits()
+        isValidUnit(request.resource.data.unitId)
       );
-      allow update: if isAuthenticated() && (
-        isAdmin() || isMasterEmail() ||
-        (resource.data.unitId != null && resource.data.unitId in getUserAssignedUnits())
-      );
+      allow update: if isAuthenticated() && canAccessAssetUnit(resource.data.unitId);
       allow delete: if isAdmin() || isMasterEmail();
     }
 
@@ -124,11 +121,11 @@ service cloud.firestore {
     match /assets/{assetId}/history/{historyId} {
       allow read: if isAuthenticated() && (
         isAdmin() || isMasterEmail() ||
-        (get(/databases/$(database)/documents/assets/$(assetId)).data.unitId in getUserAssignedUnits())
+        canAccessAssetUnit(get(/databases/$(database)/documents/assets/$(assetId)).data.unitId)
       );
       allow create: if isAuthenticated() && (
         isAdmin() || isMasterEmail() ||
-        (request.resource.data.unitId != null && request.resource.data.unitId in getUserAssignedUnits())
+        isValidUnit(request.resource.data.unitId)
       );
       allow update, delete: if false;
     }
