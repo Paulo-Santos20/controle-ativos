@@ -26,17 +26,14 @@ const Reports = () => {
   const [filterStatus, setFilterStatus] = useState('all');
 
   // --- 1. HELPER DE PERMISSÃO ---
-  // Centraliza a lógica: Se tiver lista, usa a lista. Se não e não for admin, bloqueia.
+  // Admin sem unidades específicas vê tudo. Usuário normal filtra. Sem acesso bloqueia.
   const getPermissionConstraints = useCallback((field = 'unitId') => {
-    // Prioridade: Lista de Unidades Explícita
-    if (allowedUnits && allowedUnits.length > 0) {
+    if (allowedUnits && allowedUnits.length > 0 && !isAdmin) {
         return [where(field, 'in', allowedUnits)];
     }
-    // Se Admin sem lista, vê tudo
     if (isAdmin) {
         return [];
     }
-    // Se não é Admin e não tem lista, bloqueia
     return [where(field, '==', 'BLOQUEADO')];
   }, [allowedUnits, isAdmin]);
 

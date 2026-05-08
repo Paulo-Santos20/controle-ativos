@@ -33,7 +33,7 @@ const Dashboard = () => {
 
   // --- HELPER DE SEGURANÇA ---
   const getPermissionConstraints = useCallback(() => {
-    if (allowedUnits && allowedUnits.length > 0) {
+    if (allowedUnits && allowedUnits.length > 0 && !isAdmin) {
         return [where('unitId', 'in', allowedUnits)];
     }
     if (isAdmin) {

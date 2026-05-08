@@ -126,28 +126,21 @@ const InventoryList = () => {
         // B. Listagem Padrão
         let constraints = [orderBy('createdAt', 'desc')];
 
-        // --- LÓGICA DE SEGURANÇA CORRIGIDA (NO SERVIDOR) ---
-        // Se tiver unidades específicas na lista, FILTRA por elas (mesmo sendo Admin).
-        // Se não tiver unidades e NÃO for admin, BLOQUEIA.
-        // Se não tiver unidades e FOR admin, MOSTRA TUDO.
-        
-        if (allowedUnits && allowedUnits.length > 0) {
+        // Admin com unidades específicas: mostra tudo (não filtra por unitId)
+        // Usuário normal com unidades: filtra pelas unidades permitidas
+        // Usuário sem unidades e não admin: bloqueia
+        if (allowedUnits && allowedUnits.length > 0 && !isAdmin) {
              constraints.push(where("unitId", "in", allowedUnits));
-        } else if (!isAdmin) {
+        } else if ((!allowedUnits || allowedUnits.length === 0) && !isAdmin) {
              constraints.push(where("unitId", "==", "SEM_PERMISSAO"));
         }
 
         if (filterType !== "all") constraints.push(where("type", "==", filterType));
         if (filterStatus !== "all") constraints.push(where("status", "==", filterStatus));
-        
-        // Filtro de unidade selecionado pelo usuário
-        if (filterUnit !== "all") {
-           // Só permite filtrar se o usuário tiver acesso a essa unidade (ou for super admin sem restrição)
-           if (isAdmin && allowedUnits.length === 0) {
-              constraints.push(where("unitId", "==", filterUnit));
-           } else if (allowedUnits.includes(filterUnit)) {
-              constraints.push(where("unitId", "==", filterUnit));
-           }
+
+        // Filtro de unidade selecionado pelo usuário (apenas para admins sem restrição)
+        if (filterUnit !== "all" && isAdmin && allowedUnits.length === 0) {
+           constraints.push(where("unitId", "==", filterUnit));
         }
 
         constraints.push(limit(ITEMS_PER_PAGE));
