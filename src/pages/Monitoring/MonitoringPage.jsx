@@ -10,13 +10,8 @@ import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '../../hooks/useAuth';
+import { ATTENTION_STATUSES } from '../../constants/options';
 import styles from './MonitoringPage.module.css';
-
-const ATTENTION_STATUSES = [
-  "Manutenção agendada", 
-  "Em manutenção", 
-  "Devolução agendada"
-];
 
 const filterOptions = [
   { value: "attention", label: "⚠️ Em Atenção (Padrão)" },

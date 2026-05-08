@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { db } from '../../lib/firebase'; 
 import { 
   collection, query, orderBy, limit, where, collectionGroup, documentId 
@@ -28,19 +28,52 @@ const Dashboard = () => {
   const { isAdmin, allowedUnits, permissions, loading: authLoading } = useAuth();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalView, setModalView] = useState('select'); 
+  const [modalView, setModalView] = useState('select');
   const [maintenanceTarget, setMaintenanceTarget] = useState(null);
 
   // --- HELPER DE SEGURANÇA ---
-  const getPermissionConstraints = () => {
+  const getPermissionConstraints = useCallback(() => {
     if (allowedUnits && allowedUnits.length > 0) {
-        return [where('unitId', 'in', allowedUnits)]; 
+        return [where('unitId', 'in', allowedUnits)];
     }
     if (isAdmin) {
-        return []; 
+        return [];
     }
     return [where('unitId', '==', 'BLOQUEADO')];
-  };
+  }, [allowedUnits, isAdmin]);
+
+  const getActiveCount = useCallback((loading, snapshot) => {
+    if (loading) return <Loader2 size={20} className={styles.spinnerSmall} />;
+    if (!snapshot) return 0;
+    return snapshot.docs.filter(doc => {
+      const s = doc.data().status;
+      return s !== 'Devolvido' && s !== 'Descartado' && s !== 'Inativo';
+    }).length;
+  }, []);
+
+  const handleOpenRegister = useCallback(() => { setModalView('select'); setIsModalOpen(true); }, []);
+  const handleOpenMaintenance = useCallback(() => { setMaintenanceTarget(null); setModalView('maintenance_search'); setIsModalOpen(true); }, []);
+  const handleAssetFound = useCallback((assetData) => { setMaintenanceTarget(assetData); setModalView('maintenance_form'); }, []);
+  const handleCloseModal = useCallback(() => { setIsModalOpen(false); setTimeout(() => { setModalView('select'); setMaintenanceTarget(null); }, 300); }, []);
+
+  const getModalTitle = useCallback(() => {
+    if (modalView === 'maintenance_search') return "Buscar Ativo";
+    if (modalView === 'maintenance_form') return `Manutenção: ${maintenanceTarget?.id}`;
+    if (modalView === 'computer') return "Novo Computador";
+    if (modalView === 'printer') return "Nova Impressora";
+    return "Registrar Ativo";
+  }, [modalView, maintenanceTarget]);
+
+  const renderModalContent = useCallback(() => {
+    switch (modalView) {
+      case 'select': return <AssetTypeSelector onSelectType={setModalView} />;
+      case 'computer': return <AddAssetForm onClose={handleCloseModal} />;
+      case 'printer': return <AddPrinterForm onClose={handleCloseModal} />;
+      case 'maintenance_search': return <AssetSearchForm onAssetFound={handleAssetFound} onCancel={handleCloseModal} />;
+      case 'maintenance_form': return <MaintenanceAssetForm onClose={handleCloseModal} assetId={maintenanceTarget?.id} currentData={maintenanceTarget} />;
+      default: return null;
+    }
+  }, [modalView, handleCloseModal, handleAssetFound, maintenanceTarget]);
 
   // --- 2. QUERIES (HOOKS) ---
 
@@ -48,7 +81,7 @@ const Dashboard = () => {
   const maintenanceQuery = useMemo(() => {
     if (authLoading) return null;
     return query(
-      collection(db, 'assets'), 
+      collection(db, 'assets'),
       where('status', '==', 'Em manutenção'),
       ...getPermissionConstraints()
     );
@@ -58,7 +91,7 @@ const Dashboard = () => {
   const computersQuery = useMemo(() => {
     if (authLoading) return null;
     return query(
-      collection(db, 'assets'), 
+      collection(db, 'assets'),
       where('type', '==', 'computador'),
       ...getPermissionConstraints()
     );
@@ -68,21 +101,19 @@ const Dashboard = () => {
   const printersQuery = useMemo(() => {
     if (authLoading) return null;
     return query(
-      collection(db, 'assets'), 
+      collection(db, 'assets'),
       where('type', '==', 'impressora'),
       ...getPermissionConstraints()
     );
   }, [authLoading, isAdmin, allowedUnits]);
   const [printerAssets, loadingPrinters] = useCollection(printersQuery);
 
-  // --- B. DADOS PARA O GRÁFICO (Esta query estava faltando) ---
+  // --- B. DADOS PARA O GRÁFICO ---
   const allAssetsQuery = useMemo(() => {
     if (authLoading) return null;
     return query(collection(db, 'assets'), ...getPermissionConstraints());
   }, [authLoading, isAdmin, allowedUnits]);
-  // Aqui definimos a variável que estava dando erro:
   const [allAssets, loadingAllAssets] = useCollection(allAssetsQuery);
-
 
   // C. Unidades (Para os nomes)
   const unitsQuery = useMemo(() => {
@@ -99,17 +130,15 @@ const Dashboard = () => {
 
   // D. Histórico (Feed)
   const historyQuery = useMemo(() => {
-    if (authLoading || !isAdmin) return null; // Só admin vê feed
+    if (authLoading || !isAdmin) return null;
     return query(collectionGroup(db, 'history'), orderBy('timestamp', 'desc'), limit(5));
   }, [authLoading, isAdmin]);
   const [history, loadingHistory, errorHistory] = useCollection(historyQuery);
-
 
   // --- 3. CÁLCULO DO GRÁFICO ---
   const pieChartData = useMemo(() => {
     if (!allAssets || !units) return [];
 
-    // Conta quantos ativos existem por ID de unidade
     const counts = {};
     allAssets.docs.forEach(doc => {
         const data = doc.data();
@@ -121,7 +150,6 @@ const Dashboard = () => {
         }
     });
 
-    // Mapeia usando os nomes das unidades
     return units.docs
       .map(doc => {
          const unitData = doc.data();
@@ -129,10 +157,10 @@ const Dashboard = () => {
          return {
             name: unitData.sigla || unitData.name,
             value: count,
-            fill: COLORS[0] 
+            fill: COLORS[0]
          };
       })
-      .filter(item => item.value > 0) // Esconde unidades vazias
+      .filter(item => item.value > 0)
       .map((item, index) => ({
           ...item,
           fill: COLORS[index % COLORS.length]
@@ -140,45 +168,10 @@ const Dashboard = () => {
 
   }, [allAssets, units]);
 
-
   // --- 4. LOADING GLOBAL ---
   if (authLoading) {
     return <DashboardSkeleton />;
   }
-
-  // --- HELPERS VISUAIS ---
-  const getActiveCount = (loading, snapshot) => {
-    if (loading) return <Loader2 size={20} className={styles.spinnerSmall} />;
-    if (!snapshot) return 0;
-    return snapshot.docs.filter(doc => {
-      const s = doc.data().status;
-      return s !== 'Devolvido' && s !== 'Descartado' && s !== 'Inativo';
-    }).length;
-  };
-
-  const handleOpenRegister = () => { setModalView('select'); setIsModalOpen(true); };
-  const handleOpenMaintenance = () => { setMaintenanceTarget(null); setModalView('maintenance_search'); setIsModalOpen(true); };
-  const handleAssetFound = (assetData) => { setMaintenanceTarget(assetData); setModalView('maintenance_form'); };
-  const handleCloseModal = () => { setIsModalOpen(false); setTimeout(() => { setModalView('select'); setMaintenanceTarget(null); }, 300); };
-
-  const getModalTitle = () => {
-    if (modalView === 'maintenance_search') return "Buscar Ativo";
-    if (modalView === 'maintenance_form') return `Manutenção: ${maintenanceTarget?.id}`;
-    if (modalView === 'computer') return "Novo Computador";
-    if (modalView === 'printer') return "Nova Impressora";
-    return "Registrar Ativo";
-  };
-
-  const renderModalContent = () => {
-    switch (modalView) {
-      case 'select': return <AssetTypeSelector onSelectType={setModalView} />;
-      case 'computer': return <AddAssetForm onClose={handleCloseModal} />;
-      case 'printer': return <AddPrinterForm onClose={handleCloseModal} />;
-      case 'maintenance_search': return <AssetSearchForm onAssetFound={handleAssetFound} onCancel={handleCloseModal} />;
-      case 'maintenance_form': return <MaintenanceAssetForm onClose={handleCloseModal} assetId={maintenanceTarget?.id} currentData={maintenanceTarget} />;
-      default: return null;
-    }
-  };
 
   return (
     <div className={styles.dashboard}>

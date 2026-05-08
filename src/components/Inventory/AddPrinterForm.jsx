@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, doc, setDoc, serverTimestamp, query, orderBy, getDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { db } from '/src/lib/firebase.js';
 import { toast } from 'sonner';

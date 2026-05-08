@@ -223,7 +223,7 @@ export const router = createBrowserRouter([
         )
       },
 
-      { path: "users", element: <Navigate to="/usuarios/lista" replace /> },
+      
     ],
   },
   {

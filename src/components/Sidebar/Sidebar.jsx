@@ -17,7 +17,7 @@ import {
     UserCog, 
     Pencil, 
     Briefcase, 
-    Settings, 
+    Settings,
     Timer
 } from 'lucide-react'; 
 

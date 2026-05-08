@@ -58,7 +58,7 @@ const AddAssetForm = ({ onClose, onBack }) => {
   );
   const [isChecking, setIsChecking] = useState(false);
 
-  const { options, loading: loadingOptions } = useOptions([
+  const { options } = useOptions([
     'tipos_ativos_computador',
     'marcas',
     'modelos',

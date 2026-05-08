@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy, where, documentId } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -27,7 +27,7 @@ const Reports = () => {
 
   // --- 1. HELPER DE PERMISSÃO ---
   // Centraliza a lógica: Se tiver lista, usa a lista. Se não e não for admin, bloqueia.
-  const getPermissionConstraints = (field = 'unitId') => {
+  const getPermissionConstraints = useCallback((field = 'unitId') => {
     // Prioridade: Lista de Unidades Explícita
     if (allowedUnits && allowedUnits.length > 0) {
         return [where(field, 'in', allowedUnits)];
@@ -38,7 +38,7 @@ const Reports = () => {
     }
     // Se não é Admin e não tem lista, bloqueia
     return [where(field, '==', 'BLOQUEADO')];
-  };
+  }, [allowedUnits, isAdmin]);
 
   // --- 2. QUERY DE ATIVOS (DADOS DO RELATÓRIO) ---
   const assetsQuery = useMemo(() => {
@@ -121,7 +121,7 @@ const Reports = () => {
   const totalActive = filteredData.filter(i => i.status === 'Em uso').length;
 
   // --- EXPORTAÇÃO ---
-  const handleExportCSV = () => {
+  const handleExportCSV = useCallback(() => {
     if (filteredData.length === 0) { toast.error("Não há dados para exportar."); return; }
     try {
       const headers = ["Tombamento", "Tipo", "Marca", "Modelo", "Serial", "Status", "Unidade", "Setor", "Usuário"];
@@ -138,9 +138,9 @@ const Reports = () => {
       document.body.appendChild(link); link.click(); document.body.removeChild(link);
       toast.success("CSV gerado com sucesso!");
     } catch (error) { console.error(error); toast.error("Erro ao gerar CSV."); }
-  };
+  }, [filteredData]);
 
-  const handleExportPDF = () => {
+  const handleExportPDF = useCallback(() => {
     if (filteredData.length === 0) { toast.error("Não há dados para exportar."); return; }
     try {
       const doc = new jsPDF();
@@ -168,9 +168,9 @@ const Reports = () => {
       doc.save(`relatorio_ativos_${new Date().toISOString().split('T')[0]}.pdf`);
       toast.success("PDF gerado com sucesso!");
     } catch (error) { console.error("Erro PDF:", error); toast.error("Erro ao gerar PDF: " + error.message); }
-  };
+  }, [filteredData, filterUnit]);
 
-  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, value }) => {
+  const renderCustomLabel = useCallback(({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, value }) => {
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -181,7 +181,7 @@ const Reports = () => {
         {`${value}`}
       </text>
     ) : null;
-  };
+  }, []);
 
   // --- ESTADOS DE UI ---
 

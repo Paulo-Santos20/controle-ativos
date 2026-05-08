@@ -73,7 +73,7 @@ const InventoryList = () => {
     fetchUnits();
   }, []);
 
-  const getUnitName = (unitId) => {
+  const getUnitName = useCallback((unitId) => {
     if (!unitId) return '-';
     const unit = unitsList.find(u => u.id === unitId);
     if (unit) {
@@ -81,7 +81,7 @@ const InventoryList = () => {
         return data.sigla || data.name || unitId;
     }
     return unitId;
-  };
+  }, [unitsList]);
 
   // --- 4. BUSCA DE DADOS (QUERY) ---
   const fetchAssets = useCallback(async (isLoadMore = false, specificTerm = "") => {
@@ -222,39 +222,39 @@ const InventoryList = () => {
     });
   }, [assets, isAdmin, allowedUnits, showReturned, debouncedSearch, filterMemoria, filterHdSsd, filterProcessador]);
 
-  const getStatusClass = (status) => {
+const getStatusClass = useCallback((status) => {
     if (status === 'Em uso') return styles.statusUsage;
     if (status === 'Em manutenção') return styles.statusMaintenance;
     if (status === 'Inativo') return styles.statusInactive;
     if (status === 'Estoque') return styles.statusStock;
     if (status === 'Devolvido') return styles.statusReturned;
     return '';
-  };
+  }, []);
 
-  const handleSelectAll = () => {
-    if (selectedIds.length === displayedAssets.length) setSelectedIds([]); 
+  const handleSelectAll = useCallback(() => {
+    if (selectedIds.length === displayedAssets.length) setSelectedIds([]);
     else setSelectedIds(displayedAssets.map(a => a.id));
-  };
+  }, [selectedIds.length, displayedAssets]);
 
-  const handleSelectOne = (id) => {
+  const handleSelectOne = useCallback((id) => {
     if (selectedIds.includes(id)) setSelectedIds(selectedIds.filter(i => i !== id));
     else setSelectedIds([...selectedIds, id]);
-  };
+  }, [selectedIds]);
 
-  const handleOpenModal = (view) => { setModalView(view); setIsModalOpen(true); };
-  const handleCloseModal = () => { 
-    setIsModalOpen(false); 
-    setTimeout(() => setModalView('select'), 300); 
-    fetchAssets(false, debouncedSearch); 
-  };
-  const handleBulkSuccess = () => { setSelectedIds([]); fetchAssets(false, debouncedSearch); };
+  const handleOpenModal = useCallback((view) => { setModalView(view); setIsModalOpen(true); }, []);
+  const handleCloseModal = useCallback(() => {
+    setIsModalOpen(false);
+    setTimeout(() => setModalView('select'), 300);
+    fetchAssets(false, debouncedSearch);
+  }, [fetchAssets, debouncedSearch]);
+  const handleBulkSuccess = useCallback(() => { setSelectedIds([]); fetchAssets(false, debouncedSearch); }, [fetchAssets, debouncedSearch]);
 
-  const handleBulkDeleteSuccess = () => {
+  const handleBulkDeleteSuccess = useCallback(() => {
     setSelectedIds([]);
     fetchAssets(false, debouncedSearch);
-  };
+  }, [fetchAssets, debouncedSearch]);
 
-  const renderModalContent = () => {
+  const renderModalContent = useCallback(() => {
     switch (modalView) {
       case 'select': return <AssetTypeSelector onSelectType={setModalView} />;
       case 'computer': return <AddAssetForm onClose={handleCloseModal} />;
@@ -263,11 +263,11 @@ const InventoryList = () => {
       case 'bulk_delete': return <BulkDeleteForm onClose={handleCloseModal} selectedIds={selectedIds} onSuccess={handleBulkDeleteSuccess} />;
       default: return null;
     }
-  };
+  }, [modalView, handleCloseModal, selectedIds, handleBulkSuccess, handleBulkDeleteSuccess]);
 
-  const renderContent = () => {
+  const renderContent = useCallback(() => {
     if (loading || authLoading) return <InventoryTableSkeleton />;
-    
+
     if (error) {
       if (error.code === 'failed-precondition') {
         return <div className={styles.errorState}><h3>⚠️ Índice Necessário</h3><p>Abra o console (F12) e clique no link do Firebase.</p></div>;
@@ -343,7 +343,7 @@ const InventoryList = () => {
         )}
       </>
     );
-  };
+  }, [loading, authLoading, error, displayedAssets, selectedIds.length, debouncedSearch, hasMore, loadingMore, fetchAssets, handleSelectAll, handleSelectOne, getStatusClass, getUnitName]);
 
   return (
     <div className={styles.page}>

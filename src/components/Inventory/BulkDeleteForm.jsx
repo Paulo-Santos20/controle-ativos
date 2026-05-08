@@ -31,9 +31,8 @@ const BulkDeleteForm = ({ onClose, selectedIds, onSuccess }) => {
         throw new Error("Por segurança, selecione no máximo 100 itens por vez.");
       }
 
-      const batch = writeBatch(db);
-      const user = auth.currentUser.displayName || auth.currentUser.email;
       const timestamp = serverTimestamp();
+      const currentUser = auth.currentUser.displayName || auth.currentUser.email;
 
       selectedIds.forEach(assetId => {
         const assetRef = doc(db, 'assets', assetId);
@@ -45,7 +44,7 @@ const BulkDeleteForm = ({ onClose, selectedIds, onSuccess }) => {
           assetId: assetId,
           details: `Exclusão em massa (${selectedIds.length} itens). Motivo: ${data.details}`,
           timestamp: timestamp,
-          user: user,
+          user: currentUser,
           userId: auth.currentUser.uid
         });
       });
