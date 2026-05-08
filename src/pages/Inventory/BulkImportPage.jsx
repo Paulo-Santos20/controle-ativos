@@ -250,7 +250,7 @@ const BulkImportPage = () => {
             }
         });
         
-        const uniqueUnits = [...new Set(allRows.map(item => item.unitId))].filter(Boolean).sort();
+        const uniqueUnits = [...new Set(allRows.map(item => item.unitId))].filter(Boolean).filter(u => canImportToUnit(u)).sort();
         setDetectedUnits(uniqueUnits);
         setAllParsedData(allRows);
         
