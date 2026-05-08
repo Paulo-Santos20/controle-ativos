@@ -253,13 +253,15 @@
 .checkboxButton {
   background: transparent;
   border: none;
-  padding: 8px;
+  padding: 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 4px;
   transition: background-color 0.2s ease;
+  width: 32px;
+  height: 32px;
 }
 
 .checkboxButton:hover {
@@ -268,6 +270,7 @@
 
 .checkboxButton svg {
   display: block;
+  flex-shrink: 0;
 }
 
 .rowSelected {
