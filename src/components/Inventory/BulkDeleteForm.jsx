@@ -31,6 +31,7 @@ const BulkDeleteForm = ({ onClose, selectedIds, onSuccess }) => {
         throw new Error("Por segurança, selecione no máximo 100 itens por vez.");
       }
 
+      const batch = writeBatch(db);
       const timestamp = serverTimestamp();
       const currentUser = auth.currentUser.displayName || auth.currentUser.email;
 

@@ -1,140 +1,266 @@
 rules_version = '2';
 service cloud.firestore {
+
   match /databases/{database}/documents {
 
-    // =================================================================
-    // 1. FUNÇÕES AUXILIARES
-    // =================================================================
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FUNÇÕES AUXILIARES
+    // ═══════════════════════════════════════════════════════════════════════════
 
-    function isLoggedIn() {
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    function currentUid() {
-      return request.auth.uid;
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin_geral' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'gestor');
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isMasterEmail() {
+      return isAuthenticated() &&
+        request.auth.token.email == 'paulo.santos@hospitalregionaldocerrado.com.br';
     }
 
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function isAdmin() {
-      let role = getUserData().role;
-      return role == 'admin_geral' || role == 'Admin_geral' || role == 'ADMIN_GERAL' ||
-             role == 'gestor' || role == 'Gestor' || role == 'GESTOR';
+    function getUserAssignedUnits() {
+      return getUserData().assignedUnits;
     }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    function userHasUnitAccess(unitId) {
+      let userData = getUserData();
+      let allowedUnits = userData.assignedUnits;
+      return isAdmin() || isMasterEmail() || (allowedUnits != null && allowedUnits.hasAny([unitId]));
     }
 
-    function hasUnit(unitId) {
-      return unitId in (getUserData().assignedUnits || []);
+    function userCanWriteAssetAsset(unitId) {
+      return isAdmin() || isMasterEmail() || (unitId != null && unitId != '' && userHasUnitAccess(unitId));
     }
 
-    function getRolePermissions(roleId) {
-      return get(/databases/$(database)/documents/roles/$(roleId)).data.permissions;
-    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: users
+    // ═══════════════════════════════════════════════════════════════════════════
 
-    function hasPermission(module, action) {
-      let roleId = getUserData().role;
-      let perms = get(/databases/$(database)/documents/roles/$(roleId)).data.permissions;
-      return perms[module][action] == true;
-    }
-
-    // =================================================================
-    // 2. USERS
-    // =================================================================
     match /users/{userId} {
-      allow create: if isLoggedIn();
-      allow read: if isLoggedIn() && (isOwner(userId) || isAdmin() || hasPermission('usuarios', 'read'));
-      allow update: if isLoggedIn() && (isOwner(userId) || isAdmin() || hasPermission('usuarios', 'update'));
-      allow delete: if isLoggedIn() && isAdmin();
-
-      match /sessions/{sessionId} {
-        allow read, write, delete: if isLoggedIn() && isOwner(userId);
-      }
+      allow read: if isOwner(userId) || isAdmin() || isMasterEmail();
+      allow create: if isAdmin() || isMasterEmail() || request.resource.data._createdBy == 'self_register';
+      allow update: if isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'assignedUnits']);
+      allow update, delete: if isAdmin() || isMasterEmail();
     }
 
-    // =================================================================
-    // 3. ROLES
-    // =================================================================
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: users/{userId}/profiles
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /users/{userId}/profiles/{profileId} {
+      allow read, write: if isOwner(userId) || isAdmin() || isMasterEmail();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: users/{userId}/sessions
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /users/{userId}/sessions/{sessionId} {
+      allow read: if isOwner(userId) || isAdmin() || isMasterEmail();
+      allow write: if isOwner(userId);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: roles
+    // ═══════════════════════════════════════════════════════════════════════════
+
     match /roles/{roleId} {
-      allow read: if isLoggedIn();
-      allow write: if isLoggedIn() && isAdmin();
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isMasterEmail();
     }
 
-    // =================================================================
-    // 4. ASSETS
-    // =================================================================
-    match /assets/{assetId} {
-      allow read: if isLoggedIn() && (isAdmin() || hasPermission('ativos', 'read'));
-      allow create: if isLoggedIn() && (isAdmin() || hasPermission('ativos', 'create'));
-      allow update: if isLoggedIn() && (isAdmin() || hasPermission('ativos', 'update'));
-      allow delete: if isLoggedIn() && isAdmin();
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: units
+    // ═══════════════════════════════════════════════════════════════════════════
 
-      match /history/{historyId} {
-        allow read: if isLoggedIn() && (isAdmin() || hasPermission('ativos', 'read'));
-        allow create: if isLoggedIn() && (isAdmin() || hasPermission('ativos', 'update'));
-      }
-    }
-
-    // =================================================================
-    // 5. HISTORY (Collection Group for cross-collection queries)
-    // NOTE: collectionGroup queries match ANY 'history' collection at any path
-    // For collectionGroup, we restrict to admin only since we can't easily check ownership
-    // The specific /assets/{assetId}/history/{historyId} rules handle normal access
-    // =================================================================
-    match /{path=**}/history/{historyId} {
-      allow read: if isLoggedIn() && isAdmin();
-      allow create: if isLoggedIn() && isAdmin();
-    }
-
-    // =================================================================
-    // 6. UNITS
-    // =================================================================
     match /units/{unitId} {
-      allow read: if isLoggedIn();
-      allow create: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_unidades', 'create'));
-      allow update: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_unidades', 'update'));
-      allow delete: if isLoggedIn() && isAdmin();
+      allow read: if isAuthenticated() && (
+        isAdmin() || isMasterEmail() ||
+        (getUserAssignedUnits() != null && getUserAssignedUnits().hasAny([unitId]))
+      );
+      allow create: if isAdmin() || isMasterEmail();
+      allow update, delete: if isAdmin() || isMasterEmail();
     }
 
-    // =================================================================
-    // 7. ASSET MODELS
-    // =================================================================
-    match /assetModels/{modelId} {
-      allow read: if isLoggedIn();
-      allow create: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_modelos', 'create'));
-      allow update: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_modelos', 'update'));
-      allow delete: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_modelos', 'delete'));
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: assets
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /assets/{assetId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || isMasterEmail() ||
+        (resource.data.unitId != null && resource.data.unitId in getUserAssignedUnits())
+      );
+      allow create: if isAuthenticated() && (
+        isAdmin() || isMasterEmail() ||
+        request.resource.data.unitId == null ||
+        request.resource.data.unitId == '' ||
+        request.resource.data.unitId in getUserAssignedUnits()
+      );
+      allow update: if isAuthenticated() && (
+        isAdmin() || isMasterEmail() ||
+        (resource.data.unitId != null && resource.data.unitId in getUserAssignedUnits())
+      );
+      allow delete: if isAdmin() || isMasterEmail();
     }
 
-    // =================================================================
-    // 8. SUPPLIERS
-    // =================================================================
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: assets/{assetId}/history
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /assets/{assetId}/history/{historyId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || isMasterEmail() ||
+        (get(/databases/$(database)/documents/assets/$(assetId)).data.unitId in getUserAssignedUnits())
+      );
+      allow create: if isAuthenticated() && (
+        isAdmin() || isMasterEmail() ||
+        (request.resource.data.unitId != null && request.resource.data.unitId in getUserAssignedUnits())
+      );
+      allow update, delete: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: suppliers
+    // ═══════════════════════════════════════════════════════════════════════════
+
     match /suppliers/{supplierId} {
-      allow read: if isLoggedIn();
-      allow create: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_empresas', 'create'));
-      allow update: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_empresas', 'update'));
-      allow delete: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_empresas', 'delete'));
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || isMasterEmail();
     }
 
-    // =================================================================
-    // 9. SYSTEM OPTIONS
-    // =================================================================
-    match /systemOptions/{docId} {
-      allow read: if isLoggedIn();
-      allow write: if isLoggedIn() && (isAdmin() || hasPermission('cadastros_opcoes', 'update') || hasPermission('cadastros_opcoes', 'create'));
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: systemOptions
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /systemOptions/{optionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isMasterEmail();
     }
 
-    // =================================================================
-    // 10. SYSTEM LOGS
-    // =================================================================
-    match /system_logs/{logType}/{docId} {
-      allow read: if isLoggedIn() && (isAdmin() || hasPermission('usuarios', 'read'));
-      allow create: if isLoggedIn();
-      allow update, delete: if isLoggedIn() && isAdmin();
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: system_logs/audit/history
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /system_logs/audit/history/{logId} {
+      allow read: if isAdmin() || isMasterEmail();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: activity_logs
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /activity_logs/{logId} {
+      allow read: if isAdmin() || isMasterEmail();
+      allow create: if isAdmin() || isMasterEmail();
+      allow update, delete: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: notification_logs
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /notification_logs/{logId} {
+      allow read: if isAdmin() || isMasterEmail();
+      allow create, update, delete: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: push_tokens
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /push_tokens/{tokenId} {
+      allow read, write: if isOwner(resource.data.userId) || isAdmin() || isMasterEmail();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: settings
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isMasterEmail();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: config
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isMasterEmail();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: pin_reset_requests
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /pin_reset_requests/{requestId} {
+      allow read: if isAdmin() || isMasterEmail();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin() || isMasterEmail();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: support_tickets
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /support_tickets/{ticketId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin() || isMasterEmail();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin() || isMasterEmail();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: user_progress
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /user_progress/{userId} {
+      allow read: if isOwner(userId) || isAdmin() || isMasterEmail();
+      allow write: if isOwner(userId) || isAdmin() || isMasterEmail();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: subscriptions
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /subscriptions/{subId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin() || isMasterEmail();
+      allow create, update, delete: if isAdmin() || isMasterEmail();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLECTION: content_ratings
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /content_ratings/{ratingId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin() || isMasterEmail();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FALLBACK: nega tudo que não foi coberto acima
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /{document=**} {
+      allow read, write: if isAdmin() || isMasterEmail();
     }
   }
 }

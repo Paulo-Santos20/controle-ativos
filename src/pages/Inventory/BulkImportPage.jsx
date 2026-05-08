@@ -15,18 +15,6 @@ import {
 import styles from './BulkImportPage.module.css';
 import { useAuth } from '../../hooks/useAuth';
 
-const VALID_STATUSES = [
-  "Em uso", "Estoque", "Em manutenção", "Inativo", "Devolvido", 
-  "Manutenção agendada", "Devolução agendada", "Reativação agendada", "OK",
-  "DISPONÍVEL", "ATIVO", "EM USO", "BACKUP", "RESERVA",
-  "ON-LINE", "OFF-LINE"
-]; 
-
-const VALID_PRINTER_STATUSES = [
-  ...VALID_STATUSES, 
-  "Pronta", "Ocupada", "Ativa", "ATIVA"
-]; 
-
 const BulkImportPage = () => {
   const { isAdmin, allowedUnits, loading: authLoading } = useAuth();
   const [importType, setImportType] = useState('computador');
@@ -101,9 +89,11 @@ const BulkImportPage = () => {
     const validPavimentos = getSystemOptions('pavimentos');
     const validSalas = getSystemOptions('salas');
     const validSOs = getSystemOptions('sistemas_operacionais');
+    const validStatuses = getSystemOptions('status');
+    const validPrinterStatuses = importType === 'impressora' ? getSystemOptions('status_impressora') : [];
 
-    const currentValidStatuses = (importType === 'impressora' ? VALID_PRINTER_STATUSES : VALID_STATUSES).map(s => s.toUpperCase());
-    
+    const currentValidStatuses = [...validStatuses, ...validPrinterStatuses].map(s => s.toUpperCase());
+
     const detectedNewSetores = new Set();
     const detectedNewPavimentos = new Set();
     const detectedNewSalas = new Set();
@@ -111,13 +101,13 @@ const BulkImportPage = () => {
 
     const dataToImport = data.filter((row, index) => {
       const ref = `Linha ${index + 2}`;
-      
+
       if (!row.unitId) errors.push(`${ref}: Unidade não identificada.`);
       else if (!canImportToUnit(row.unitId)) errors.push(`${ref}: Sem permissão na unidade '${getUnitLabel(row.unitId)}'.`);
-      
+
       if (!row.status) {
         row.status = 'Estoque';
-      } else if (!currentValidStatuses.includes(row.status.toUpperCase())) {
+      } else if (currentValidStatuses.length > 0 && !currentValidStatuses.includes(row.status.toUpperCase())) {
           errors.push(`${ref}: Status '${row.status}' inválido.`);
       }
 
@@ -137,7 +127,7 @@ const BulkImportPage = () => {
               detectedNewSOs.add(row.so);
           }
       }
-      
+
       return errors.filter(e => e.startsWith(ref)).length === 0;
     });
 
