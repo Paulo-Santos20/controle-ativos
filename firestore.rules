@@ -37,14 +37,14 @@ service cloud.firestore {
     }
 
     function canAccessAssetUnit(unitId) {
-      if (isAdmin() || isMasterEmail()) return true;
-      if (unitId == null || unitId == '') return true;
-      return getUserAssignedUnits().hasAny([unitId]);
+      return (isAdmin() || isMasterEmail()) ||
+             (unitId == null || unitId == '') ||
+             getUserAssignedUnits().hasAny([unitId]);
     }
 
     function isValidUnit(unitId) {
-      if (unitId == null || unitId == '') return true;
-      return getUserAssignedUnits().hasAny([unitId]);
+      return (unitId == null || unitId == '') ||
+             getUserAssignedUnits().hasAny([unitId]);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
