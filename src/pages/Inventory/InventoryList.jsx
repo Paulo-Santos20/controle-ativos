@@ -24,7 +24,7 @@ import { FILTRO_TIPO, FILTRO_STATUS, ITEMS_PER_PAGE } from '../../constants/opti
 
 const InventoryList = () => {
   const { permissions, isAdmin, allowedUnits, loading: authLoading, user } = useAuth();
-  const { options } = useOptions(['memorias', 'hd_ssd', 'processadores']);
+  const { options } = useOptions(['memorias', 'hd_ssd', 'processadores', 'sistemas_operacionais']);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalView, setModalView] = useState('select');
@@ -45,6 +45,7 @@ const InventoryList = () => {
   const [filterMemoria, setFilterMemoria] = useState("all");
   const [filterHdSsd, setFilterHdSsd] = useState("all");
   const [filterProcessador, setFilterProcessador] = useState("all");
+  const [filterSO, setFilterSO] = useState("all");
   const [showReturned, setShowReturned] = useState(false);
   const [unitsList, setUnitsList] = useState([]);
 
@@ -173,7 +174,7 @@ const InventoryList = () => {
   useEffect(() => {
     setLastDoc(null);
     fetchAssets(false, debouncedSearch);
-  }, [filterType, filterStatus, filterUnit, isAdmin, JSON.stringify(allowedUnits), debouncedSearch, showReturned, filterMemoria, filterHdSsd, filterProcessador]);
+  }, [filterType, filterStatus, filterUnit, isAdmin, JSON.stringify(allowedUnits), debouncedSearch, showReturned, filterMemoria, filterHdSsd, filterProcessador, filterSO]);
 
 
   // --- 5. FILTRAGEM VISUAL BLINDADA (CLIENT-SIDE) ---
@@ -200,6 +201,7 @@ const InventoryList = () => {
       if (filterMemoria !== "all" && asset.memoria !== filterMemoria) return false;
       if (filterHdSsd !== "all" && asset.hdSsd !== filterHdSsd) return false;
       if (filterProcessador !== "all" && asset.processador !== filterProcessador) return false;
+      if (filterSO !== "all" && asset.so !== filterSO) return false;
 
       if (debouncedSearch) {
          const search = debouncedSearch.toLowerCase();
@@ -213,7 +215,7 @@ const InventoryList = () => {
       }
       return true;
     });
-  }, [assets, isAdmin, allowedUnits, showReturned, debouncedSearch, filterMemoria, filterHdSsd, filterProcessador]);
+  }, [assets, isAdmin, allowedUnits, showReturned, debouncedSearch, filterMemoria, filterHdSsd, filterProcessador, filterSO]);
 
 const getStatusClass = useCallback((status) => {
     if (status === 'Em uso') return styles.statusUsage;
@@ -396,6 +398,7 @@ const getStatusClass = useCallback((status) => {
             <select value={filterMemoria} onChange={(e) => setFilterMemoria(e.target.value)} className={styles.filterSelect}><option value="all">Todas as Memórias</option>{(options.memorias || []).map(o => <option key={o} value={o}>{o}</option>)}</select>
             <select value={filterHdSsd} onChange={(e) => setFilterHdSsd(e.target.value)} className={styles.filterSelect}><option value="all">Todos os HD/SSD</option>{(options.hd_ssd || []).map(o => <option key={o} value={o}>{o}</option>)}</select>
             <select value={filterProcessador} onChange={(e) => setFilterProcessador(e.target.value)} className={styles.filterSelect}><option value="all">Todos os Processadores</option>{(options.processadores || []).map(o => <option key={o} value={o}>{o}</option>)}</select>
+            <select value={filterSO} onChange={(e) => setFilterSO(e.target.value)} className={styles.filterSelect}><option value="all">Todos os SOs</option>{(options.sistemas_operacionais || []).map(o => <option key={o} value={o}>{o}</option>)}</select>
           </div>
           <label className={styles.checkboxFilter}><input type="checkbox" checked={showReturned} onChange={(e) => setShowReturned(e.target.checked)} /> <Archive size={16} /> Mostrar Devolvidos</label>
         </div>
