@@ -33,7 +33,7 @@ const BulkImportPage = () => {
     setores: new Set(),
     pavimentos: new Set(),
     salas: new Set(),
-    sistemas_operacionais: new Set(),
+    versoes_so: new Set(),
     memorias: new Set(),
     hd_ssd: new Set(),
     processadores: new Set(),
@@ -66,7 +66,7 @@ const BulkImportPage = () => {
     setValidationErrors([]);
     setImportStats({ count: 0 });
     setUploadReport(null); 
-    setNewTermsToCreate({ setores: new Set(), pavimentos: new Set(), salas: new Set(), sistemas_operacionais: new Set(), memorias: new Set(), hd_ssd: new Set(), processadores: new Set(), marcas: new Set(), modelos: new Set(), status: new Set() }); 
+    setNewTermsToCreate({ setores: new Set(), pavimentos: new Set(), salas: new Set(), versoes_so: new Set(), memorias: new Set(), hd_ssd: new Set(), processadores: new Set(), marcas: new Set(), modelos: new Set(), status: new Set() }); 
   };
 
   const canImportToUnit = useCallback((unitId) => {
@@ -94,7 +94,7 @@ const BulkImportPage = () => {
     const validSetores = getSystemOptions('setores');
     const validPavimentos = getSystemOptions('pavimentos');
     const validSalas = getSystemOptions('salas');
-    const validSOs = getSystemOptions('sistemas_operacionais');
+    const validVersoesSO = getSystemOptions('versoes_so');
     const validStatuses = getSystemOptions('status');
     const validPrinterStatuses = importType === 'impressora' ? getSystemOptions('status_impressora') : [];
 
@@ -103,7 +103,7 @@ const BulkImportPage = () => {
     const detectedNewSetores = new Set();
     const detectedNewPavimentos = new Set();
     const detectedNewSalas = new Set();
-    const detectedNewSOs = new Set();
+    const detectedNewVersoesSO = new Set();
     const detectedNewMemorias = new Set();
     const detectedNewHdSsd = new Set();
     const detectedNewProcessadores = new Set();
@@ -135,8 +135,8 @@ const BulkImportPage = () => {
       }
 
       if (importType === 'computador') {
-          if (row.so && !validSOs.includes(row.so)) {
-              detectedNewSOs.add(row.so);
+          if (row.so && !validVersoesSO.includes(row.so)) {
+              detectedNewVersoesSO.add(row.so);
           }
           if (row.memoria && !getSystemOptions('memorias').includes(row.memoria)) {
               detectedNewMemorias.add(row.memoria);
@@ -162,7 +162,7 @@ const BulkImportPage = () => {
       setores: detectedNewSetores,
       pavimentos: detectedNewPavimentos,
       salas: detectedNewSalas,
-      sistemas_operacionais: detectedNewSOs,
+      versoes_so: detectedNewVersoesSO,
       memorias: detectedNewMemorias,
       hd_ssd: detectedNewHdSsd,
       processadores: detectedNewProcessadores,
@@ -316,7 +316,7 @@ const BulkImportPage = () => {
   };
   
   const upsertSystemOptions = async () => {
-      const { setores, pavimentos, salas, sistemas_operacionais, memorias, hd_ssd, processadores, marcas, modelos, status } = newTermsToCreate;
+      const { setores, pavimentos, salas, versoes_so, memorias, hd_ssd, processadores, marcas, modelos, status } = newTermsToCreate;
       const updates = [];
       const updateOption = (key, newValuesSet) => {
           if (newValuesSet.size > 0) {
@@ -328,7 +328,7 @@ const BulkImportPage = () => {
       updateOption('setores', setores);
       updateOption('pavimentos', pavimentos);
       updateOption('salas', salas);
-      updateOption('sistemas_operacionais', sistemas_operacionais);
+      updateOption('versoes_so', versoes_so);
       updateOption('memorias', memorias);
       updateOption('hd_ssd', hd_ssd);
       updateOption('processadores', processadores);
