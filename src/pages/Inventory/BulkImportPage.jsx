@@ -34,6 +34,7 @@ const BulkImportPage = () => {
     pavimentos: new Set(),
     salas: new Set(),
     versoes_so: new Set(),
+    windows_builds: new Set(),
     memorias: new Set(),
     hd_ssd: new Set(),
     processadores: new Set(),
@@ -66,7 +67,7 @@ const BulkImportPage = () => {
     setValidationErrors([]);
     setImportStats({ count: 0 });
     setUploadReport(null); 
-    setNewTermsToCreate({ setores: new Set(), pavimentos: new Set(), salas: new Set(), versoes_so: new Set(), memorias: new Set(), hd_ssd: new Set(), processadores: new Set(), marcas: new Set(), modelos: new Set(), status: new Set() }); 
+    setNewTermsToCreate({ setores: new Set(), pavimentos: new Set(), salas: new Set(), versoes_so: new Set(), windows_builds: new Set(), memorias: new Set(), hd_ssd: new Set(), processadores: new Set(), marcas: new Set(), modelos: new Set(), status: new Set() }); 
   };
 
   const canImportToUnit = useCallback((unitId) => {
@@ -104,6 +105,7 @@ const BulkImportPage = () => {
     const detectedNewPavimentos = new Set();
     const detectedNewSalas = new Set();
     const detectedNewVersoesSO = new Set();
+    const detectedNewWindowsBuilds = new Set();
     const detectedNewMemorias = new Set();
     const detectedNewHdSsd = new Set();
     const detectedNewProcessadores = new Set();
@@ -138,6 +140,9 @@ const BulkImportPage = () => {
           if (row.so && !validVersoesSO.includes(row.so)) {
               detectedNewVersoesSO.add(row.so);
           }
+          if (row.versao_so && !getSystemOptions('windows_builds').includes(row.versao_so)) {
+              detectedNewWindowsBuilds.add(row.versao_so);
+          }
           if (row.memoria && !getSystemOptions('memorias').includes(row.memoria)) {
               detectedNewMemorias.add(row.memoria);
           }
@@ -163,6 +168,7 @@ const BulkImportPage = () => {
       pavimentos: detectedNewPavimentos,
       salas: detectedNewSalas,
       versoes_so: detectedNewVersoesSO,
+      windows_builds: detectedNewWindowsBuilds,
       memorias: detectedNewMemorias,
       hd_ssd: detectedNewHdSsd,
       processadores: detectedNewProcessadores,
@@ -226,11 +232,12 @@ const BulkImportPage = () => {
         hostname: normalizedRow['hostname'],
         processador: normalizedRow['processador'],
         memoria: normalizedRow['memoria'],
-        hdSsd: normalizedRow['hd_ssd'] || '', 
+        hdSsd: normalizedRow['hd_ssd'] || '',
         so: normalizedRow['so'],
+        versao_so: normalizedRow['versão_so'] || '',
         antivirus: normalizedRow['antivirus'],
-        macAddress: normalizedRow['mac'], 
-        serviceTag: normalizedRow['service_tag'], 
+        macAddress: normalizedRow['mac'],
+        serviceTag: normalizedRow['service_tag'],
       };
     } else {
       const normBool = (v) => v.toUpperCase().includes('S') ? 'Sim' : 'Não';
@@ -316,7 +323,7 @@ const BulkImportPage = () => {
   };
   
   const upsertSystemOptions = async () => {
-      const { setores, pavimentos, salas, versoes_so, memorias, hd_ssd, processadores, marcas, modelos, status } = newTermsToCreate;
+      const { setores, pavimentos, salas, versoes_so, windows_builds, memorias, hd_ssd, processadores, marcas, modelos, status } = newTermsToCreate;
       const updates = [];
       const updateOption = (key, newValuesSet) => {
           if (newValuesSet.size > 0) {
@@ -329,6 +336,7 @@ const BulkImportPage = () => {
       updateOption('pavimentos', pavimentos);
       updateOption('salas', salas);
       updateOption('versoes_so', versoes_so);
+      updateOption('windows_builds', windows_builds);
       updateOption('memorias', memorias);
       updateOption('hd_ssd', hd_ssd);
       updateOption('processadores', processadores);

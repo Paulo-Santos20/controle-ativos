@@ -77,12 +77,19 @@ const CATEGORIES = [
     placeholder: "Ex: Windows 11, Ubuntu...",
     defaults: ["Windows 11 Pro", "Windows 11 Home", "Windows 10 Pro", "Windows 10 Home", "Ubuntu", "Linux", "macOS", "Não possui"]
   },
-  { 
-    id: 'versoes_so', 
-    label: 'Versões S.O.', 
-    icon: <Server size={18} />, 
+  {
+    id: 'versoes_so',
+    label: 'Versões S.O.',
+    icon: <Server size={18} />,
     placeholder: "Ex: 22H2, 23H2, 20.04 LTS...",
     defaults: ["22H2", "23H2", "20.04 LTS", "22.04 LTS", "Sonoma", "Sequoia"]
+  },
+  {
+    id: 'windows_builds',
+    label: 'Windows Builds',
+    icon: <Server size={18} />,
+    placeholder: "Ex: 22H2, 23H2, 24H2...",
+    defaults: ["22H2", "23H2", "24H2", "25H2"]
   },
   { 
     id: 'memorias', 
