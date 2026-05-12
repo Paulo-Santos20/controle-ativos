@@ -4,7 +4,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 100;
 
 /**
  * Hook avançado que gerencia busca, paginação e filtros combinados no servidor.

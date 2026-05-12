@@ -141,5 +141,5 @@ export const FILTRO_STATUS = [
 
 export const COLORS = ['#007aff', '#5ac8fa', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
 
-export const ITEMS_PER_PAGE = 20;
+export const ITEMS_PER_PAGE = 100;
 export const BULK_MOVE_LIMIT = 250;
