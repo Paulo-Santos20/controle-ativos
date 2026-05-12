@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Layers, Monitor, Server, Map, Box, Cpu, HardDrive, Tag, Globe, MonitorCheck, Database, RefreshCw, CheckCircle } from 'lucide-react';
-import { doc, writeBatch } from 'firebase/firestore';
+import { doc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { toast } from 'sonner';
 
@@ -165,17 +165,22 @@ const OptionsPage = () => {
   const [isSeeding, setIsSeeding] = useState(false);
 
   const handlePopulateDefaults = async () => {
-    if (!window.confirm("Isso irá criar/atualizar as listas padrão no banco de dados. Continuar?")) return;
+    if (!window.confirm("Isso irá adicionar as listas padrão ao banco de dados. Valores existentes serão preservados. Continuar?")) return;
     setIsSeeding(true);
-    const toastId = toast.loading("Criando opções padrão...");
+    const toastId = toast.loading("Adicionando opções padrão...");
     try {
-      const batch = writeBatch(db);
-      CATEGORIES.forEach(cat => {
+      const updates = [];
+      for (const cat of CATEGORIES) {
         const docRef = doc(db, 'systemOptions', cat.id);
-        batch.set(docRef, { values: cat.defaults }, { merge: true });
-      });
+        const snap = await getDoc(docRef);
+        const existing = snap.exists() ? (snap.data().values || []) : [];
+        const merged = [...new Set([...existing, ...cat.defaults])].sort();
+        updates.push({ ref: docRef, values: merged });
+      }
+      const batch = writeBatch(db);
+      updates.forEach(u => batch.set(u.ref, { values: u.values }, { merge: true }));
       await batch.commit();
-      toast.success("Todas as opções foram criadas no banco de dados!", { id: toastId });
+      toast.success("Opções padrão adicionadas ao banco de dados!", { id: toastId });
       setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
       console.error(error);
