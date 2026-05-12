@@ -39,6 +39,7 @@ const BulkImportPage = () => {
     processadores: new Set(),
     marcas: new Set(),
     modelos: new Set(),
+    status: new Set(),
   });
 
   const unitsQuery = useMemo(() => {
@@ -65,7 +66,7 @@ const BulkImportPage = () => {
     setValidationErrors([]);
     setImportStats({ count: 0 });
     setUploadReport(null); 
-    setNewTermsToCreate({ setores: new Set(), pavimentos: new Set(), salas: new Set(), sistemas_operacionais: new Set(), memorias: new Set(), hd_ssd: new Set(), processadores: new Set(), marcas: new Set(), modelos: new Set() }); 
+    setNewTermsToCreate({ setores: new Set(), pavimentos: new Set(), salas: new Set(), sistemas_operacionais: new Set(), memorias: new Set(), hd_ssd: new Set(), processadores: new Set(), marcas: new Set(), modelos: new Set(), status: new Set() }); 
   };
 
   const canImportToUnit = useCallback((unitId) => {
@@ -108,6 +109,7 @@ const BulkImportPage = () => {
     const detectedNewProcessadores = new Set();
     const detectedNewMarcas = new Set();
     const detectedNewModelos = new Set();
+    const detectedNewStatuses = new Set();
 
     const dataToImport = data.filter((row, index) => {
       const ref = `Linha ${index + 2}`;
@@ -118,7 +120,7 @@ const BulkImportPage = () => {
       if (!row.status) {
         row.status = 'Estoque';
       } else if (currentValidStatuses.length > 0 && !currentValidStatuses.includes(row.status.toUpperCase())) {
-          errors.push(`${ref}: Status '${row.status}' inválido.`);
+        detectedNewStatuses.add(row.status);
       }
 
       if (row.setor && !validSetores.includes(row.setor)) {
@@ -166,6 +168,7 @@ const BulkImportPage = () => {
       processadores: detectedNewProcessadores,
       marcas: detectedNewMarcas,
       modelos: detectedNewModelos,
+      status: detectedNewStatuses,
     });
     
     setValidationErrors(errors);
@@ -313,7 +316,7 @@ const BulkImportPage = () => {
   };
   
   const upsertSystemOptions = async () => {
-      const { setores, pavimentos, salas, sistemas_operacionais, memorias, hd_ssd, processadores, marcas, modelos } = newTermsToCreate;
+      const { setores, pavimentos, salas, sistemas_operacionais, memorias, hd_ssd, processadores, marcas, modelos, status } = newTermsToCreate;
       const updates = [];
       const updateOption = (key, newValuesSet) => {
           if (newValuesSet.size > 0) {
@@ -331,6 +334,7 @@ const BulkImportPage = () => {
       updateOption('processadores', processadores);
       updateOption('marcas', marcas);
       updateOption('modelos', modelos);
+      updateOption('status', status);
 
       if (updates.length > 0) {
           const batch = writeBatch(db);
