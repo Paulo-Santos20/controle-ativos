@@ -37,6 +37,8 @@ const BulkImportPage = () => {
     memorias: new Set(),
     hd_ssd: new Set(),
     processadores: new Set(),
+    marcas: new Set(),
+    modelos: new Set(),
   });
 
   const unitsQuery = useMemo(() => {
@@ -63,7 +65,7 @@ const BulkImportPage = () => {
     setValidationErrors([]);
     setImportStats({ count: 0 });
     setUploadReport(null); 
-    setNewTermsToCreate({ setores: new Set(), pavimentos: new Set(), salas: new Set(), sistemas_operacionais: new Set(), memorias: new Set(), hd_ssd: new Set(), processadores: new Set() }); 
+    setNewTermsToCreate({ setores: new Set(), pavimentos: new Set(), salas: new Set(), sistemas_operacionais: new Set(), memorias: new Set(), hd_ssd: new Set(), processadores: new Set(), marcas: new Set(), modelos: new Set() }); 
   };
 
   const canImportToUnit = useCallback((unitId) => {
@@ -104,6 +106,8 @@ const BulkImportPage = () => {
     const detectedNewMemorias = new Set();
     const detectedNewHdSsd = new Set();
     const detectedNewProcessadores = new Set();
+    const detectedNewMarcas = new Set();
+    const detectedNewModelos = new Set();
 
     const dataToImport = data.filter((row, index) => {
       const ref = `Linha ${index + 2}`;
@@ -141,6 +145,12 @@ const BulkImportPage = () => {
           if (row.processador && !getSystemOptions('processadores').includes(row.processador)) {
               detectedNewProcessadores.add(row.processador);
           }
+          if (row.marca && !getSystemOptions('marcas').includes(row.marca)) {
+              detectedNewMarcas.add(row.marca);
+          }
+          if (row.modelo && !getSystemOptions('modelos').includes(row.modelo)) {
+              detectedNewModelos.add(row.modelo);
+          }
       }
 
       return errors.filter(e => e.startsWith(ref)).length === 0;
@@ -154,6 +164,8 @@ const BulkImportPage = () => {
       memorias: detectedNewMemorias,
       hd_ssd: detectedNewHdSsd,
       processadores: detectedNewProcessadores,
+      marcas: detectedNewMarcas,
+      modelos: detectedNewModelos,
     });
     
     setValidationErrors(errors);
@@ -301,7 +313,7 @@ const BulkImportPage = () => {
   };
   
   const upsertSystemOptions = async () => {
-      const { setores, pavimentos, salas, sistemas_operacionais, memorias, hd_ssd, processadores } = newTermsToCreate;
+      const { setores, pavimentos, salas, sistemas_operacionais, memorias, hd_ssd, processadores, marcas, modelos } = newTermsToCreate;
       const updates = [];
       const updateOption = (key, newValuesSet) => {
           if (newValuesSet.size > 0) {
@@ -317,6 +329,8 @@ const BulkImportPage = () => {
       updateOption('memorias', memorias);
       updateOption('hd_ssd', hd_ssd);
       updateOption('processadores', processadores);
+      updateOption('marcas', marcas);
+      updateOption('modelos', modelos);
 
       if (updates.length > 0) {
           const batch = writeBatch(db);

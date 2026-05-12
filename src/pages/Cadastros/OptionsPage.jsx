@@ -93,7 +93,7 @@ const CATEGORIES = [
   },
   { 
     id: 'hd_ssd', 
-    label: 'HD/SSD', 
+    label: 'HD_SSD', 
     icon: <HardDrive size={18} />, 
     placeholder: "Ex: SSD 256GB, HDD 500GB...",
     defaults: ["SSD 128GB", "SSD 256GB", "SSD 512GB", "SSD 1TB", "HDD 320GB", "HDD 500GB", "HDD 1TB", "HDD 2TB"]
