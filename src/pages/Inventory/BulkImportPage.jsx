@@ -183,13 +183,14 @@ const BulkImportPage = () => {
 
   const processRow = (row, sheetName) => {
     const normalizedRow = {};
-    Object.keys(row).forEach(key => { 
-        let normalizedKey = key.trim().toLowerCase().replace(/ /g, '_');
+    Object.keys(row).forEach(key => {
+        let normalizedKey = key.trim().toLowerCase().replace(/ /g, '_').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         if (normalizedKey.includes('hd') && normalizedKey.includes('ssd')) normalizedKey = 'hd_ssd';
         if (normalizedKey.includes('funcionario')) normalizedKey = 'funcionario';
-        let value = (row[key] === undefined || row[key] === null) ? '' : row[key]; 
+        if (normalizedKey === 'versao_so' || normalizedKey === 'versão_so') normalizedKey = 'versao_so';
+        let value = (row[key] === undefined || row[key] === null) ? '' : row[key];
         if (typeof value === 'number') value = String(value);
-        normalizedRow[normalizedKey] = String(value).trim(); 
+        normalizedRow[normalizedKey] = String(value).trim();
     });
 
     let unitRaw = normalizedRow['unidade'] || sheetName;
