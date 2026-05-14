@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Layers, Monitor, Server, Map, Box, Cpu, HardDrive, Tag, Globe, MonitorCheck, Database, RefreshCw, CheckCircle } from 'lucide-react';
-import { doc, writeBatch, getDoc } from 'firebase/firestore';
+import { Layers, Monitor, Server, Map, Box, Cpu, HardDrive, Tag, Globe, MonitorCheck, CheckCircle } from 'lucide-react';
+import { doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { toast } from 'sonner';
-import { sortOptions } from '../../utils/sortOptions';
 
 import styles from './OptionsPage.module.css';
 import OptionManager from '../../components/Settings/OptionManager';
@@ -163,34 +162,6 @@ const CATEGORIES = [
 
 const OptionsPage = () => {
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
-  const [isSeeding, setIsSeeding] = useState(false);
-
-  const handlePopulateDefaults = async () => {
-    if (!window.confirm("Isso irá adicionar as listas padrão ao banco de dados. Valores existentes serão preservados. Continuar?")) return;
-    setIsSeeding(true);
-    const toastId = toast.loading("Adicionando opções padrão...");
-    try {
-      const updates = [];
-      for (const cat of CATEGORIES) {
-        const docRef = doc(db, 'systemOptions', cat.id);
-        const snap = await getDoc(docRef);
-        const existing = snap.exists() ? (snap.data().values || []) : [];
-        const merged = sortOptions([...new Set([...existing, ...cat.defaults])]);
-        updates.push({ ref: docRef, values: merged });
-      }
-      const batch = writeBatch(db);
-      updates.forEach(u => batch.set(u.ref, { values: u.values }, { merge: true }));
-      await batch.commit();
-      toast.success("Opções padrão adicionadas ao banco de dados!", { id: toastId });
-      setTimeout(() => window.location.reload(), 1500);
-    } catch (error) {
-      console.error(error);
-      toast.error("Erro ao criar opções: " + error.message, { id: toastId });
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -200,14 +171,6 @@ const OptionsPage = () => {
             Gerencie as opções usadas nos formulários de cadastro de ativos.
           </p>
         </div>
-        <button 
-          onClick={handlePopulateDefaults} 
-          className={styles.seedButton}
-          disabled={isSeeding}
-        >
-          <Database size={18} />
-          {isSeeding ? 'Salvando...' : 'Popular Padrões'}
-        </button>
       </header>
 
       <div className={styles.layout}>
