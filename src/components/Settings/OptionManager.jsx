@@ -4,6 +4,7 @@ import { useDocumentData } from 'react-firebase-hooks/firestore';
 import { db } from '/src/lib/firebase.js';
 import { toast } from 'sonner';
 import { logAudit } from '../../utils/AuditLogger';
+import { sortOptions } from '../../utils/sortOptions';
 import { Plus, Trash2, Loader2, List, Check, Square, X } from 'lucide-react';
 import styles from './OptionManager.module.css';
 
@@ -107,7 +108,7 @@ const OptionManager = ({ docId, title, placeholder }) => {
   if (loading) return <div className={styles.loading}><Loader2 className={styles.spinner} /> Carregando lista...</div>;
   if (error) return <p className={styles.error}>Erro ao carregar lista.</p>;
 
-  const items = data?.values?.sort() || [];
+  const items = data?.values ? sortOptions(data.values) : [];
   const allSelected = items.length > 0 && selectedItems.length === items.length;
 
   return (

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  collection, query, orderBy, where, getDocs, limit, startAfter, documentId 
+  collection, query, orderBy, where, getDocs, limit, startAfter, documentId, getCountFromServer 
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase'; 
 import { 
@@ -20,11 +20,11 @@ import AddPrinterForm from '../../components/Inventory/AddPrinterForm';
 import BulkMoveForm from '../../components/Inventory/BulkMoveForm';
 import BulkDeleteForm from '../../components/Inventory/BulkDeleteForm';
 import InventoryTableSkeleton from '../../components/Skeletons/InventoryTableSkeleton';
-import { FILTRO_TIPO, FILTRO_STATUS, ITEMS_PER_PAGE } from '../../constants/options';
+import { FILTRO_TIPO, FILTRO_STATUS, ITEMS_PER_PAGE, OPCOES_SO } from '../../constants/options';
 
 const InventoryList = () => {
   const { permissions, isAdmin, allowedUnits, loading: authLoading, user } = useAuth();
-  const { options } = useOptions(['memorias', 'hd_ssd', 'processadores', 'versoes_so']);
+  const { options } = useOptions(['memorias', 'hd_ssd', 'processadores', 'versoes_so', 'sistemas_operacionais']);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalView, setModalView] = useState('select');
@@ -45,9 +45,20 @@ const InventoryList = () => {
   const [filterMemoria, setFilterMemoria] = useState("all");
   const [filterHdSsd, setFilterHdSsd] = useState("all");
   const [filterProcessador, setFilterProcessador] = useState("all");
+  const [filterSistemaOp, setFilterSistemaOp] = useState("all");
   const [filterSO, setFilterSO] = useState("all");
   const [showReturned, setShowReturned] = useState(false);
   const [unitsList, setUnitsList] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const sentinelRef = useRef(null);
+
+  const versoesSOFiltered = useMemo(() => {
+    return (options.versoes_so || []).filter(v => !/^(windows|linux|ubuntu|macos)/i.test(v.trim()));
+  }, [options.versoes_so]);
+
+  const sistemasOpOptions = useMemo(() => {
+    return (options.sistemas_operacionais && options.sistemas_operacionais.length > 0) ? options.sistemas_operacionais : OPCOES_SO;
+  }, [options.sistemas_operacionais]);
 
   // Helper de Limpeza de String (Remove espaços invisíveis)
   const cleanId = (id) => String(id || '').trim();
@@ -148,13 +159,35 @@ const InventoryList = () => {
         if (isLoadMore && lastDoc) constraints.push(startAfter(lastDoc));
 
         const q = query(collectionRef, ...constraints);
-        const snapshot = await getDocs(q);
+        const queue = [getDocs(q)];
+
+        if (!isLoadMore) {
+          let countConstraints = [];
+          if (allowedUnits && allowedUnits.length > 0 && !isAdmin) {
+            countConstraints.push(where("unitId", "in", allowedUnits));
+          } else if ((!allowedUnits || allowedUnits.length === 0) && !isAdmin) {
+            countConstraints.push(where("unitId", "==", "SEM_PERMISSAO"));
+          }
+          if (filterType !== "all") countConstraints.push(where("type", "==", filterType));
+          if (filterStatus !== "all") countConstraints.push(where("status", "==", filterStatus));
+          if (filterUnit !== "all" && isAdmin && allowedUnits.length === 0) {
+            countConstraints.push(where("unitId", "==", filterUnit));
+          }
+          queue.push(
+            getCountFromServer(query(collectionRef, ...countConstraints))
+              .then(snap => snap.data().count)
+              .catch(() => null)
+          );
+        }
+
+        const [snapshot, total] = await Promise.all(queue);
         let newAssets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         if (isLoadMore) {
           setAssets(prev => [...prev, ...newAssets]);
         } else {
           setAssets(newAssets);
+          if (total != null) setTotalCount(total);
         }
 
         const lastVisible = snapshot.docs[snapshot.docs.length - 1];
@@ -171,10 +204,22 @@ const InventoryList = () => {
     }
   }, [authLoading, isAdmin, allowedUnits, filterType, filterStatus, filterUnit, lastDoc]);
 
+  // Infinite scroll via IntersectionObserver
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore || loadingMore || loading || debouncedSearch) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+        fetchAssets(true, "");
+      }
+    }, { rootMargin: '200px' });
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loading, debouncedSearch, fetchAssets]);
+
   useEffect(() => {
     setLastDoc(null);
     fetchAssets(false, debouncedSearch);
-  }, [filterType, filterStatus, filterUnit, isAdmin, JSON.stringify(allowedUnits), debouncedSearch, showReturned, filterMemoria, filterHdSsd, filterProcessador, filterSO]);
+  }, [filterType, filterStatus, filterUnit, isAdmin, JSON.stringify(allowedUnits), debouncedSearch, showReturned, filterMemoria, filterHdSsd, filterProcessador, filterSistemaOp, filterSO]);
 
 
   // --- 5. FILTRAGEM VISUAL BLINDADA (CLIENT-SIDE) ---
@@ -201,7 +246,9 @@ const InventoryList = () => {
       if (filterMemoria !== "all" && asset.memoria !== filterMemoria) return false;
       if (filterHdSsd !== "all" && asset.hdSsd !== filterHdSsd) return false;
       if (filterProcessador !== "all" && asset.processador !== filterProcessador) return false;
-      if (filterSO !== "all" && asset.so !== filterSO) return false;
+      if (filterSistemaOp !== "all" && asset.so !== filterSistemaOp) return false;
+      const soVersaoValue = asset.soVersao || asset.versao_so || '';
+      if (filterSO !== "all" && soVersaoValue !== filterSO) return false;
 
       if (debouncedSearch) {
          const search = debouncedSearch.toLowerCase();
@@ -215,7 +262,7 @@ const InventoryList = () => {
       }
       return true;
     });
-  }, [assets, isAdmin, allowedUnits, showReturned, debouncedSearch, filterMemoria, filterHdSsd, filterProcessador, filterSO]);
+  }, [assets, isAdmin, allowedUnits, showReturned, debouncedSearch, filterMemoria, filterHdSsd, filterProcessador, filterSistemaOp, filterSO]);
 
 const getStatusClass = useCallback((status) => {
     if (status === 'Em uso') return styles.statusUsage;
@@ -328,11 +375,13 @@ const getStatusClass = useCallback((status) => {
           </table>
         </div>
 
+        <div ref={sentinelRef} style={{ height: 1 }} />
+
         {hasMore && !debouncedSearch && (
           <div className={styles.loadMoreContainer}>
             <button className={styles.loadMoreButton} onClick={() => fetchAssets(true, "")} disabled={loadingMore}>
               {loadingMore ? <Loader2 className={styles.spinner} size={18} /> : <ArrowDownCircle size={18} />}
-              Carregar Mais
+              Carregar mais
             </button>
           </div>
         )}
@@ -398,10 +447,19 @@ const getStatusClass = useCallback((status) => {
             <select value={filterMemoria} onChange={(e) => setFilterMemoria(e.target.value)} className={styles.filterSelect}><option value="all">Todas as Memórias</option>{(options.memorias || []).map(o => <option key={o} value={o}>{o}</option>)}</select>
             <select value={filterHdSsd} onChange={(e) => setFilterHdSsd(e.target.value)} className={styles.filterSelect}><option value="all">Todos os HD/SSD</option>{(options.hd_ssd || []).map(o => <option key={o} value={o}>{o}</option>)}</select>
             <select value={filterProcessador} onChange={(e) => setFilterProcessador(e.target.value)} className={styles.filterSelect}><option value="all">Todos os Processadores</option>{(options.processadores || []).map(o => <option key={o} value={o}>{o}</option>)}</select>
-            <select value={filterSO} onChange={(e) => setFilterSO(e.target.value)} className={styles.filterSelect}><option value="all">Todas as Versões SO</option>{(options.versoes_so || []).map(o => <option key={o} value={o}>{o}</option>)}</select>
+            <select value={filterSistemaOp} onChange={(e) => setFilterSistemaOp(e.target.value)} className={styles.filterSelect}><option value="all">Todos os S.O.</option>{sistemasOpOptions.map(o => <option key={o} value={o}>{o}</option>)}</select>
+            <select value={filterSO} onChange={(e) => setFilterSO(e.target.value)} className={styles.filterSelect}><option value="all">Todas as Versões SO</option>{versoesSOFiltered.map(o => <option key={o} value={o}>{o}</option>)}</select>
           </div>
           <label className={styles.checkboxFilter}><input type="checkbox" checked={showReturned} onChange={(e) => setShowReturned(e.target.checked)} /> <Archive size={16} /> Mostrar Devolvidos</label>
         </div>
+      </div>
+      
+      <div className={styles.resultCount}>
+        {debouncedSearch
+          ? `${displayedAssets.length} ${displayedAssets.length === 1 ? 'resultado' : 'resultados'}`
+          : `${totalCount || displayedAssets.length} itens encontrados`
+        }
+        {hasMore && !debouncedSearch && ' — role para carregar mais'}
       </div>
       
       <div className={styles.content}>{renderContent()}</div>

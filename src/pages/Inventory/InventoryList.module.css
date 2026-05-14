@@ -199,6 +199,15 @@
   border-color: var(--color-border-hover);
 }
 
+/* --- Result Count --- */
+.resultCount {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  padding: 0 var(--spacing-sm);
+  margin-bottom: calc(var(--spacing-sm) * -1);
+  font-weight: 500;
+}
+
 /* --- Content Area --- */
 .content {
   background-color: var(--color-bg-component);

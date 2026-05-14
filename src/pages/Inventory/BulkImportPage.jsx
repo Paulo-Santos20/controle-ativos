@@ -33,6 +33,7 @@ const BulkImportPage = () => {
     setores: new Set(),
     pavimentos: new Set(),
     salas: new Set(),
+    sistemas_operacionais: new Set(),
     versoes_so: new Set(),
     windows_builds: new Set(),
     memorias: new Set(),
@@ -41,6 +42,13 @@ const BulkImportPage = () => {
     marcas: new Set(),
     modelos: new Set(),
     status: new Set(),
+    conectividade: new Set(),
+    tipos_insumo: new Set(),
+    frente_verso: new Set(),
+    marcas_impressora: new Set(),
+    modelos_impressora: new Set(),
+    tipos_ativos_impressora: new Set(),
+    status_impressora: new Set(),
   });
 
   const unitsQuery = useMemo(() => {
@@ -67,7 +75,7 @@ const BulkImportPage = () => {
     setValidationErrors([]);
     setImportStats({ count: 0 });
     setUploadReport(null); 
-    setNewTermsToCreate({ setores: new Set(), pavimentos: new Set(), salas: new Set(), versoes_so: new Set(), windows_builds: new Set(), memorias: new Set(), hd_ssd: new Set(), processadores: new Set(), marcas: new Set(), modelos: new Set(), status: new Set() }); 
+    setNewTermsToCreate({ setores: new Set(), pavimentos: new Set(), salas: new Set(), sistemas_operacionais: new Set(), versoes_so: new Set(), windows_builds: new Set(), memorias: new Set(), hd_ssd: new Set(), processadores: new Set(), marcas: new Set(), modelos: new Set(), status: new Set(), conectividade: new Set(), tipos_insumo: new Set(), frente_verso: new Set(), marcas_impressora: new Set(), modelos_impressora: new Set(), tipos_ativos_impressora: new Set(), status_impressora: new Set() }); 
   };
 
   const canImportToUnit = useCallback((unitId) => {
@@ -104,6 +112,7 @@ const BulkImportPage = () => {
     const detectedNewSetores = new Set();
     const detectedNewPavimentos = new Set();
     const detectedNewSalas = new Set();
+    const detectedNewSistemasOperacionais = new Set();
     const detectedNewVersoesSO = new Set();
     const detectedNewWindowsBuilds = new Set();
     const detectedNewMemorias = new Set();
@@ -112,6 +121,13 @@ const BulkImportPage = () => {
     const detectedNewMarcas = new Set();
     const detectedNewModelos = new Set();
     const detectedNewStatuses = new Set();
+    const detectedNewConectividade = new Set();
+    const detectedNewTiposInsumo = new Set();
+    const detectedNewFrenteVerso = new Set();
+    const detectedNewMarcasImpressora = new Set();
+    const detectedNewModelosImpressora = new Set();
+    const detectedNewTiposAtivosImpressora = new Set();
+    const detectedNewStatusImpressora = new Set();
 
     const dataToImport = data.filter((row, index) => {
       const ref = `Linha ${index + 2}`;
@@ -137,11 +153,12 @@ const BulkImportPage = () => {
       }
 
       if (importType === 'computador') {
-          if (row.so && !validVersoesSO.includes(row.so)) {
-              detectedNewVersoesSO.add(row.so);
+          if (row.so && !getSystemOptions('sistemas_operacionais').includes(row.so)) {
+              detectedNewSistemasOperacionais.add(row.so);
           }
-          if (row.versao_so && !getSystemOptions('windows_builds').includes(row.versao_so)) {
-              detectedNewWindowsBuilds.add(row.versao_so);
+          const isOSName = /^(windows|linux|ubuntu|macos)/i;
+          if (row.soVersao && !isOSName.test(row.soVersao) && !validVersoesSO.includes(row.soVersao)) {
+              detectedNewVersoesSO.add(row.soVersao);
           }
           if (row.memoria && !getSystemOptions('memorias').includes(row.memoria)) {
               detectedNewMemorias.add(row.memoria);
@@ -158,6 +175,28 @@ const BulkImportPage = () => {
           if (row.modelo && !getSystemOptions('modelos').includes(row.modelo)) {
               detectedNewModelos.add(row.modelo);
           }
+      } else if (importType === 'impressora') {
+          if (row.marca && !getSystemOptions('marcas_impressora').includes(row.marca)) {
+              detectedNewMarcasImpressora.add(row.marca);
+          }
+          if (row.modelo && !getSystemOptions('modelos_impressora').includes(row.modelo)) {
+              detectedNewModelosImpressora.add(row.modelo);
+          }
+          if (row.conectividade && !getSystemOptions('conectividade').includes(row.conectividade)) {
+              detectedNewConectividade.add(row.conectividade);
+          }
+          if (row.cartucho && !getSystemOptions('tipos_insumo').includes(row.cartucho)) {
+              detectedNewTiposInsumo.add(row.cartucho);
+          }
+          if (row.frenteVerso && !getSystemOptions('frente_verso').includes(row.frenteVerso)) {
+              detectedNewFrenteVerso.add(row.frenteVerso);
+          }
+          if (row.tipoAtivo && !getSystemOptions('tipos_ativos_impressora').includes(row.tipoAtivo)) {
+              detectedNewTiposAtivosImpressora.add(row.tipoAtivo);
+          }
+          if (row.status && !getSystemOptions('status_impressora').includes(row.status)) {
+              detectedNewStatusImpressora.add(row.status);
+          }
       }
 
       return errors.filter(e => e.startsWith(ref)).length === 0;
@@ -167,6 +206,7 @@ const BulkImportPage = () => {
       setores: detectedNewSetores,
       pavimentos: detectedNewPavimentos,
       salas: detectedNewSalas,
+      sistemas_operacionais: detectedNewSistemasOperacionais,
       versoes_so: detectedNewVersoesSO,
       windows_builds: detectedNewWindowsBuilds,
       memorias: detectedNewMemorias,
@@ -175,6 +215,13 @@ const BulkImportPage = () => {
       marcas: detectedNewMarcas,
       modelos: detectedNewModelos,
       status: detectedNewStatuses,
+      conectividade: detectedNewConectividade,
+      tipos_insumo: detectedNewTiposInsumo,
+      frente_verso: detectedNewFrenteVerso,
+      marcas_impressora: detectedNewMarcasImpressora,
+      modelos_impressora: detectedNewModelosImpressora,
+      tipos_ativos_impressora: detectedNewTiposAtivosImpressora,
+      status_impressora: detectedNewStatusImpressora,
     });
     
     setValidationErrors(errors);
@@ -184,10 +231,10 @@ const BulkImportPage = () => {
   const processRow = (row, sheetName) => {
     const normalizedRow = {};
     Object.keys(row).forEach(key => {
-        let normalizedKey = key.trim().toLowerCase().replace(/ /g, '_').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        let normalizedKey = key.trim().toLowerCase().replace(/\./g, '').replace(/[\/\\-]/g, '_').replace(/ /g, '_').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         if (normalizedKey.includes('hd') && normalizedKey.includes('ssd')) normalizedKey = 'hd_ssd';
         if (normalizedKey.includes('funcionario')) normalizedKey = 'funcionario';
-        if (normalizedKey === 'versao_so' || normalizedKey === 'versão_so') normalizedKey = 'versao_so';
+        if (/^versao_.*so$/.test(normalizedKey)) normalizedKey = 'versao_so';
         let value = (row[key] === undefined || row[key] === null) ? '' : row[key];
         if (typeof value === 'number') value = String(value);
         normalizedRow[normalizedKey] = String(value).trim();
@@ -235,20 +282,25 @@ const BulkImportPage = () => {
         memoria: normalizedRow['memoria'],
         hdSsd: normalizedRow['hd_ssd'] || '',
         so: normalizedRow['so'],
-        versao_so: normalizedRow['versão_so'] || '',
+        soVersao: normalizedRow['versao_so'] || '',
         antivirus: normalizedRow['antivirus'],
         macAddress: normalizedRow['mac'],
         serviceTag: normalizedRow['service_tag'],
       };
     } else {
-      const normBool = (v) => v.toUpperCase().includes('S') ? 'Sim' : 'Não';
+      const normBool = (v) => (v || '').toUpperCase().includes('S') ? 'Sim' : 'Não';
       return {
         ...baseData,
-        ip: normalizedRow['ip'],
-        conectividade: normalizedRow['conectividade'],
-        cartucho: normalizedRow['cartucho'],
+        tipoAtivo: normalizedRow['tipo'] || '',
+        ip: normalizedRow['ip'] || '',
+        conectividade: normalizedRow['conectividade'] || '',
+        cartucho: normalizedRow['cartucho'] || '',
         colorido: normBool(normalizedRow['colorido']),
-        frenteVerso: normBool(normalizedRow['frente_verso'])
+        frenteVerso: normBool(normalizedRow['frente_verso']),
+        propriedade: normalizedRow['propriedade'] || '',
+        cartuchoPreto: normalizedRow['cartucho_preto'] || '',
+        cartuchoColorido: normalizedRow['cartucho_colorido'] || '',
+        drCilindro: normalizedRow['dr_cilindro'] || '',
       };
     }
   };
@@ -324,7 +376,7 @@ const BulkImportPage = () => {
   };
   
   const upsertSystemOptions = async () => {
-      const { setores, pavimentos, salas, versoes_so, windows_builds, memorias, hd_ssd, processadores, marcas, modelos, status } = newTermsToCreate;
+      const { setores, pavimentos, salas, sistemas_operacionais, versoes_so, windows_builds, memorias, hd_ssd, processadores, marcas, modelos, status, conectividade, tipos_insumo, frente_verso, marcas_impressora, modelos_impressora, tipos_ativos_impressora, status_impressora } = newTermsToCreate;
       const updates = [];
       const updateOption = (key, newValuesSet) => {
           if (newValuesSet.size > 0) {
@@ -336,6 +388,7 @@ const BulkImportPage = () => {
       updateOption('setores', setores);
       updateOption('pavimentos', pavimentos);
       updateOption('salas', salas);
+      updateOption('sistemas_operacionais', sistemas_operacionais);
       updateOption('versoes_so', versoes_so);
       updateOption('windows_builds', windows_builds);
       updateOption('memorias', memorias);
@@ -344,6 +397,13 @@ const BulkImportPage = () => {
       updateOption('marcas', marcas);
       updateOption('modelos', modelos);
       updateOption('status', status);
+      updateOption('conectividade', conectividade);
+      updateOption('tipos_insumo', tipos_insumo);
+      updateOption('frente_verso', frente_verso);
+      updateOption('marcas_impressora', marcas_impressora);
+      updateOption('modelos_impressora', modelos_impressora);
+      updateOption('tipos_ativos_impressora', tipos_ativos_impressora);
+      updateOption('status_impressora', status_impressora);
 
       if (updates.length > 0) {
           const batch = writeBatch(db);
@@ -471,7 +531,33 @@ const BulkImportPage = () => {
 
   const downloadTemplate = async () => {
     const workbook = new ExcelJS.Workbook();
-    // ... download ...
+
+    const computerSheet = workbook.addWorksheet('Computadores');
+    const compHeaders = [
+      'Tombamento', 'Hostname', 'Marca', 'Modelo', 'Serial', 'Status',
+      'Setor', 'Sala', 'Pavimento', 'Funcionário', 'Processador', 'Memória',
+      'HD/SSD', 'SO', 'Versão SO', 'Antivírus', 'MAC', 'Service Tag', 'Observação'
+    ];
+    const compHeaderRow = computerSheet.addRow(compHeaders);
+    compHeaderRow.font = { bold: true };
+    compHeaderRow.height = 22;
+    computerSheet.columns = compHeaders.map(h => ({ header: h, width: 18 }));
+
+    const printerSheet = workbook.addWorksheet('Impressoras');
+    const printerHeaders = [
+      'Tombamento', 'Tipo', 'Marca', 'Modelo', 'Serial', 'Status',
+      'Setor', 'Sala', 'Pavimento', 'Funcionário', 'IP', 'Conectividade',
+      'Cartucho', 'Colorido', 'Frente Verso', 'Propriedade',
+      'Cartucho Preto', 'Cartucho Colorido', 'DR Cilindro', 'Observação'
+    ];
+    const printerHeaderRow = printerSheet.addRow(printerHeaders);
+    printerHeaderRow.font = { bold: true };
+    printerHeaderRow.height = 22;
+    printerSheet.columns = printerHeaders.map(h => ({ header: h, width: 18 }));
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, 'modelo_importacao.xlsx');
     toast.success("Modelo baixado!");
   };
 

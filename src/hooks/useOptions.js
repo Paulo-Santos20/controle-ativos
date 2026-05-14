@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { collection } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { db } from '/src/lib/firebase.js';
+import { sortOptions } from '../utils/sortOptions';
 
 export const useOptions = (optionKeys = []) => {
   const [snapshot, loading, error] = useCollection(
@@ -23,7 +24,7 @@ export const useOptions = (optionKeys = []) => {
 
     optionKeys.forEach(key => {
       if (optionsMap[key] && optionsMap[key].length > 0) {
-        returnValue[key] = [...optionsMap[key]].sort();
+        returnValue[key] = sortOptions(optionsMap[key]);
       } else {
         returnValue[key] = [];
       }

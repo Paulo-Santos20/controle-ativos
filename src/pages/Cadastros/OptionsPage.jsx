@@ -3,6 +3,7 @@ import { Layers, Monitor, Server, Map, Box, Cpu, HardDrive, Tag, Globe, MonitorC
 import { doc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { toast } from 'sonner';
+import { sortOptions } from '../../utils/sortOptions';
 
 import styles from './OptionsPage.module.css';
 import OptionManager from '../../components/Settings/OptionManager';
@@ -82,7 +83,7 @@ const CATEGORIES = [
     label: 'Versões S.O.',
     icon: <Server size={18} />,
     placeholder: "Ex: 22H2, 23H2, 20.04 LTS...",
-    defaults: ["22H2", "23H2", "20.04 LTS", "22.04 LTS", "Sonoma", "Sequoia"]
+    defaults: ["22H2", "23H2", "24H2", "20.04 LTS", "22.04 LTS", "Sonoma", "Sequoia"]
   },
   {
     id: 'windows_builds',
@@ -174,7 +175,7 @@ const OptionsPage = () => {
         const docRef = doc(db, 'systemOptions', cat.id);
         const snap = await getDoc(docRef);
         const existing = snap.exists() ? (snap.data().values || []) : [];
-        const merged = [...new Set([...existing, ...cat.defaults])].sort();
+        const merged = sortOptions([...new Set([...existing, ...cat.defaults])]);
         updates.push({ ref: docRef, values: merged });
       }
       const batch = writeBatch(db);
