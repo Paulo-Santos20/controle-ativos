@@ -37,11 +37,13 @@ const Dashboard = () => {
     return getUnitConstraints(allowedUnits, isAdmin);
   }, [allowedUnits, isAdmin]);
 
-  const getActiveCount = useCallback((loading, snapshot) => {
+  const getActiveCount = useCallback((loading, snapshot, unitFilter) => {
     if (loading) return <Loader2 size={20} className={styles.spinnerSmall} />;
     if (!snapshot) return 0;
     return snapshot.docs.filter(doc => {
-      const s = doc.data().status;
+      const data = doc.data();
+      if (unitFilter && unitFilter.length > 0 && !unitFilter.includes(data.unitId)) return false;
+      const s = data.status;
       return s !== 'Devolvido' && s !== 'Descartado' && s !== 'Inativo';
     }).length;
   }, []);
@@ -198,12 +200,12 @@ const Dashboard = () => {
         <div className={styles.card}>
           <div className={styles.cardIcon}><Laptop style={{ color: 'var(--color-primary)' }} /></div>
           <span className={styles.cardTitle}>Computadores Ativos</span>
-          <span className={styles.cardValue}>{getActiveCount(loadingComputers, computerAssets)}</span>
+          <span className={styles.cardValue}>{getActiveCount(loadingComputers, computerAssets, allowedUnits)}</span>
         </div>
         <div className={styles.card}>
           <div className={styles.cardIcon}><Printer style={{ color: 'var(--color-text-secondary)' }} /></div>
           <span className={styles.cardTitle}>Impressoras Ativas</span>
-          <span className={styles.cardValue}>{getActiveCount(loadingPrinters, printerAssets)}</span>
+          <span className={styles.cardValue}>{getActiveCount(loadingPrinters, printerAssets, allowedUnits)}</span>
         </div>
       </div>
 

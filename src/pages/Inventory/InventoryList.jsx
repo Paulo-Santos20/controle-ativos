@@ -120,7 +120,11 @@ const InventoryList = () => {
             query(collectionRef, where('setor', '>=', termCap), where('setor', '<=', termCap + '\uf8ff'), limit(10)),
             query(collectionRef, where('serial', '>=', termUpper), where('serial', '<=', termUpper + '\uf8ff'), limit(10)),
             query(collectionRef, where('modelo', '>=', termCap), where('modelo', '<=', termCap + '\uf8ff'), limit(10)),
-            query(collectionRef, where('hostname', '>=', termUpper), where('hostname', '<=', termUpper + '\uf8ff'), limit(10))
+            query(collectionRef, where('hostname', '>=', termUpper), where('hostname', '<=', termUpper + '\uf8ff'), limit(10)),
+            query(collectionRef, where('marca', '>=', termCap), where('marca', '<=', termCap + '\uf8ff'), limit(10)),
+            query(collectionRef, where('so', '>=', termCap), where('so', '<=', termCap + '\uf8ff'), limit(10)),
+            query(collectionRef, where('funcionario', '>=', termCap), where('funcionario', '<=', termCap + '\uf8ff'), limit(10)),
+            query(collectionRef, where('status', '>=', termCap), where('status', '<=', termCap + '\uf8ff'), limit(10))
         ];
 
         const snapshots = await Promise.all(queries.map(q => getDocs(q)));
@@ -288,12 +292,37 @@ const InventoryList = () => {
 
       if (debouncedSearch) {
          const search = debouncedSearch.toLowerCase();
+         const match = (val) => val && val.toLowerCase().includes(search);
          return (
-            asset.id.toLowerCase().includes(search) || 
-            (asset.serial && asset.serial.toLowerCase().includes(search)) ||
-            (asset.hostname && asset.hostname.toLowerCase().includes(search)) ||
-            (asset.modelo && asset.modelo.toLowerCase().includes(search)) ||
-            (asset.setor && asset.setor.toLowerCase().includes(search))
+            match(asset.id) ||
+            match(asset.serial) ||
+            match(asset.hostname) ||
+            match(asset.modelo) ||
+            match(asset.setor) ||
+            match(asset.marca) ||
+            match(asset.memoria) ||
+            match(asset.hdSsd) ||
+            match(asset.processador) ||
+            match(asset.so) ||
+            match(asset.soVersao) ||
+            match(asset.versao_so) ||
+            match(asset.funcionario) ||
+            match(asset.observacao) ||
+            match(asset.macAddress) ||
+            match(asset.serviceTag) ||
+            match(asset.tipoAtivo) ||
+            match(asset.tombamento) ||
+            match(asset.propriedade) ||
+            match(asset.conectividade) ||
+            match(asset.cartucho) ||
+            match(asset.cartuchoPreto) ||
+            match(asset.cartuchoColorido) ||
+            match(asset.drCilindro) ||
+            match(asset.frenteVerso) ||
+            match(asset.ip) ||
+            match(asset.status) ||
+            match(asset.pavimento) ||
+            match(asset.sala)
          );
       }
       return true;

@@ -100,10 +100,37 @@ const MonitoringPage = () => {
     // 2.3 FILTRO DE TEXTO
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
-      data = data.filter(asset => 
-        asset.id.toLowerCase().includes(search) ||
-        (asset.modelo && asset.modelo.toLowerCase().includes(search)) ||
-        (asset.serial && asset.serial.toLowerCase().includes(search))
+      const match = (val) => val && val.toLowerCase().includes(search);
+      data = data.filter(asset =>
+        match(asset.id) ||
+        match(asset.modelo) ||
+        match(asset.serial) ||
+        match(asset.tombamento) ||
+        match(asset.marca) ||
+        match(asset.memoria) ||
+        match(asset.hdSsd) ||
+        match(asset.processador) ||
+        match(asset.so) ||
+        match(asset.soVersao) ||
+        match(asset.versao_so) ||
+        match(asset.setor) ||
+        match(asset.funcionario) ||
+        match(asset.observacao) ||
+        match(asset.macAddress) ||
+        match(asset.serviceTag) ||
+        match(asset.tipoAtivo) ||
+        match(asset.hostname) ||
+        match(asset.propriedade) ||
+        match(asset.conectividade) ||
+        match(asset.cartucho) ||
+        match(asset.cartuchoPreto) ||
+        match(asset.cartuchoColorido) ||
+        match(asset.drCilindro) ||
+        match(asset.frenteVerso) ||
+        match(asset.ip) ||
+        match(asset.status) ||
+        match(asset.pavimento) ||
+        match(asset.sala)
       );
     }
 

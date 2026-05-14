@@ -180,6 +180,7 @@
   height: 380px;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .chartWrapper {
@@ -232,6 +233,7 @@
   padding: 0;
   margin: 0;
   flex: 1;
+  min-height: 0;
 }
 
 .feedItem {
