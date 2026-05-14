@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, where, documentId } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { 
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
+import { getUnitConstraints, getUnitsQuery as buildUnitsQuery, IN_LIMIT } from '../../utils/queryHelpers';
 import { 
   FileDown, Filter, Loader2, Monitor, AlertTriangle, CheckCircle2, Building2, FileText, Ban
 } from 'lucide-react';
@@ -26,15 +27,8 @@ const Reports = () => {
   const [filterStatus, setFilterStatus] = useState('all');
 
   // --- 1. HELPER DE PERMISSÃO ---
-  // Admin sem unidades específicas vê tudo. Usuário normal filtra. Sem acesso bloqueia.
-  const getPermissionConstraints = useCallback((field = 'unitId') => {
-    if (allowedUnits && allowedUnits.length > 0 && !isAdmin) {
-        return [where(field, 'in', allowedUnits)];
-    }
-    if (isAdmin) {
-        return [];
-    }
-    return [where(field, '==', 'BLOQUEADO')];
+  const getPermissionConstraints = useCallback(() => {
+    return getUnitConstraints(allowedUnits, isAdmin);
   }, [allowedUnits, isAdmin]);
 
   // --- 2. QUERY DE ATIVOS (DADOS DO RELATÓRIO) ---
@@ -45,23 +39,19 @@ const Reports = () => {
   }, [authLoading, isAdmin, allowedUnits]);
 
   // --- 3. QUERY DE UNIDADES (DROPDOWN) ---
-  // Aqui garantimos que o Dropdown só mostre o que é permitido
   const unitsQuery = useMemo(() => {
     if (authLoading) return null;
-    
-    // Usa 'documentId()' para filtrar pelo ID do documento da unidade
-    const constraints = getPermissionConstraints(documentId());
-    
-    // Se for Admin total (array vazio), ordena por nome. Senão, o 'in' não permite orderBy direto facilmente no client
-    if (constraints.length === 0) {
-        return query(collection(db, 'units'), orderBy('name', 'asc'));
-    }
-    
-    return query(collection(db, 'units'), ...constraints);
+    return buildUnitsQuery(allowedUnits, isAdmin);
   }, [authLoading, isAdmin, allowedUnits]);
 
   const [assets, loadingAssets, errorAssets] = useCollection(assetsQuery);
-  const [units, loadingUnits] = useCollection(unitsQuery);
+  const [unitsRaw, loadingUnits] = useCollection(unitsQuery);
+  const units = useMemo(() => {
+    if (!unitsRaw || !allowedUnits || allowedUnits.length <= IN_LIMIT) return unitsRaw;
+    const allowedSet = new Set(allowedUnits);
+    const filtered = unitsRaw.docs.filter(doc => allowedSet.has(doc.id));
+    return { ...unitsRaw, docs: filtered, size: filtered.length };
+  }, [unitsRaw, allowedUnits]);
 
   // --- 4. PROCESSAMENTO E BLINDAGEM VISUAL ---
   const filteredData = useMemo(() => {

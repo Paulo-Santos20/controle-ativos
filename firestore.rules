@@ -38,13 +38,11 @@ service cloud.firestore {
 
     function canAccessAssetUnit(unitId) {
       return (isAdmin() || isMasterEmail()) ||
-             (unitId == null || unitId == '') ||
              getUserAssignedUnits().hasAny([unitId]);
     }
 
     function isValidUnit(unitId) {
-      return (unitId == null || unitId == '') ||
-             getUserAssignedUnits().hasAny([unitId]);
+      return getUserAssignedUnits().hasAny([unitId]);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -110,7 +108,7 @@ service cloud.firestore {
         request.resource.data.unitId == '' ||
         isValidUnit(request.resource.data.unitId)
       );
-      allow update: if isAuthenticated() && canAccessAssetUnit(resource.data.unitId);
+      allow update: if isAuthenticated() && canAccessAssetUnit(resource.data.unitId) && canAccessAssetUnit(request.resource.data.unitId);
       allow delete: if isAdmin() || isMasterEmail();
     }
 

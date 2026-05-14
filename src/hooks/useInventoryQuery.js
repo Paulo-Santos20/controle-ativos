@@ -3,6 +3,7 @@ import {
   collection, query, orderBy, where, getDocs, limit, startAfter, documentId 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { getUnitConstraints, IN_LIMIT, chunkArray } from '../utils/queryHelpers';
 
 const ITEMS_PER_PAGE = 100;
 
@@ -22,15 +23,8 @@ export const useInventoryQuery = ({ filters, isAdmin, allowedUnits }) => {
       // Criamos uma lista base de filtros que sempre se aplicam
       const baseConstraints = [];
 
-      // 1. Segurança (Server-Side)
-      if (!isAdmin) {
-        if (allowedUnits.length > 0) {
-          baseConstraints.push(where("unitId", "in", allowedUnits));
-        } else {
-          // Se não tem permissão, força uma query impossível
-          baseConstraints.push(where("unitId", "==", "BLOQUEADO"));
-        }
-      }
+      const safeConstraints = getUnitConstraints(allowedUnits, isAdmin);
+      baseConstraints.push(...safeConstraints);
 
       // 2. Filtros Dropdown (Server-Side)
       if (type !== "all") baseConstraints.push(where("type", "==", type));
@@ -96,11 +90,30 @@ export const useInventoryQuery = ({ filters, isAdmin, allowedUnits }) => {
       // =========================================================
       // CENÁRIO B: LISTAGEM PADRÃO (PAGINADA)
       // =========================================================
-      
-      // Adiciona ordenação por data (padrão)
-      const constraints = [...baseConstraints, orderBy('createdAt', 'desc')];
 
-      // Adiciona Paginação
+      const hasUnitFilter = allowedUnits && allowedUnits.length > 0 && allowedUnits.length <= IN_LIMIT;
+      const useChunked = allowedUnits && allowedUnits.length > IN_LIMIT && !isAdmin;
+
+      if (useChunked) {
+        const chunks = chunkArray(allowedUnits);
+        const pageLimit = pageParam ? [startAfter(pageParam)] : [];
+        const chunkQueries = chunks.map(chunk =>
+          query(collectionRef, ...baseConstraints, where("unitId", "in", chunk), orderBy('createdAt', 'desc'), limit(ITEMS_PER_PAGE), ...pageLimit)
+        );
+        const snapshots = await Promise.all(chunkQueries.map(q => getDocs(q)));
+        const mergedMap = new Map();
+        let hasMore = false;
+        snapshots.forEach(snap => {
+          snap.docs.forEach(doc => { if (!mergedMap.has(doc.id)) mergedMap.set(doc.id, { id: doc.id, ...doc.data() }); });
+          if (snap.docs.length === ITEMS_PER_PAGE) hasMore = true;
+        });
+        return {
+          data: Array.from(mergedMap.values()),
+          nextCursor: hasMore ? snapshots.find(s => s.docs.length > 0)?.docs[snapshots.find(s => s.docs.length > 0).docs.length - 1] : undefined,
+        };
+      }
+
+      const constraints = [...baseConstraints, orderBy('createdAt', 'desc')];
       constraints.push(limit(ITEMS_PER_PAGE));
       if (pageParam) {
         constraints.push(startAfter(pageParam));

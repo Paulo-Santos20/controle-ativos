@@ -22,31 +22,31 @@ import { useOptions } from '../../hooks/useOptions';
  * (Não valida 'tombamento' pois é o ID e não é editável).
  */
 const assetSchema = z.object({
-  tipoAtivo: z.string().optional().or(z.literal('')),
-  marca: z.string().optional().or(z.literal('')),
-  modelo: z.string().optional().or(z.literal('')),
-  hostname: z.string().optional().or(z.literal('')), 
-  serial: z.string().optional().or(z.literal('')), 
-  serviceTag: z.string().optional().or(z.literal('')), 
+  tipoAtivo: z.string().max(100).optional().or(z.literal('')),
+  marca: z.string().max(200).optional().or(z.literal('')),
+  modelo: z.string().max(200).optional().or(z.literal('')),
+  hostname: z.string().max(200).optional().or(z.literal('')), 
+  serial: z.string().max(200).optional().or(z.literal('')), 
+  serviceTag: z.string().max(200).optional().or(z.literal('')), 
   macAddress: z.string()
     .regex(/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/, "Formato de MAC inválido (ex: 00:1A:2B:3C:4D:5E)")
     .optional().or(z.literal('')),
-  posse: z.string().optional().or(z.literal('')), 
-  status: z.string().optional().or(z.literal('')), 
+  posse: z.string().max(100).optional().or(z.literal('')), 
+  status: z.string().max(100).optional().or(z.literal('')), 
   
-  memoria: z.string().optional().or(z.literal('')), 
-  hdSsd: z.string().optional().or(z.literal('')), 
-  processador: z.string().optional().or(z.literal('')), 
-  antivirus: z.string().optional().or(z.literal('')), 
-  so: z.string().optional().or(z.literal('')),
-  soVersao: z.string().optional().or(z.literal('')), 
+  memoria: z.string().max(100).optional().or(z.literal('')), 
+  hdSsd: z.string().max(100).optional().or(z.literal('')), 
+  processador: z.string().max(100).optional().or(z.literal('')), 
+  antivirus: z.string().max(100).optional().or(z.literal('')), 
+  so: z.string().max(200).optional().or(z.literal('')),
+  soVersao: z.string().max(100).optional().or(z.literal('')), 
   
-  unitId: z.string().optional().or(z.literal('')), 
-  pavimento: z.string().optional().or(z.literal('')),
-  setor: z.string().optional().or(z.literal('')), 
-  sala: z.string().optional().or(z.literal('')),
-  funcionario: z.string().optional().or(z.literal('')), 
-  observacao: z.string().optional().or(z.literal('')),
+  unitId: z.string().max(200).optional().or(z.literal('')), 
+  pavimento: z.string().max(100).optional().or(z.literal('')),
+  setor: z.string().max(200).optional().or(z.literal('')), 
+  sala: z.string().max(200).optional().or(z.literal('')),
+  funcionario: z.string().max(200).optional().or(z.literal('')), 
+  observacao: z.string().max(1000).optional().or(z.literal('')),
 });
 
 /**

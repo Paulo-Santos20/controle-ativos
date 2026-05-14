@@ -22,28 +22,28 @@ import { useOptions } from '../../hooks/useOptions';
  * e não deve ser alterado na edição, apenas visualizado.
  */
 const printerSchema = z.object({
-  tipoAtivo: z.string().optional().or(z.literal('')),
-  marca: z.string().optional().or(z.literal('')),
-  modelo: z.string().optional().or(z.literal('')),
-  serial: z.string().optional().or(z.literal('')),
-  propriedade: z.string().optional().or(z.literal('')),
-  status: z.string().optional().or(z.literal('')),
+  tipoAtivo: z.string().max(100).optional().or(z.literal('')),
+  marca: z.string().max(200).optional().or(z.literal('')),
+  modelo: z.string().max(200).optional().or(z.literal('')),
+  serial: z.string().max(200).optional().or(z.literal('')),
+  propriedade: z.string().max(100).optional().or(z.literal('')),
+  status: z.string().max(100).optional().or(z.literal('')),
   
-  conectividade: z.string().optional().or(z.literal('')),
-  frenteVerso: z.string().optional().or(z.literal('')),
+  conectividade: z.string().max(100).optional().or(z.literal('')),
+  frenteVerso: z.string().max(100).optional().or(z.literal('')),
   
-  cartucho: z.string().optional().or(z.literal('')),
-  colorido: z.string().optional().or(z.literal('')),
-  cartuchoColorido: z.string().optional().or(z.literal('')),
-  cartuchoPreto: z.string().optional().or(z.literal('')),
-  drCilindro: z.string().optional().or(z.literal('')),
+  cartucho: z.string().max(100).optional().or(z.literal('')),
+  colorido: z.string().max(100).optional().or(z.literal('')),
+  cartuchoColorido: z.string().max(200).optional().or(z.literal('')),
+  cartuchoPreto: z.string().max(200).optional().or(z.literal('')),
+  drCilindro: z.string().max(200).optional().or(z.literal('')),
   
-  unitId: z.string().optional().or(z.literal('')),
-  pavimento: z.string().optional().or(z.literal('')),
-  setor: z.string().optional().or(z.literal('')),
-  sala: z.string().optional().or(z.literal('')),
-  funcionario: z.string().optional().or(z.literal('')),
-  observacao: z.string().optional().or(z.literal('')),
+  unitId: z.string().max(200).optional().or(z.literal('')),
+  pavimento: z.string().max(100).optional().or(z.literal('')),
+  setor: z.string().max(200).optional().or(z.literal('')),
+  sala: z.string().max(200).optional().or(z.literal('')),
+  funcionario: z.string().max(200).optional().or(z.literal('')),
+  observacao: z.string().max(1000).optional().or(z.literal('')),
 });
 
 /**

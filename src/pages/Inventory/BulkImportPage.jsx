@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx'; 
 import ExcelJS from 'exceljs'; 
 import { saveAs } from 'file-saver'; 
-import { writeBatch, doc, serverTimestamp, collection, query, orderBy, where, documentId, getDocs } from 'firebase/firestore';
+import { writeBatch, doc, serverTimestamp, collection, query, where, documentId, getDocs } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { db, auth } from '../../lib/firebase'; 
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import styles from './BulkImportPage.module.css';
 import { useAuth } from '../../hooks/useAuth';
+import { getUnitsQuery as buildUnitsQuery, IN_LIMIT } from '../../utils/queryHelpers';
 
 const BulkImportPage = () => {
   const { isAdmin, allowedUnits, loading: authLoading } = useAuth();
@@ -53,12 +54,16 @@ const BulkImportPage = () => {
 
   const unitsQuery = useMemo(() => {
     if (authLoading) return null;
-    if (allowedUnits.length > 0) return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
-    if (isAdmin) return query(collection(db, 'units'), orderBy('name', 'asc'));
-    return null;
+    return buildUnitsQuery(allowedUnits, isAdmin);
   }, [isAdmin, allowedUnits, authLoading]);
 
-  const [unitsSnapshot, loadingUnits] = useCollection(unitsQuery);
+  const [unitsSnapshotRaw, loadingUnits] = useCollection(unitsQuery);
+  const unitsSnapshot = useMemo(() => {
+    if (!unitsSnapshotRaw || !allowedUnits || allowedUnits.length <= IN_LIMIT) return unitsSnapshotRaw;
+    const allowedSet = new Set(allowedUnits);
+    const filtered = unitsSnapshotRaw.docs.filter(doc => allowedSet.has(doc.id));
+    return { ...unitsSnapshotRaw, docs: filtered, size: filtered.length };
+  }, [unitsSnapshotRaw, allowedUnits]);
   const [optionsSnapshot, loadingOptions] = useCollection(collection(db, 'systemOptions'));
 
   const getSystemOptions = useCallback((key) => {
@@ -230,8 +235,13 @@ const BulkImportPage = () => {
 
   const processRow = (row, sheetName) => {
     const normalizedRow = {};
+    const allowedKeys = importType === 'computador'
+      ? ['tombamento', 'hostname', 'marca', 'modelo', 'serial', 'status', 'setor', 'sala', 'pavimento', 'funcionario', 'processador', 'memoria', 'hd_ssd', 'hd/ssd', 'hd', 'ssd', 'so', 'versao_so', 'versão so', 'versão do so', 'versão s.o.', 'antivirus', 'mac', 'mac address', 'service_tag', 'service tag', 'observacao', 'observação', 'unidade']
+      : ['tombamento', 'tipo', 'marca', 'modelo', 'serial', 'status', 'setor', 'sala', 'pavimento', 'funcionario', 'ip', 'conectividade', 'cartucho', 'colorido', 'frente_verso', 'frente/verso', 'frente verso', 'propriedade', 'cartucho_preto', 'cartucho preto', 'cartucho_colorido', 'cartucho colorido', 'dr_cilindro', 'dr cilindro', 'observacao', 'observação', 'unidade'];
     Object.keys(row).forEach(key => {
-        let normalizedKey = key.trim().toLowerCase().replace(/\./g, '').replace(/[\/\\-]/g, '_').replace(/ /g, '_').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const rawLower = key.trim().toLowerCase();
+        if (!allowedKeys.some(ak => rawLower === ak || rawLower.replace(/\./g, '').replace(/[\/\\-]/g, '_').replace(/ /g, '_').normalize('NFD').replace(/[\u0300-\u036f]/g, '') === ak.replace(/\./g, '').replace(/[\/\\-]/g, '_').replace(/ /g, '_').normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) return;
+        let normalizedKey = rawLower.replace(/\./g, '').replace(/[\/\\-]/g, '_').replace(/ /g, '_').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         if (normalizedKey.includes('hd') && normalizedKey.includes('ssd')) normalizedKey = 'hd_ssd';
         if (normalizedKey.includes('funcionario')) normalizedKey = 'funcionario';
         if (/^versao_.*so$/.test(normalizedKey)) normalizedKey = 'versao_so';
@@ -464,7 +474,7 @@ const BulkImportPage = () => {
 
         if (itemsWithIds.length > 0) {
             const allIds = itemsWithIds.map(d => d.tombamento || d.serial);
-            const checkChunkSize = 30;
+            const checkChunkSize = 10;
             for (let i = 0; i < allIds.length; i += checkChunkSize) {
                 const chunkIds = allIds.slice(i, i + checkChunkSize);
                 const q = query(collection(db, 'assets'), where(documentId(), 'in', chunkIds));
@@ -501,6 +511,9 @@ const BulkImportPage = () => {
             
             try {
                 await batch.commit();
+                if (i + chunkSize < allChunks.length) {
+                    await new Promise(r => setTimeout(r, 200));
+                }
             } catch (batchError) {
                 chunk.forEach(item => {
                     const id = item.tombamento || item.serial || 'sem-id';

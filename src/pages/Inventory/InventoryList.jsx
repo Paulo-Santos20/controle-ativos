@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { useOptions } from '../../hooks/useOptions';
 import styles from './InventoryList.module.css';
+import { getUnitConstraints, IN_LIMIT, chunkArray } from '../../utils/queryHelpers';
 
 import Modal from '../../components/Modal/Modal';
 import AssetTypeSelector from '../../components/Inventory/AssetTypeSelector';
@@ -136,63 +137,98 @@ const InventoryList = () => {
 
       } else {
         // B. Listagem Padrão
-        let constraints = [orderBy('createdAt', 'desc')];
+        const baseConstraints = [orderBy('createdAt', 'desc')];
 
-        // Admin com unidades específicas: mostra tudo (não filtra por unitId)
-        // Usuário normal com unidades: filtra pelas unidades permitidas
-        // Usuário sem unidades e não admin: bloqueia
-        if (allowedUnits && allowedUnits.length > 0 && !isAdmin) {
-             constraints.push(where("unitId", "in", allowedUnits));
-        } else if ((!allowedUnits || allowedUnits.length === 0) && !isAdmin) {
-             constraints.push(where("unitId", "==", "SEM_PERMISSAO"));
-        }
+        const unitConstraints = getUnitConstraints(allowedUnits, isAdmin);
+        const useChunked = allowedUnits && allowedUnits.length > IN_LIMIT && !isAdmin;
 
-        if (filterType !== "all") constraints.push(where("type", "==", filterType));
-        if (filterStatus !== "all") constraints.push(where("status", "==", filterStatus));
+        if (filterType !== "all") baseConstraints.push(where("type", "==", filterType));
+        if (filterStatus !== "all") baseConstraints.push(where("status", "==", filterStatus));
 
-        // Filtro de unidade selecionado pelo usuário (apenas para admins sem restrição)
         if (filterUnit !== "all" && isAdmin && allowedUnits.length === 0) {
-           constraints.push(where("unitId", "==", filterUnit));
+           baseConstraints.push(where("unitId", "==", filterUnit));
         }
 
-        constraints.push(limit(ITEMS_PER_PAGE));
-        if (isLoadMore && lastDoc) constraints.push(startAfter(lastDoc));
-
-        const q = query(collectionRef, ...constraints);
-        const queue = [getDocs(q)];
-
-        if (!isLoadMore) {
-          let countConstraints = [];
-          if (allowedUnits && allowedUnits.length > 0 && !isAdmin) {
-            countConstraints.push(where("unitId", "in", allowedUnits));
-          } else if ((!allowedUnits || allowedUnits.length === 0) && !isAdmin) {
-            countConstraints.push(where("unitId", "==", "SEM_PERMISSAO"));
-          }
-          if (filterType !== "all") countConstraints.push(where("type", "==", filterType));
-          if (filterStatus !== "all") countConstraints.push(where("status", "==", filterStatus));
-          if (filterUnit !== "all" && isAdmin && allowedUnits.length === 0) {
-            countConstraints.push(where("unitId", "==", filterUnit));
-          }
-          queue.push(
-            getCountFromServer(query(collectionRef, ...countConstraints))
-              .then(snap => snap.data().count)
-              .catch(() => null)
+        if (useChunked) {
+          const chunks = chunkArray(allowedUnits);
+          const pageLimit = isLoadMore && lastDoc ? [startAfter(lastDoc)] : [];
+          const chunkQueries = chunks.map(chunk =>
+            query(collectionRef, ...baseConstraints, where("unitId", "in", chunk), limit(ITEMS_PER_PAGE), ...pageLimit)
           );
-        }
+          const snapshots = await Promise.all(chunkQueries.map(q => getDocs(q)));
+          const mergedMap = new Map();
+          let hasFullPage = false;
+          snapshots.forEach(snap => {
+            snap.docs.forEach(doc => { if (!mergedMap.has(doc.id)) mergedMap.set(doc.id, { id: doc.id, ...doc.data() }); });
+            if (snap.docs.length === ITEMS_PER_PAGE) hasFullPage = true;
+          });
+          const newAssets = Array.from(mergedMap.values());
 
-        const [snapshot, total] = await Promise.all(queue);
-        let newAssets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          if (isLoadMore) {
+            setAssets(prev => [...prev, ...newAssets]);
+          } else {
+            setAssets(newAssets);
+            if (allowedUnits && allowedUnits.length > 0 && allowedUnits.length <= IN_LIMIT && !isAdmin) {
+              let countConstraints = [where("unitId", "in", allowedUnits)];
+              if (filterType !== "all") countConstraints.push(where("type", "==", filterType));
+              if (filterStatus !== "all") countConstraints.push(where("status", "==", filterStatus));
+              if (filterUnit !== "all" && isAdmin && allowedUnits.length === 0) {
+                countConstraints.push(where("unitId", "==", filterUnit));
+              }
+              getCountFromServer(query(collectionRef, ...countConstraints))
+                .then(snap => setTotalCount(snap.data().count))
+                .catch(() => {});
+            }
+          }
 
-        if (isLoadMore) {
-          setAssets(prev => [...prev, ...newAssets]);
+          setLastDoc(null);
+          setHasMore(hasFullPage);
         } else {
-          setAssets(newAssets);
-          if (total != null) setTotalCount(total);
-        }
+          if (unitConstraints.length > 0) {
+            baseConstraints.push(...unitConstraints);
+          } else if ((!allowedUnits || allowedUnits.length === 0) && !isAdmin) {
+            baseConstraints.push(where("unitId", "==", "SEM_PERMISSAO"));
+          }
 
-        const lastVisible = snapshot.docs[snapshot.docs.length - 1];
-        setLastDoc(lastVisible);
-        setHasMore(snapshot.docs.length === ITEMS_PER_PAGE);
+          baseConstraints.push(limit(ITEMS_PER_PAGE));
+          if (isLoadMore && lastDoc) baseConstraints.push(startAfter(lastDoc));
+
+          const q = query(collectionRef, ...baseConstraints);
+          const queue = [getDocs(q)];
+
+          if (!isLoadMore) {
+            let countConstraints = [];
+            if (unitConstraints.length > 0) {
+              countConstraints.push(...unitConstraints);
+            } else if ((!allowedUnits || allowedUnits.length === 0) && !isAdmin) {
+              countConstraints.push(where("unitId", "==", "SEM_PERMISSAO"));
+            }
+            if (filterType !== "all") countConstraints.push(where("type", "==", filterType));
+            if (filterStatus !== "all") countConstraints.push(where("status", "==", filterStatus));
+            if (filterUnit !== "all" && isAdmin && allowedUnits.length === 0) {
+              countConstraints.push(where("unitId", "==", filterUnit));
+            }
+            queue.push(
+              getCountFromServer(query(collectionRef, ...countConstraints))
+                .then(snap => snap.data().count)
+                .catch(() => null)
+            );
+          }
+
+          const [snapshot, total] = await Promise.all(queue);
+          let newAssets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+          if (isLoadMore) {
+            setAssets(prev => [...prev, ...newAssets]);
+          } else {
+            setAssets(newAssets);
+            if (total != null) setTotalCount(total);
+          }
+
+          const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+          setLastDoc(lastVisible);
+          setHasMore(snapshot.docs.length === ITEMS_PER_PAGE);
+        }
       }
 
     } catch (err) {

@@ -14,8 +14,8 @@ import { LockKeyhole, LogOut, Loader2, ShieldAlert } from 'lucide-react';
 import styles from './Login.module.css'; 
 
 const schema = z.object({
-  newPassword: z.string().min(6, "A senha deve ter no mínimo 6 caracteres"),
-  confirmPassword: z.string().min(6, "Confirme a senha"),
+  newPassword: z.string().min(8, "A senha deve ter no mínimo 8 caracteres"),
+  confirmPassword: z.string().min(8, "Confirme a senha"),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "As senhas não conferem",
   path: ["confirmPassword"],
@@ -82,7 +82,7 @@ const ForceChangePasswordPage = () => {
             <input
               id="newPassword"
               type="password"
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Mínimo 8 caracteres"
               className={`${styles.input} ${errors.newPassword ? styles.inputError : ''}`}
               {...register("newPassword")}
             />

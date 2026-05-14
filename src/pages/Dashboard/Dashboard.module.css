@@ -182,6 +182,12 @@
   flex-direction: column;
 }
 
+.chartWrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
 /* --- Section Headers --- */
 .sectionHeader {
   display: flex;

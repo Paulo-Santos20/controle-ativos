@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { db } from '../../lib/firebase'; 
 import { 
-  collection, query, orderBy, limit, where, collectionGroup, documentId 
+  collection, query, orderBy, limit, where, collectionGroup 
 } from 'firebase/firestore';
+import { getUnitConstraints, getUnitsQuery as buildUnitsQuery, IN_LIMIT } from '../../utils/queryHelpers';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatDistanceToNow } from 'date-fns';
@@ -33,13 +34,7 @@ const Dashboard = () => {
 
   // --- HELPER DE SEGURANÇA ---
   const getPermissionConstraints = useCallback(() => {
-    if (allowedUnits && allowedUnits.length > 0 && !isAdmin) {
-        return [where('unitId', 'in', allowedUnits)];
-    }
-    if (isAdmin) {
-        return [];
-    }
-    return [where('unitId', '==', 'BLOQUEADO')];
+    return getUnitConstraints(allowedUnits, isAdmin);
   }, [allowedUnits, isAdmin]);
 
   const getActiveCount = useCallback((loading, snapshot) => {
@@ -83,7 +78,8 @@ const Dashboard = () => {
     return query(
       collection(db, 'assets'),
       where('status', '==', 'Em manutenção'),
-      ...getPermissionConstraints()
+      ...getPermissionConstraints(),
+      limit(500)
     );
   }, [authLoading, isAdmin, allowedUnits]);
   const [maintenanceAssets] = useCollection(maintenanceQuery);
@@ -93,7 +89,8 @@ const Dashboard = () => {
     return query(
       collection(db, 'assets'),
       where('type', '==', 'computador'),
-      ...getPermissionConstraints()
+      ...getPermissionConstraints(),
+      limit(500)
     );
   }, [authLoading, isAdmin, allowedUnits]);
   const [computerAssets, loadingComputers] = useCollection(computersQuery);
@@ -103,7 +100,8 @@ const Dashboard = () => {
     return query(
       collection(db, 'assets'),
       where('type', '==', 'impressora'),
-      ...getPermissionConstraints()
+      ...getPermissionConstraints(),
+      limit(500)
     );
   }, [authLoading, isAdmin, allowedUnits]);
   const [printerAssets, loadingPrinters] = useCollection(printersQuery);
@@ -111,22 +109,22 @@ const Dashboard = () => {
   // --- B. DADOS PARA O GRÁFICO ---
   const allAssetsQuery = useMemo(() => {
     if (authLoading) return null;
-    return query(collection(db, 'assets'), ...getPermissionConstraints());
+    return query(collection(db, 'assets'), ...getPermissionConstraints(), limit(5000));
   }, [authLoading, isAdmin, allowedUnits]);
   const [allAssets, loadingAllAssets] = useCollection(allAssetsQuery);
 
   // C. Unidades (Para os nomes)
   const unitsQuery = useMemo(() => {
     if (authLoading) return null;
-    if (allowedUnits && allowedUnits.length > 0) {
-        return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
-    }
-    if (isAdmin) {
-        return query(collection(db, 'units'), orderBy('name', 'asc'));
-    }
-    return null;
+    return buildUnitsQuery(allowedUnits, isAdmin);
   }, [authLoading, isAdmin, allowedUnits]);
-  const [units, loadingUnits] = useCollection(unitsQuery);
+  const [snapshotRaw, loadingUnits] = useCollection(unitsQuery);
+  const units = useMemo(() => {
+    if (!snapshotRaw || !allowedUnits || allowedUnits.length <= IN_LIMIT) return snapshotRaw;
+    const allowedSet = new Set(allowedUnits);
+    const filtered = snapshotRaw.docs.filter(doc => allowedSet.has(doc.id));
+    return { ...snapshotRaw, docs: filtered, size: filtered.length };
+  }, [snapshotRaw, allowedUnits]);
 
   // D. Histórico (Feed)
   const historyQuery = useMemo(() => {
@@ -217,14 +215,16 @@ const Dashboard = () => {
           {(loadingAllAssets || loadingUnits) ? (
             <div className={styles.loadingState}><Loader2 className={styles.spinner} /></div>
           ) : pieChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={pieChartData} cx="50%" cy="50%" labelLine={false} outerRadius={110} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
-                  {pieChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.fill} />))}
-                </Pie>
-                <Tooltip /> <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className={styles.chartWrapper}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieChartData} cx="50%" cy="50%" labelLine={false} outerRadius={110} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                    {pieChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.fill} />))}
+                  </Pie>
+                  <Tooltip /> <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <div className={styles.emptyFeed}>
               <PackageSearch size={36} className={styles.emptyIcon} />

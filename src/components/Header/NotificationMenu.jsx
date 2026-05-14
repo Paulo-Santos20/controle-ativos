@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp, collectionGroup } from 'firebase/firestore';
 import { db } from '/src/lib/firebase.js';
 import { Bell, Check, AlertTriangle, ArrowRight, Wrench, RotateCcw, Package, Loader2, Plus, Clock } from 'lucide-react';
+import { getUnitConstraints } from '../../utils/queryHelpers';
 import { differenceInDays, differenceInHours, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import styles from './NotificationMenu.module.css';
@@ -140,12 +141,21 @@ const NotificationMenu = () => {
       if (isAdmin) {
         assetsQuery = query(assetsRef, where('status', '==', 'Em manutenção'), limit(20));
       } else if (allowedUnits && allowedUnits.length > 0) {
-        assetsQuery = query(
-          assetsRef,
-          where('status', '==', 'Em manutenção'),
-          where('unitId', 'in', allowedUnits),
-          limit(20)
-        );
+        const unitConstraints = getUnitConstraints(allowedUnits, isAdmin);
+        if (unitConstraints.length > 0) {
+          assetsQuery = query(
+            assetsRef,
+            where('status', '==', 'Em manutenção'),
+            ...unitConstraints,
+            limit(20)
+          );
+        } else {
+          assetsQuery = query(
+            assetsRef,
+            where('status', '==', 'Em manutenção'),
+            limit(20)
+          );
+        }
       }
 
       if (assetsQuery) {

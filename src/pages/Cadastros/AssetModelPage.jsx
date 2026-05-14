@@ -5,10 +5,10 @@ import {
   collection, 
   orderBy, 
   query, 
-  where, 
-  documentId 
+  where 
 } from 'firebase/firestore'; 
 import { db } from '../../lib/firebase';
+import { getUnitConstraints, getUnitsQuery as buildUnitsQuery, IN_LIMIT } from '../../utils/queryHelpers';
 import { 
   Plus, 
   Loader2, 
@@ -57,12 +57,8 @@ const AssetModelPage = ({ type, title }) => {
       orderBy('createdAt', 'desc')
     ];
 
-    // Lógica Estrita: Se tem lista, filtra. Se não é admin, bloqueia.
-    if (allowedUnits && allowedUnits.length > 0) {
-        constraints.push(where('unitId', 'in', allowedUnits));
-    } else if (!isAdmin) {
-        constraints.push(where('unitId', '==', 'BLOQUEADO'));
-    }
+    const unitConstraints = getUnitConstraints(allowedUnits, isAdmin);
+    constraints.push(...unitConstraints);
 
     return query(collection(db, 'assets'), ...constraints);
   }, [type, isAdmin, allowedUnits, authLoading]);
@@ -72,16 +68,16 @@ const AssetModelPage = ({ type, title }) => {
   // --- 2. QUERY DE UNIDADES (NECESSÁRIA PARA O GRÁFICO) ---
   const unitsQuery = useMemo(() => {
     if (authLoading) return null;
-    if (allowedUnits && allowedUnits.length > 0) {
-        return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
-    }
-    if (isAdmin) {
-        return query(collection(db, 'units'), orderBy('name', 'asc'));
-    }
-    return null;
+    return buildUnitsQuery(allowedUnits, isAdmin);
   }, [authLoading, isAdmin, allowedUnits]);
   
-  const [unitsSnapshot, loadingUnits] = useCollection(unitsQuery);
+  const [unitsSnapshotRaw, loadingUnits] = useCollection(unitsQuery);
+  const unitsSnapshot = useMemo(() => {
+    if (!unitsSnapshotRaw || !allowedUnits || allowedUnits.length <= IN_LIMIT) return unitsSnapshotRaw;
+    const allowedSet = new Set(allowedUnits);
+    const filtered = unitsSnapshotRaw.docs.filter(doc => allowedSet.has(doc.id));
+    return { ...unitsSnapshotRaw, docs: filtered, size: filtered.length };
+  }, [unitsSnapshotRaw, allowedUnits]);
 
   // --- 3. CÁLCULO DOS DADOS DO GRÁFICO ---
   const pieChartData = useMemo(() => {

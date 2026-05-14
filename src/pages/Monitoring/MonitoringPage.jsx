@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit as firestoreLimit } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { db } from '../../lib/firebase'; 
 import { 
   Search, Clock, AlertTriangle, CheckCircle, Filter, ArrowRight, Loader2, ShieldAlert 
 } from 'lucide-react';
+import { getUnitConstraints, IN_LIMIT } from '../../utils/queryHelpers';
 import { format, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
@@ -36,15 +37,14 @@ const MonitoringPage = () => {
     const constraints = [orderBy('lastSeen', 'asc')]; 
 
     // A. FILTRO DE UNIDADE (PRIORIDADE 1)
-    // Se tem unidades na lista, filtra por elas (Mesmo se for Admin)
-    if (allowedUnits && allowedUnits.length > 0) {
-        constraints.push(where('unitId', 'in', allowedUnits));
-    } 
-    // Se NÃO tem unidades e NÃO é Admin, bloqueia.
-    else if (!isAdmin) {
-        return null; // Bloqueio total
+    const unitConstraints = getUnitConstraints(allowedUnits, isAdmin);
+    if (unitConstraints.length > 0) {
+        constraints.push(...unitConstraints);
+    } else if (!isAdmin && (!allowedUnits || allowedUnits.length === 0)) {
+        return null;
+    } else if (isAdmin && unitConstraints.length === 0 && allowedUnits && allowedUnits.length > IN_LIMIT) {
+        // >10 units: no server-side filter, rely on client-side filter below
     }
-    // Se não tem unidades e É Admin, passa direto (vê tudo)
 
     // B. FILTRO DE STATUS (SIMPLES)
     // Só aplicamos no banco se for um valor único. 
@@ -52,6 +52,8 @@ const MonitoringPage = () => {
     if (filterStatus !== 'attention' && filterStatus !== 'all') {
       constraints.push(where('status', '==', filterStatus));
     }
+
+    constraints.push(firestoreLimit(500));
 
     return query(collectionRef, ...constraints);
   }, [filterStatus, isAdmin, allowedUnits, authLoading]);
@@ -246,6 +248,11 @@ const MonitoringPage = () => {
                 ))}
               </tbody>
             </table>
+            {assets && assets.docs.length === 500 && (
+              <div className={styles.moreNotice}>
+                Mostrando os 500 mais recentes. Refine os filtros para ver resultados mais específicos.
+              </div>
+            )}
           </div>
         )}
       </div>

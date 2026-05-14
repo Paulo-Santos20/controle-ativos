@@ -2,19 +2,21 @@ import { useMemo } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy, where, documentId } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { getUnitsQuery as buildUnitsQuery } from '../utils/queryHelpers';
 
 export const useUnits = (allowedUnits = [], isAdmin = false) => {
   const unitsQuery = useMemo(() => {
-    if (allowedUnits && allowedUnits.length > 0) {
-      return query(collection(db, 'units'), where(documentId(), 'in', allowedUnits));
-    }
-    if (isAdmin) {
-      return query(collection(db, 'units'), orderBy('name', 'asc'));
-    }
-    return null;
+    return buildUnitsQuery(allowedUnits, isAdmin);
   }, [isAdmin, allowedUnits]);
 
-  const [unitsSnapshot, loading, error] = useCollection(unitsQuery);
+  const [snapshot, loading, error] = useCollection(unitsQuery);
+
+  const unitsSnapshot = useMemo(() => {
+    if (!snapshot || !allowedUnits || allowedUnits.length === 0) return snapshot;
+    const allowedSet = new Set(allowedUnits);
+    const filtered = snapshot.docs.filter(doc => allowedSet.has(doc.id));
+    return { ...snapshot, docs: filtered, size: filtered.length };
+  }, [snapshot, allowedUnits]);
 
   const getUnitName = (unitId) => {
     if (!unitId || !unitsSnapshot) return unitId;
